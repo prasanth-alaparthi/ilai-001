@@ -1,0 +1,316 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-1234-abcdef123456",
+		"name": "Muse Notes Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"notesuser\",\n    \"email\": \"notes@example.com\",\n    \"password\": \"password123\",\n    \"role\": \"STUDENT\"\n}"
+						},
+						"url": {
+							"raw": "{{auth_service_url}}/api/auth/register",
+							"host": [
+								"{{auth_service_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.collectionVariables.set(\"access_token\", jsonData.accessToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"notesuser\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{auth_service_url}}/api/auth/login",
+							"host": [
+								"{{auth_service_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notebooks",
+			"item": [
+				{
+					"name": "List Notebooks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{notes_service_url}}/api/notebooks",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"notebooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Notebook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"My First Notebook\",\n    \"color\": \"#6366f1\"\n}"
+						},
+						"url": {
+							"raw": "{{notes_service_url}}/api/notebooks",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"notebooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reorder Notebooks",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    2,\n    1\n]"
+						},
+						"url": {
+							"raw": "{{notes_service_url}}/api/notebooks/reorder",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"notebooks",
+								"reorder"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notes",
+			"item": [
+				{
+					"name": "Create Note in Section",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"My First Note\",\n    \"content\": {\n        \"type\": \"doc\",\n        \"content\": [\n            {\n                \"type\": \"paragraph\",\n                \"content\": [\n                    {\n                        \"type\": \"text\",\n                        \"text\": \"This is the first block of my note!\"\n                    }\n                ]\n            }\n        ]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{notes_service_url}}/api/sections/1/notes",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"sections",
+								"1",
+								"notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Pin Note",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{notes_service_url}}/api/notes/1/toggle-pin",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"notes",
+								"1",
+								"toggle-pin"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pinned Notes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{notes_service_url}}/api/notes/pinned",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"notes",
+								"pinned"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "AI Features",
+			"item": [
+				{
+					"name": "Semantic Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{notes_service_url}}/api/notes/semantic-search?q=ancient italian history",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"notes",
+								"semantic-search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "ancient italian history"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Transcribe Audio",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{notes_service_url}}/api/ai/transcribe",
+							"host": [
+								"{{notes_service_url}}"
+							],
+							"path": [
+								"api",
+								"ai",
+								"transcribe"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "auth_service_url",
+			"value": "http://localhost:8081"
+		},
+		{
+			"key": "notes_service_url",
+			"value": "http://localhost:8082"
+		},
+		{
+			"key": "access_token",
+			"value": ""
+		}
+	]
+}

@@ -1,0 +1,79 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# React build
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Java / Maven / Gradle
+services/*/target/
+services/*/.gradle/
+services/*/build/
+services/*/.mvn/
+services/*/mvnw
+services/*/mvnw.cmd
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+
+# Docker volumes
+postgres-data/
+uploads/
+
+# Log files
+*.log
+logs/
+*.txt
+!README.txt
+!LICENSE.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python (for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3

@@ -1,0 +1,377 @@
+version: '3.8'
+
+services:
+  # --- Database ---
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: muse-postgres
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      POSTGRES_DB: muse_db
+    command: "postgres -c 'max_connections=200'"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./init-scripts:/docker-entrypoint-initdb.d # Optional: for init scripts
+    networks:
+      - muse-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Auth Service ---
+  muse-auth-service:
+    build:
+      context: ./services/muse-auth-service
+      dockerfile: Dockerfile
+    container_name: muse-auth-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8081
+      DB_URL: jdbc:postgresql://postgres:5432/muse-auth
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      SENDER_EMAIL_ADDRESS: ${SENDER_EMAIL_ADDRESS}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+      APP_EMAIL_VERIFICATION_ENABLED: "false"
+      GOOGLE_CLIENT_ID: "617964628206-o7rbt4hev51jcg0er1i93364okrkfs5c.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "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"
+      MICROSOFT_CLIENT_ID: "placeholder_id"
+      MICROSOFT_CLIENT_SECRET: "placeholder_secret"
+    ports:
+      - "8081:8081"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Notes Service ---
+  muse-notes-service:
+    build:
+      context: ./services/muse-notes-service
+      dockerfile: Dockerfile
+    container_name: muse-notes-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8082
+      DB_URL: jdbc:postgresql://postgres:5432/muse_notes
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+    ports:
+      - "8082:8082"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Academic Service ---
+  muse-academic-service:
+    build:
+      context: ./services/muse-academic-service
+      dockerfile: Dockerfile
+    container_name: muse-academic-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8087
+      DB_URL: jdbc:postgresql://postgres:5432/muse_academic
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+    ports:
+      - "8087:8087"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Feed Service ---
+  muse-feed-service:
+    build:
+      context: ./services/muse-feed-service
+      dockerfile: Dockerfile
+    container_name: muse-feed-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8083
+      DB_URL: jdbc:postgresql://postgres:5432/muse_feed
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      NOTES_SERVICE_URL: http://muse-notes-service:8082
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    volumes:
+      - ./uploads:/uploads
+    ports:
+      - "8083:8083"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Parental Service ---
+  muse-parental-service:
+    build:
+      context: ./services/muse-parental-service
+      dockerfile: Dockerfile
+    container_name: muse-parental-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8084
+      DB_URL: jdbc:postgresql://postgres:5432/muse_parental
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+    ports:
+      - "8084:8084"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Journal Service ---
+  muse-journal-service:
+    build:
+      context: ./services/muse-journal-service
+      dockerfile: Dockerfile
+    container_name: muse-journal-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8085
+      DB_URL: jdbc:postgresql://postgres:5432/muse_journal
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      NOTES_SERVICE_URL: http://muse-notes-service:8082
+      FEED_SERVICE_URL: http://muse-feed-service:8083
+    ports:
+      - "8085:8085"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Chat Service ---
+  muse-chat-service:
+    build:
+      context: ./services/muse-chat-service
+      dockerfile: Dockerfile
+    container_name: muse-chat-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8086
+      DB_URL: jdbc:postgresql://postgres:5432/muse_chat
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8086:8086"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Calendar Service ---
+  muse-calendar-service:
+    build:
+      context: ./services/muse-calendar-service
+      dockerfile: Dockerfile
+    container_name: muse-calendar-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8088
+      DB_URL: jdbc:postgresql://postgres:5432/muse_calendar
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+    ports:
+      - "8088:8088"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Assignment Service ---
+  muse-assignment-service:
+    build:
+      context: ./services/muse-assignment-service
+      dockerfile: Dockerfile
+    container_name: muse-assignment-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8089
+      DB_URL: jdbc:postgresql://postgres:5432/muse_assignment
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      GEMINI_API_KEY: ${GOOGLE_API_KEY}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+    ports:
+      - "8089:8089"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Classroom Service ---
+  # --- Classroom Service ---
+  muse-classroom-service:
+    build:
+      context: ./services/muse-classroom-service
+      dockerfile: Dockerfile
+    container_name: muse-classroom-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8090
+      DB_URL: jdbc:postgresql://postgres:5432/muse_classroom
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+    ports:
+      - "8090:8090"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Labs Service ---
+  # --- Labs Service ---
+  muse-labs-service:
+    build:
+      context: ./services/muse-labs-service
+      dockerfile: Dockerfile
+    container_name: muse-labs-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      muse-auth-service:
+        condition: service_started
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8091
+      DB_URL: jdbc:postgresql://postgres:5432/muse_labs
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+    ports:
+      - "8091:8091"
+    networks:
+      - muse-network
+    restart: always
+
+  # --- Frontend ---
+  muse-frontend:
+    build:
+      context: ./frontend/web
+      dockerfile: Dockerfile
+    container_name: muse-frontend
+    depends_on:
+      - muse-auth-service
+      - muse-notes-service
+      - muse-feed-service
+      - muse-parental-service
+      - muse-journal-service
+      - muse-chat-service
+      - muse-academic-service
+      - muse-calendar-service
+      - muse-classroom-service
+      - muse-labs-service
+    ports:
+      - "80:80"
+    networks:
+      - muse-network
+    restart: always
+
+networks:
+  muse-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

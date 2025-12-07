@@ -1,0 +1,51 @@
+{
+    "hosting": {
+        "public": "dist",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "/api/auth/**",
+                "run": {
+                    "serviceId": "muse-auth-service",
+                    "region": "us-central1"
+                }
+            },
+            {
+                "source": "/api/notebooks/**",
+                "run": {
+                    "serviceId": "muse-notes-service",
+                    "region": "us-central1"
+                }
+            },
+            {
+                "source": "/api/sections/**",
+                "run": {
+                    "serviceId": "muse-notes-service",
+                    "region": "us-central1"
+                }
+            },
+            {
+                "source": "/api/notes/**",
+                "run": {
+                    "serviceId": "muse-notes-service",
+                    "region": "us-central1"
+                }
+            },
+            {
+                "source": "/api/ai/**",
+                "run": {
+                    "serviceId": "muse-notes-service",
+                    "region": "us-central1"
+                }
+            },
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    }
+}

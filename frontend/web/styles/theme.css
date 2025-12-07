@@ -1,0 +1,32 @@
+:root {
+    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+    --kid-gradient: linear-gradient(135deg, #ff7ab6 0%, #ffbf69 100%);
+    --card-bg: #ffffff;
+    --muted: #6b7280;
+    --radius-lg: 1rem;
+    --glass: rgba(255, 255, 255, 0.7);
+}
+
+/* Kid mode overrides (applied when .kid-mode is present on body) */
+.kid-mode {
+    --primary-gradient: linear-gradient(135deg, #ff7ab6 0%, #ffbf69 100%);
+    --card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.85));
+    --muted: #374151;
+}
+
+/* Small utilities */
+.theme-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    padding: 1rem;
+}
+
+.theme-badge {
+    background: var(--primary-gradient);
+    color: white;
+    padding: .25rem .5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
