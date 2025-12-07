@@ -73,17 +73,17 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
-      // Proxy requests starting with /api/journal to the journal service
+      // Proxy requests starting with /api/journal to the notes service (merged)
       '/api/journal': {
-        target: 'http://localhost:8085',
+        target: 'http://localhost:8082',
         changeOrigin: true,
       },
       '/api/journals': {
-        target: 'http://localhost:8085',
+        target: 'http://localhost:8082',
         changeOrigin: true,
       },
       '/api/templates': {
-        target: 'http://localhost:8085',
+        target: 'http://localhost:8082',
         changeOrigin: true,
       },
       // Proxy requests starting with /api/chat to the chat service
@@ -106,9 +106,14 @@ export default defineConfig({
         target: 'http://localhost:8083',
         changeOrigin: true,
       },
-      // Proxy requests starting with /api/calendar to the calendar service
+      // Proxy requests starting with /api/calendar to the notes service (merged)
       '/api/calendar': {
-        target: 'http://localhost:8088',
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/assignments to the classroom service (merged)
+      '/api/assignments': {
+        target: 'http://localhost:8090',
         changeOrigin: true,
       },
       // Proxy all other /api requests to the main backend service
