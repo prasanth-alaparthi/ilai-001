@@ -7,6 +7,7 @@ import com.muse.notes.repository.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ public class NoteService {
     private final NoteSocketHandler noteSocketHandler;
     private final ObjectMapper objectMapper;
     private final GeminiService geminiService;
+    private final TransactionTemplate transactionTemplate;
 
     public NoteService(NoteRepository repo,
             SectionRepository sectionRepo,
@@ -46,7 +48,8 @@ public class NoteService {
             NoteCalendarLinkRepository calendarLinkRepo,
             NoteSocketHandler noteSocketHandler,
             ObjectMapper objectMapper,
-            GeminiService geminiService) {
+            GeminiService geminiService,
+            TransactionTemplate transactionTemplate) {
         this.repo = repo;
         this.sectionRepo = sectionRepo;
         this.notebookRepo = notebookRepo;
@@ -59,6 +62,7 @@ public class NoteService {
         this.noteSocketHandler = noteSocketHandler;
         this.objectMapper = objectMapper;
         this.geminiService = geminiService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     private Section getOrCreateDefaultSection(String username) {
@@ -178,19 +182,21 @@ public class NoteService {
 
     private void updateNoteLinks(Note note) {
         embeddingService.getEmbedding(note.getContent().asText()).subscribe(embedding -> {
-            String embeddingString = Arrays.toString(embedding);
-            List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
-            linkRepo.deleteBySourceNoteId(note.getId());
-            for (Note related : relatedNotes) {
-                if (!related.getId().equals(note.getId())) {
-                    NoteLink link = NoteLink.builder()
-                            .sourceNoteId(note.getId())
-                            .linkedNoteId(related.getId())
-                            .relevanceScore(0.0f) // Placeholder, a real implementation would calculate this
-                            .build();
-                    linkRepo.save(link);
+            transactionTemplate.executeWithoutResult(status -> {
+                String embeddingString = Arrays.toString(embedding);
+                List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
+                linkRepo.deleteBySourceNoteId(note.getId());
+                for (Note related : relatedNotes) {
+                    if (!related.getId().equals(note.getId())) {
+                        NoteLink link = NoteLink.builder()
+                                .sourceNoteId(note.getId())
+                                .linkedNoteId(related.getId())
+                                .relevanceScore(0.0f) // Placeholder, a real implementation would calculate this
+                                .build();
+                        linkRepo.save(link);
+                    }
                 }
-            }
+            });
         });
     }
 
@@ -202,28 +208,30 @@ public class NoteService {
         // Example 1: Suggest linking to a semantically similar note if not already
         // linked
         embeddingService.getEmbedding(note.getContent().asText()).subscribe(embedding -> {
-            // Save embedding to note
-            // Need to re-fetch note to ensure we are updating the latest state and avoiding
-            // detached entity issues
-            repo.findById(note.getId()).ifPresent(n -> {
-                n.setEmbedding(embedding);
-                repo.save(n);
-            });
+            transactionTemplate.executeWithoutResult(status -> {
+                // Save embedding to note
+                // Need to re-fetch note to ensure we are updating the latest state and avoiding
+                // detached entity issues
+                repo.findById(note.getId()).ifPresent(n -> {
+                    n.setEmbedding(embedding);
+                    repo.save(n);
+                });
 
-            String embeddingString = Arrays.toString(embedding);
-            List<Note> similarNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 3);
-            for (Note similar : similarNotes) {
-                if (!similar.getId().equals(note.getId())
-                        && linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(note.getId()).stream()
-                                .noneMatch(nl -> nl.getLinkedNoteId().equals(similar.getId()))) {
-                    suggestionRepo.save(NoteSuggestion.builder()
-                            .note(note)
-                            .type("RELATED_NOTE")
-                            .suggestionContent("Consider linking to note: " + similar.getTitle() + " (ID: "
-                                    + similar.getId() + ")")
-                            .build());
+                String embeddingString = Arrays.toString(embedding);
+                List<Note> similarNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 3);
+                for (Note similar : similarNotes) {
+                    if (!similar.getId().equals(note.getId())
+                            && linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(note.getId()).stream()
+                            .noneMatch(nl -> nl.getLinkedNoteId().equals(similar.getId()))) {
+                        suggestionRepo.save(NoteSuggestion.builder()
+                                .note(note)
+                                .type("RELATED_NOTE")
+                                .suggestionContent("Consider linking to note: " + similar.getTitle() + " (ID: "
+                                        + similar.getId() + ")")
+                                .build());
+                    }
                 }
-            }
+            });
         });
 
         // Example 2: Simple keyword-based suggestion (e.g., for tasks)
