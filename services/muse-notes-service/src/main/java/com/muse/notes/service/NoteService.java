@@ -181,7 +181,7 @@ public class NoteService {
     }
 
     private void updateNoteLinks(Note note) {
-        embeddingService.getEmbedding(note.getContent().asText()).subscribe(embedding -> {
+        embeddingService.getEmbedding(extractTextFromNode(note.getContent())).subscribe(embedding -> {
             transactionTemplate.executeWithoutResult(status -> {
                 String embeddingString = Arrays.toString(embedding);
                 List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
@@ -207,7 +207,7 @@ public class NoteService {
 
         // Example 1: Suggest linking to a semantically similar note if not already
         // linked
-        embeddingService.getEmbedding(note.getContent().asText()).subscribe(embedding -> {
+        embeddingService.getEmbedding(extractTextFromNode(note.getContent())).subscribe(embedding -> {
             transactionTemplate.executeWithoutResult(status -> {
                 // Save embedding to note
                 // Need to re-fetch note to ensure we are updating the latest state and avoiding
