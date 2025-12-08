@@ -3,11 +3,8 @@ $services = @(
     "services/muse-notes-service",
     "services/muse-feed-service",
     "services/muse-parental-service",
-    "services/muse-journal-service",
     "services/muse-chat-service",
-    "services/muse-calendar-service",
     "services/muse-academic-service",
-    "services/muse-assignment-service",
     "services/muse-classroom-service",
     "services/muse-labs-service"
 )

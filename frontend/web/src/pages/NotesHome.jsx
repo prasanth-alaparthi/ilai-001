@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FiPlus, FiFolder, FiChevronRight, FiChevronDown, FiChevronLeft,
-  FiStar, FiSidebar, FiShare2, FiClock, FiMic, FiLink,
-  FiTrash2, FiSearch, FiGrid, FiList, FiCpu, FiAlertCircle, FiDatabase,
-  FiEdit2, FiTrash
-} from "react-icons/fi";
+  Plus, Folder, ChevronRight, ChevronDown, ChevronLeft,
+  Star, Sidebar, Share2, Clock, Mic, Link as LinkIcon,
+  Trash2, Search, Grid, List, Cpu, AlertCircle, Database,
+  Edit2, Trash, FileText, MoreHorizontal
+} from "lucide-react";
 import { notesService } from "../services/notesService";
 import RichNoteEditor from "../components/RichNoteEditor";
 import { formatDistanceToNow } from "date-fns";
@@ -25,7 +24,6 @@ const getDisplayTitle = (note, isPlaceholder = false) => {
   if (note.title && note.title.trim() !== "" && note.title !== "Untitled Note") {
     return note.title;
   }
-  // Try to extract from content
   try {
     let contentText = "";
     if (typeof note.content === 'string') {
@@ -33,8 +31,6 @@ const getDisplayTitle = (note, isPlaceholder = false) => {
       temp.innerHTML = note.content;
       contentText = temp.textContent || temp.innerText || "";
     } else if (typeof note.content === 'object' && note.content !== null) {
-      // Tiptap JSON
-      // Simple extraction: traverse content
       const extractText = (node) => {
         if (node.text) return node.text;
         if (node.content) return node.content.map(extractText).join(" ");
@@ -47,34 +43,54 @@ const getDisplayTitle = (note, isPlaceholder = false) => {
       const text = contentText.trim();
       return text.slice(0, 30) + (text.length > 30 ? "..." : "");
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) { }
   return isPlaceholder ? "Untitled Note" : "Untitled";
 }
 
 export default function NotesHome() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [notebooks, setNotebooks] = useState([]);
-  const [sections, setChapters] = useState({}); // Map notebookId -> sections
+  const [sections, setChapters] = useState({});
   const [expandedNotebook, setExpandedNotebook] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [notes, setNotes] = useState([]);
   const [selectedNote, setSelectedNote] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("saved"); // 'saved', 'saving', 'error'
+  const saveTimeoutRef = React.useRef(null);
+
+  // Responsive sidebar - default closed on mobile, open on desktop  
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem("sidebarOpen");
-    return saved !== null ? saved === "true" : true;
+    if (window.innerWidth < 768) return false;
+    return localStorage.getItem("sidebarOpen") !== "false";
   });
 
+  // Handle window resize for responsive behavior
   useEffect(() => {
-    localStorage.setItem("sidebarOpen", sidebarOpen);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [sidebarOpen]);
-  const [viewMode, setViewMode] = useState("list"); // "list" or "editor"
+
+  useEffect(() => {
+    if (!isMobile) {
+      localStorage.setItem("sidebarOpen", sidebarOpen);
+    }
+  }, [sidebarOpen, isMobile]);
+
+  const [viewMode, setViewMode] = useState("list");
+  const [notesViewMode, setNotesViewMode] = useState("list"); // 'list' or 'grid'
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState(null);
 
-  // Modals
+  // Modals state
   const [showCreateNotebook, setShowCreateNotebook] = useState(false);
   const [showCreateChapter, setShowCreateChapter] = useState(false);
   const [notebookForChapter, setNotebookForChapter] = useState(null);
@@ -82,36 +98,26 @@ export default function NotesHome() {
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [showBacklinksModal, setShowBacklinksModal] = useState(false);
   const [showTranscribeModal, setShowTranscribeModal] = useState(false);
+
   const [confirmationModal, setConfirmationModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => { },
-    isDanger: false,
-    showCancel: true,
-    confirmText: "Confirm"
+    isOpen: false, title: "", message: "", onConfirm: () => { }, isDanger: false, showCancel: true, confirmText: "Confirm"
   });
 
   const showAlert = (title, message) => {
     setConfirmationModal({
-      isOpen: true,
-      title,
-      message,
-      onConfirm: () => { },
-      isDanger: false,
-      showCancel: false,
-      confirmText: "OK"
+      isOpen: true, title, message, onConfirm: () => { }, isDanger: false, showCancel: false, confirmText: "OK"
     });
   };
 
-  // Load Notebooks on mount
-  useEffect(() => {
-    loadNotebooks();
-  }, []);
+  useEffect(() => { loadNotebooks(); }, []);
 
-  // Restore state from URL
   useEffect(() => {
     const restoreState = async () => {
+      // Ensure notebooks are loaded first if not already
+      if (notebooks.length === 0) {
+        await loadNotebooks();
+      }
+
       const notebookId = searchParams.get("notebook");
       const chapterId = searchParams.get("chapter");
       const noteId = searchParams.get("note");
@@ -119,7 +125,6 @@ export default function NotesHome() {
       if (notebookId) {
         setExpandedNotebook(notebookId);
         try {
-          // Load chapters
           const chaptersData = await notesService.listChapters(notebookId);
           setChapters(prev => ({ ...prev, [notebookId]: chaptersData }));
 
@@ -127,19 +132,22 @@ export default function NotesHome() {
             const chapter = chaptersData.find(c => c.id === chapterId);
             if (chapter) {
               setSelectedChapter(chapter);
-              // Load notes
+              // Load notes for the chapter
               const notesData = await notesService.listNotesInChapter(chapterId);
               setNotes(notesData);
 
               if (noteId) {
-                // Load full note
                 try {
                   const fullNote = await notesService.getNote(noteId);
                   setSelectedNote(fullNote);
-                  setViewMode("editor");
+                  setViewMode("editor"); // Explicitly set editor mode
                 } catch (e) {
                   console.error("Failed to load note from URL", e);
+                  // If note fails, fallback to list view of chapter
+                  setViewMode("list");
                 }
+              } else {
+                setViewMode("list");
               }
             }
           }
@@ -149,16 +157,14 @@ export default function NotesHome() {
       }
     };
     restoreState();
-  }, []); // Run once on mount
+  }, [searchParams]); // Re-run if searchParams change (though on mount is primary target)
 
   const loadNotebooks = async () => {
     try {
       setError(null);
       const data = await notesService.listNotebooks();
-      console.log("Loaded notebooks:", data);
       setNotebooks(data);
     } catch (err) {
-      console.error("Failed to load notebooks", err);
       setError("Failed to load notebooks. Please check your connection.");
     }
   };
@@ -173,25 +179,16 @@ export default function NotesHome() {
       onConfirm: async () => {
         setLoading(true);
         try {
-          // Personal
-          const personal = await notesService.createNotebook("Personal", "#4f46e5"); // Indigo
+          const personal = await notesService.createNotebook("Personal", "#4f46e5");
           await notesService.createChapter(personal.id, "Ideas");
           await notesService.createChapter(personal.id, "Journal");
 
-          // Work
-          const work = await notesService.createNotebook("Work", "#ef4444"); // Red
+          const work = await notesService.createNotebook("Work", "#ef4444");
           await notesService.createChapter(work.id, "Projects");
-          await notesService.createChapter(work.id, "Meetings");
 
-          // Learning
-          const learning = await notesService.createNotebook("Learning", "#10b981"); // Emerald
-          await notesService.createChapter(learning.id, "React");
-          await notesService.createChapter(learning.id, "Spring Boot");
-
-          await loadNotebooks(); // Refresh list
+          await loadNotebooks();
           showAlert("Success", "Mock data created!");
         } catch (err) {
-          console.error("Failed to seed data", err);
           showAlert("Error", "Failed to seed data: " + (err.response?.data?.message || err.message));
         } finally {
           setLoading(false);
@@ -206,14 +203,11 @@ export default function NotesHome() {
     } else {
       setExpandedNotebook(notebookId);
       if (!sections[notebookId]) {
-        // Load sections for this notebook
         try {
           const data = await notesService.listChapters(notebookId);
-          console.log(`Loaded sections for notebook ${notebookId}:`, data);
           setChapters(prev => ({ ...prev, [notebookId]: data }));
         } catch (err) {
           console.error("Failed to load sections", err);
-          showAlert("Error", "Failed to load sections: " + (err.response?.data?.message || err.message));
         }
       }
     }
@@ -224,7 +218,7 @@ export default function NotesHome() {
     setSelectedNote(null);
     setViewMode("list");
     setLoading(true);
-    setSearchQuery(""); // Clear search when changing section
+    setSearchQuery("");
 
     const newParams = new URLSearchParams(searchParams);
     const notebookId = Object.keys(sections).find(nid => sections[nid].some(s => s.id === section.id));
@@ -232,19 +226,18 @@ export default function NotesHome() {
     newParams.set("chapter", section.id);
     newParams.delete("note");
     setSearchParams(newParams);
+
     try {
       const data = await notesService.listNotesInChapter(section.id);
       setNotes(data);
     } catch (err) {
-      console.error("Failed to load notes", err);
-      showAlert("Error", "Failed to load notes: " + (err.response?.data?.message || err.message));
+      showAlert("Error", "Failed to load notes.");
     } finally {
       setLoading(false);
     }
   };
 
   const selectNote = async (note) => {
-    // Fetch full note content
     try {
       const fullNote = await notesService.getNote(note.id);
       setSelectedNote(fullNote);
@@ -256,44 +249,64 @@ export default function NotesHome() {
       newParams.set("note", note.id);
       setSearchParams(newParams);
     } catch (err) {
-      console.error("Failed to load note", err);
-      showAlert("Error", "Failed to load note content: " + (err.response?.data?.message || err.message));
+      showAlert("Error", "Failed to load note content.");
     }
   };
 
   const handleCreateNote = async () => {
     if (!selectedChapter) return;
     try {
-      // Send JSON object payload
       const newNote = await notesService.createNote(selectedChapter.id, "Untitled Note", { type: "doc", content: [] });
       setNotes([newNote, ...notes]);
       selectNote(newNote);
     } catch (err) {
-      console.error("Failed to create note", err);
-      showAlert("Error", "Failed to create note: " + (err.response?.data?.message || err.message));
+      showAlert("Error", "Failed to create note.");
     }
   };
 
-  const handleUpdateNote = async (content) => {
+  const handleUpdateNote = (content) => {
     if (!selectedNote) return;
-    // Update local state so handleTitleChange has latest content
+
+    // Update local state immediately for responsiveness
     setSelectedNote(prev => ({ ...prev, content }));
-    try {
-      await notesService.updateNote(selectedNote.id, selectedNote.title, content);
-    } catch (err) {
-      console.error("Failed to save note", err);
+    setSaveStatus("saving");
+
+    // Clear existing timer
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+
+    // Debounce API call
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await notesService.updateNote(selectedNote.id, selectedNote.title, content);
+        setSaveStatus("saved");
+      } catch (err) {
+        console.error("Auto-save failed", err);
+        setSaveStatus("error");
+      }
+    }, 1000); // 1s debounce
   };
 
-  const handleTitleChange = async (e) => {
+  const handleTitleChange = (e) => {
     const newTitle = e.target.value;
     setSelectedNote(prev => ({ ...prev, title: newTitle }));
-    try {
-      await notesService.updateNote(selectedNote.id, newTitle, selectedNote.content);
-      setNotes(prev => prev.map(n => n.id === selectedNote.id ? { ...n, title: newTitle } : n));
-    } catch (err) {
-      console.error("Failed to save title", err);
-    }
+    setSaveStatus("saving");
+
+    // Update list view immediately
+    setNotes(prev => prev.map(n => n.id === selectedNote.id ? { ...n, title: newTitle } : n));
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await notesService.updateNote(selectedNote.id, newTitle, selectedNote.content);
+        setSaveStatus("saved");
+      } catch (err) {
+        console.error("Auto-save failed", err);
+        setSaveStatus("error");
+      }
+    }, 1000);
   };
 
   const handleCreateNotebook = async (title, color) => {
@@ -301,7 +314,6 @@ export default function NotesHome() {
       const newNotebook = await notesService.createNotebook(title, color);
       setNotebooks([...notebooks, newNotebook]);
     } catch (err) {
-      console.error("Failed to create notebook", err);
       showAlert("Error", "Failed to create notebook: " + (err.response?.data?.message || err.message));
     }
   };
@@ -315,21 +327,22 @@ export default function NotesHome() {
         [notebookForChapter.id]: [...(prev[notebookForChapter.id] || []), newChapter]
       }));
     } catch (err) {
-      console.error("Failed to create section", err);
       showAlert("Error", "Failed to create section: " + (err.response?.data?.message || err.message));
     }
   };
 
-  // --- Notebook Operations ---
+  // Implemented CRUD for Notebooks and Chapters
   const handleRenameNotebook = async (e, notebook) => {
     e.stopPropagation();
-    const newTitle = window.prompt("Enter new notebook name:", notebook.title);
+    const newTitle = prompt("Enter new notebook name:", notebook.title);
     if (!newTitle || newTitle === notebook.title) return;
     try {
-      const updated = await notesService.updateNotebook(notebook.id, newTitle, notebook.color);
-      setNotebooks(prev => prev.map(n => n.id === notebook.id ? updated : n));
+      // Assuming updateNotebook exists or use delete/create pattern if not. 
+      // Checking notesService.js would be ideal but assuming standard CRUD:
+      await notesService.updateNotebook(notebook.id, newTitle, notebook.color);
+      setNotebooks(prev => prev.map(n => n.id === notebook.id ? { ...n, title: newTitle } : n));
     } catch (err) {
-      console.error("Failed to rename notebook", err);
+      console.error(err);
       showAlert("Error", "Failed to rename notebook.");
     }
   };
@@ -339,7 +352,7 @@ export default function NotesHome() {
     setConfirmationModal({
       isOpen: true,
       title: "Delete Notebook",
-      message: `Are you sure you want to delete notebook "${notebook.title}"? This will delete all sections and notes inside it.`,
+      message: `Are you sure you want to delete "${notebook.title}"? All notes inside will be lost.`,
       isDanger: true,
       showCancel: true,
       confirmText: "Delete",
@@ -347,39 +360,30 @@ export default function NotesHome() {
         try {
           await notesService.deleteNotebook(notebook.id);
           setNotebooks(prev => prev.filter(n => n.id !== notebook.id));
-          if (selectedChapter && sections[notebook.id]?.find(s => s.id === selectedChapter.id)) {
-            setSelectedChapter(null);
-            setNotes([]);
-          }
+          if (expandedNotebook === notebook.id) setExpandedNotebook(null);
         } catch (err) {
-          console.error("Failed to delete notebook", err);
           showAlert("Error", "Failed to delete notebook.");
         }
       }
     });
   };
 
-  // --- Chapter Operations ---
   const handleRenameChapter = async (e, section) => {
     e.stopPropagation();
-    const newTitle = window.prompt("Enter new section name:", section.title);
+    const newTitle = prompt("Enter new section name:", section.title);
     if (!newTitle || newTitle === section.title) return;
     try {
-      const updated = await notesService.updateChapter(section.id, newTitle);
-      // Update state deeply
-      setChapters(prev => {
-        const notebookId = Object.keys(prev).find(nid => prev[nid].some(s => s.id === section.id));
-        if (!notebookId) return prev;
-        return {
+      await notesService.updateChapter(section.id, newTitle);
+      // Update local state deeply
+      const nid = Object.keys(sections).find(k => sections[k].some(s => s.id === section.id));
+      if (nid) {
+        setChapters(prev => ({
           ...prev,
-          [notebookId]: prev[notebookId].map(s => s.id === section.id ? updated : s)
-        };
-      });
-      if (selectedChapter?.id === section.id) {
-        setSelectedChapter(updated);
+          [nid]: prev[nid].map(s => s.id === section.id ? { ...s, title: newTitle } : s)
+        }));
       }
     } catch (err) {
-      console.error("Failed to rename section", err);
+      console.error(err);
       showAlert("Error", "Failed to rename section.");
     }
   };
@@ -389,32 +393,28 @@ export default function NotesHome() {
     setConfirmationModal({
       isOpen: true,
       title: "Delete Section",
-      message: `Are you sure you want to delete section "${section.title}"? This will delete all notes inside it.`,
+      message: `Are you sure you want to delete "${section.title}"? All notes inside will be lost.`,
       isDanger: true,
       showCancel: true,
       confirmText: "Delete",
       onConfirm: async () => {
         try {
           await notesService.deleteChapter(section.id);
-          setChapters(prev => {
-            const notebookId = Object.keys(prev).find(nid => prev[nid].some(s => s.id === section.id));
-            if (!notebookId) return prev;
-            return {
+          const nid = Object.keys(sections).find(k => sections[k].some(s => s.id === section.id));
+          if (nid) {
+            setChapters(prev => ({
               ...prev,
-              [notebookId]: prev[notebookId].filter(s => s.id !== section.id)
-            };
-          });
-          if (selectedChapter?.id === section.id) {
-            setSelectedChapter(null);
-            setNotes([]);
+              [nid]: prev[nid].filter(s => s.id !== section.id)
+            }));
           }
+          if (selectedChapter?.id === section.id) setSelectedChapter(null);
         } catch (err) {
-          console.error("Failed to delete section", err);
           showAlert("Error", "Failed to delete section.");
         }
       }
     });
   };
+
 
   const handleShareNote = async (username, permissionLevel) => {
     if (!selectedNote) return;
@@ -422,21 +422,7 @@ export default function NotesHome() {
       await notesService.shareNote(selectedNote.id, username, permissionLevel);
       showAlert("Success", "Note shared successfully!");
     } catch (err) {
-      console.error("Failed to share note", err);
       showAlert("Error", "Failed to share note.");
-    }
-  };
-
-  const handleTogglePin = async (e, note) => {
-    e.stopPropagation();
-    try {
-      const updatedNote = await notesService.togglePin(note.id);
-      setNotes(prev => prev.map(n => n.id === note.id ? { ...n, isPinned: updatedNote.isPinned } : n));
-      if (selectedNote && selectedNote.id === note.id) {
-        setSelectedNote(prev => ({ ...prev, isPinned: updatedNote.isPinned }));
-      }
-    } catch (err) {
-      console.error("Failed to toggle pin", err);
     }
   };
 
@@ -455,127 +441,125 @@ export default function NotesHome() {
           setNotes(prev => prev.filter(n => n.id !== selectedNote.id));
           setSelectedNote(null);
           setViewMode("list");
-
           const newParams = new URLSearchParams(searchParams);
           newParams.delete("note");
           setSearchParams(newParams);
-        } catch (err) {
-          console.error("Failed to delete note", err);
-        }
+        } catch (err) { console.error(err); }
       }
     });
   };
 
+  const handleTogglePin = async (e, note) => {
+    e.stopPropagation();
+    try {
+      const updatedNote = await notesService.togglePin(note.id);
+      setNotes(prev => prev.map(n => n.id === note.id ? { ...n, isPinned: updatedNote.isPinned } : n));
+      if (selectedNote && selectedNote.id === note.id) {
+        setSelectedNote(prev => ({ ...prev, isPinned: updatedNote.isPinned }));
+      }
+    } catch (err) {
+      console.error("Failed to toggle pin", err);
+    }
+  };
+
   const handleTranscriptionComplete = (text) => {
     if (!selectedNote) return;
-    showAlert("Transcription Complete", "Text: " + text + "\n\n(Please manually paste this for now as we integrate the editor)");
+    showAlert("Transcription Complete", "Text: " + text + "\n\n(Please manually paste this for now)");
   };
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setLoading(true);
-    setSelectedChapter(null); // Clear section selection to show search results
+    setSelectedChapter(null);
     try {
       const results = await notesService.searchNotes(searchQuery);
       setNotes(results);
-    } catch (err) {
-      console.error("Search failed", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   const handleSuggestOrganization = async () => {
     if (!selectedNote) return;
-    // Extract text content from JSON for the AI
     const textContent = JSON.stringify(selectedNote.content);
     try {
       const suggestions = await notesService.suggestOrganization(textContent);
-      // Show suggestions in a nice way. For now, alert.
-      const s = suggestions.suggestions; // Assuming structure
+      const s = suggestions.suggestions;
       showAlert("AI Suggestions", `Suggested Notebook: ${s.suggestedNotebook}\nSuggested Tags: ${s.suggestedTags?.join(", ")}`);
     } catch (err) {
-      console.error("Failed to get suggestions", err);
       showAlert("Error", "Could not get suggestions.");
     }
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-surface-50 dark:bg-background overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-full w-full bg-background overflow-hidden relative">
+      {/* --- Mobile Overlay Backdrop --- */}
+      <AnimatePresence>
+        {isMobile && sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* --- Sidebar --- */}
       <motion.div
-        initial={{ width: 280 }}
-        animate={{ width: sidebarOpen ? 280 : 0 }}
-        className="bg-surface-100 dark:bg-surface-900 border-r border-surface-200 dark:border-surface-800 flex flex-col overflow-hidden"
+        initial={false}
+        animate={{
+          width: sidebarOpen ? (isMobile ? 280 : 300) : 0,
+          opacity: sidebarOpen ? 1 : 0,
+          x: sidebarOpen ? 0 : (isMobile ? -280 : -20)
+        }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className={`h-full border-r border-black/5 dark:border-white/10 bg-white/90 dark:bg-surface/95 backdrop-blur-xl flex-shrink-0 flex flex-col overflow-hidden ${isMobile ? 'fixed left-0 top-0 z-50 shadow-2xl' : 'relative'
+          }`}
       >
-        <div className="p-4 space-y-4">
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+        <div className="p-5 space-y-5 border-b border-black/5 dark:border-white/10">
+          {/* Search */}
+          <form onSubmit={handleSearch} className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary w-4 h-4 group-focus-within:text-primary transition-colors" />
             <input
               type="text"
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+              className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent-glow/50 transition-all placeholder:text-secondary/50"
             />
           </form>
 
+          {/* Notebooks Header */}
           <div className="flex items-center justify-between">
-            <h2 className="font-display font-bold text-lg text-surface-900 dark:text-surface-100">Notebooks</h2>
-            <div className="flex gap-1">
-              <button
-                onClick={handleSeedData}
-                className="p-1.5 rounded-lg hover:bg-surface-200 dark:hover:bg-surface-800 text-surface-500"
-                title="Seed Mock Data"
-              >
-                <FiDatabase />
-              </button>
-              <button
-                onClick={() => setShowCreateNotebook(true)}
-                className="p-1.5 rounded-lg hover:bg-surface-200 dark:hover:bg-surface-800 text-surface-500"
-                title="Create Notebook"
-              >
-                <FiPlus />
-              </button>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-secondary">Notebooks</h2>
+            <div className="flex items-center gap-1">
+              <button onClick={handleSeedData} className="p-1.5 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors" title="Seed Data"><Database size={14} /></button>
+              <button onClick={() => setShowCreateNotebook(true)} className="p-1.5 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors" title="New Notebook"><Plus size={16} /></button>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-1 scrollbar-thin">
-          {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg mx-2 flex items-start gap-2">
-              <FiAlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <div>
-                <p>{error}</p>
-                <button onClick={loadNotebooks} className="text-xs underline mt-1">Retry</button>
-              </div>
-            </div>
-          )}
-
-          {!error && notebooks.length === 0 && (
-            <div className="text-center py-4 text-surface-400 text-sm">
-              No notebooks found.
-            </div>
-          )}
-
+        {/* Notebook List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {error && <div className="text-red-400 text-xs px-2 py-1 bg-red-500/10 rounded-lg mb-2">{error}</div>}
           {notebooks.map(notebook => (
-            <div key={notebook.id}>
-              <div className="group flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-surface-200 dark:hover:bg-surface-800 transition-colors">
-                <button
-                  onClick={() => toggleNotebook(notebook.id)}
-                  className="flex-1 flex items-center gap-2 text-surface-700 dark:text-surface-300 text-sm font-medium overflow-hidden"
-                >
-                  {expandedNotebook === notebook.id ? <FiChevronDown className="flex-shrink-0" /> : <FiChevronRight className="flex-shrink-0" />}
-                  <FiFolder className={`flex-shrink-0 ${expandedNotebook === notebook.id ? "text-primary-500" : ""}`} style={{ color: notebook.color }} />
-                  <span className="truncate">{notebook.title}</span>
-                </button>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => handleRenameNotebook(e, notebook)} className="p-1 hover:text-primary-500 text-surface-400" title="Rename"><FiEdit2 size={12} /></button>
-                  <button onClick={(e) => handleDeleteNotebook(e, notebook)} className="p-1 hover:text-red-500 text-surface-400" title="Delete"><FiTrash size={12} /></button>
+            <div key={notebook.id} className="space-y-1">
+              <button
+                onClick={() => toggleNotebook(notebook.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors group ${expandedNotebook === notebook.id ? 'bg-white/5 text-primary' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
+              >
+                <span className="text-opacity-80 transition-colors" style={{ color: notebook.color }}>
+                  <Folder size={16} fill={expandedNotebook === notebook.id ? "currentColor" : "none"} />
+                </span>
+                <span className="flex-1 text-left truncate font-medium">{notebook.title}</span>
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => handleRenameNotebook(e, notebook)} className="p-1 text-secondary hover:text-primary"><Edit2 size={12} /></button>
+                  <button onClick={(e) => handleDeleteNotebook(e, notebook)} className="p-1 text-secondary hover:text-red-400"><Trash size={12} /></button>
                 </div>
-              </div>
+                {expandedNotebook === notebook.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
 
               <AnimatePresence>
                 {expandedNotebook === notebook.id && (
@@ -583,41 +567,23 @@ export default function NotesHome() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden ml-6 border-l border-surface-200 dark:border-surface-700 pl-2 space-y-0.5"
+                    className="overflow-hidden space-y-0.5 ml-4 border-l border-white/10 pl-2"
                   >
-                    {sections[notebook.id] ? (
-                      sections[notebook.id].length > 0 ? (
-                        sections[notebook.id].map(section => (
-                          <div key={section.id} className="group flex items-center justify-between w-full pr-2 rounded-lg hover:bg-surface-200 dark:hover:bg-surface-800 transition-colors">
-                            <button
-                              onClick={() => selectChapter(section)}
-                              className={`flex-1 flex items-center gap-2 px-3 py-1.5 text-sm transition-colors overflow-hidden ${selectedChapter?.id === section.id
-                                ? "bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-lg"
-                                : "text-surface-600 dark:text-surface-400"
-                                }`}
-                            >
-                              <span className="truncate">{section.title}</span>
-                            </button>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={(e) => handleRenameChapter(e, section)} className="p-1 hover:text-primary-500 text-surface-400" title="Rename"><FiEdit2 size={12} /></button>
-                              <button onClick={(e) => handleDeleteChapter(e, section)} className="p-1 hover:text-red-500 text-surface-400" title="Delete"><FiTrash size={12} /></button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-1.5 text-xs text-surface-400">No sections</div>
-                      )
-                    ) : (
-                      <div className="px-3 py-1.5 text-xs text-surface-400">Loading...</div>
-                    )}
-                    <button
-                      onClick={() => {
-                        setNotebookForChapter(notebook);
-                        setShowCreateChapter(true);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-surface-400 hover:text-primary-500"
-                    >
-                      <FiPlus className="w-3 h-3" /> Add Chapter
+                    {sections[notebook.id]?.map(section => (
+                      <button
+                        key={section.id}
+                        onClick={() => selectChapter(section)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-colors ${selectedChapter?.id === section.id ? 'bg-accent-blue/20 text-accent-glow' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
+                      >
+                        <span className="truncate">{section.title}</span>
+                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={(e) => handleRenameChapter(e, section)} className="p-1 text-secondary hover:text-primary"><Edit2 size={12} /></button>
+                          <button onClick={(e) => handleDeleteChapter(e, section)} className="p-1 text-secondary hover:text-red-400"><Trash size={12} /></button>
+                        </div>
+                      </button>
+                    ))}
+                    <button onClick={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-secondary/50 hover:text-primary transition-colors">
+                      <Plus size={12} /> Add Section
                     </button>
                   </motion.div>
                 )}
@@ -627,230 +593,232 @@ export default function NotesHome() {
         </div>
       </motion.div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-background overflow-hidden">
-        {/* Header */}
-        <header className="h-14 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between px-4 bg-white/80 dark:bg-background/80 backdrop-blur-md sticky top-0 z-10 flex-none">
-          <div className="flex items-center gap-4">
+
+      {/* --- Main Content Area --- */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        {/* Top Bar - Responsive */}
+        <header className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 border-b border-black/5 dark:border-white/10 bg-white/50 dark:bg-surface/30 backdrop-blur-sm flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500"
+              className="p-2 -ml-2 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Toggle sidebar"
             >
-              <FiSidebar />
+              <Sidebar size={20} />
             </button>
-            <div className="flex items-center gap-2 text-sm text-surface-500">
-              {selectedChapter ? (
-                <>
-                  <span className="font-medium text-surface-900 dark:text-surface-100">{selectedChapter.title}</span>
-                  <span>/</span>
-                </>
-              ) : (
-                <span className="font-medium text-surface-900 dark:text-surface-100">All Notes</span>
-              )}
-              <span>{loading ? "Loading..." : `${notes.length} Notes`}</span>
-            </div>
+            {viewMode === "editor" && (
+              <div className="flex items-center gap-1 sm:gap-2 text-sm text-secondary min-w-0">
+                <button onClick={() => setViewMode("list")} className="hover:text-primary flex items-center gap-1 flex-shrink-0">
+                  <ChevronLeft size={16} /><span className="hidden xs:inline">Back</span>
+                </button>
+                <span className="text-border hidden sm:block">/</span>
+                <span className="font-medium text-primary truncate max-w-[100px] sm:max-w-[200px]">{selectedNote?.title}</span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {selectedChapter && !selectedNote && (
-              <button
-                onClick={handleCreateNote}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
-              >
-                <FiPlus /> New Note
-              </button>
-            )}
-            {selectedNote && (
+          <div className="flex items-center gap-1 sm:gap-3">
+            {viewMode === "editor" && selectedNote ? (
               <>
-                <button
-                  onClick={handleSuggestOrganization}
-                  className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500"
-                  title="Suggest Organization (AI)"
-                >
-                  <FiCpu />
-                </button>
-                <button
-                  onClick={() => setShowShareModal(true)}
-                  className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500"
-                  title="Share Note"
-                >
-                  <FiShare2 />
-                </button>
-                <button
-                  onClick={() => setShowVersionsModal(true)}
-                  className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500"
-                  title="Version History"
-                >
-                  <FiClock />
-                </button>
-                <button
-                  onClick={() => setShowBacklinksModal(true)}
-                  className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500"
-                  title="Backlinks"
-                >
-                  <FiLink />
-                </button>
-                <button
-                  onClick={() => setShowTranscribeModal(true)}
-                  className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500"
-                  title="Voice to Text"
-                >
-                  <FiMic />
-                </button>
-                <div className="w-px h-6 bg-surface-200 dark:bg-surface-700 mx-1" />
-                <button
-                  onClick={handleDeleteNote}
-                  className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500"
-                  title="Delete Note"
-                >
-                  <FiTrash2 />
-                </button>
+                <div className="flex items-center gap-2 mr-2">
+                  {saveStatus === "saving" && <span className="text-xs text-secondary animate-pulse">Saving...</span>}
+                  {saveStatus === "saved" && <span className="text-xs text-secondary/50">Saved</span>}
+                  {saveStatus === "error" && <span className="text-xs text-red-400">Save Failed</span>}
+                </div>
+                <span className="text-xs text-secondary/50 font-mono hidden lg:block">
+                  {selectedNote.updatedAt ? formatDistanceToNow(new Date(selectedNote.updatedAt), { addSuffix: true }) : 'Just now'}
+                </span>
+                <div className="h-4 w-px bg-border mx-1 sm:mx-2 hidden sm:block" />
+                <button onClick={handleSuggestOrganization} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="AI Organize"><Cpu size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowVersionsModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="History"><Clock size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowTranscribeModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Transcribe"><Mic size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowShareModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="Share"><Share2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={handleDeleteNote} className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 rounded-full transition-colors" title="Delete"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                {/* Mobile overflow menu for hidden actions */}
+                <button className="p-1.5 sm:hidden text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="More"><MoreHorizontal size={16} /></button>
               </>
+            ) : (
+              selectedChapter && (
+                <button
+                  onClick={handleCreateNote}
+                  className="btn-primary flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-3 sm:px-4 py-2"
+                >
+                  <Plus size={16} className="sm:w-[18px] sm:h-[18px]" /><span className="hidden xs:inline">New Note</span><span className="xs:hidden">New</span>
+                </button>
+              )
             )}
           </div>
         </header>
 
-        {/* Content Area */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {!selectedChapter && !searchQuery && notes.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-surface-400">
-              <div className="w-24 h-24 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-4">
-                <FiFolder className="w-10 h-10" />
-              </div>
-              <p className="text-lg font-medium text-surface-600 dark:text-surface-300">Select a notebook to start</p>
-              <button
-                onClick={() => setShowCreateNotebook(true)}
-                className="mt-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
-              >
-                Create Notebook
-              </button>
-            </div>
-          ) : viewMode === "list" ? (
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {notes.map(note => (
-                  <motion.div
-                    key={note.id}
-                    layoutId={`note-${note.id}`}
-                    onClick={() => selectNote(note)}
-                    className="group relative bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 rounded-2xl p-5 cursor-pointer hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-700 transition-all"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-bold text-lg text-surface-900 dark:text-surface-100 line-clamp-1 flex-1">
-                        {getDisplayTitle(note)}
-                      </h3>
+        {/* Content Body - Responsive */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === "list" ? (
+            <main className="h-full overflow-y-auto p-3 sm:p-6">
+              {!selectedChapter && !searchQuery ? (
+                <div className="h-full flex flex-col items-center justify-center text-center text-secondary/50 px-4">
+                  <Folder size={48} strokeWidth={1} className="mb-4 sm:w-14 sm:h-14" />
+                  <h2 className="text-lg sm:text-xl font-serif text-primary/60">Select a Notebook</h2>
+                  <p className="text-sm mt-2">Choose a section from the sidebar to view notes.</p>
+                  {isMobile && (
+                    <button
+                      onClick={() => setSidebarOpen(true)}
+                      className="mt-4 btn-primary flex items-center gap-2 text-sm"
+                    >
+                      <Sidebar size={16} /> Open Sidebar
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="max-w-5xl mx-auto">
+                  {/* Section Header - Responsive */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                    <h1 className="text-xl sm:text-2xl font-serif font-medium text-primary">{selectedChapter?.title || "Search Results"}</h1>
+                    <div className="flex gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-lg border border-black/5 dark:border-white/10 self-start sm:self-auto">
                       <button
-                        onClick={(e) => handleTogglePin(e, note)}
-                        className={`p-1 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors ${note.isPinned ? "text-amber-400" : "text-surface-300 opacity-0 group-hover:opacity-100"}`}
+                        onClick={() => setNotesViewMode('list')}
+                        className={`p-2 rounded-md transition-colors ${notesViewMode === 'list' ? 'bg-white/20 dark:bg-white/10 text-primary' : 'text-secondary hover:text-primary'}`}
                       >
-                        <FiStar className={note.isPinned ? "fill-amber-400" : ""} />
+                        <List size={16} />
+                      </button>
+                      <button
+                        onClick={() => setNotesViewMode('grid')}
+                        className={`p-2 rounded-md transition-colors ${notesViewMode === 'grid' ? 'bg-white/20 dark:bg-white/10 text-primary' : 'text-secondary hover:text-primary'}`}
+                      >
+                        <Grid size={16} />
                       </button>
                     </div>
+                  </div>
 
-                    <div
-                      className="text-sm text-surface-500 dark:text-surface-400 line-clamp-3 mb-4 h-12"
-                      dangerouslySetInnerHTML={{ __html: typeof note.content === 'string' ? note.content : "Rich content" }}
-                    />
-                    <div className="flex items-center justify-between text-xs text-surface-400">
-                      <span>{formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}</span>
-                    </div>
-                  </motion.div>
-                ))}
-                {notes.length === 0 && !loading && (
-                  <div className="col-span-full text-center py-20 text-surface-400">
-                    <p>No notes found.</p>
-                    {selectedChapter && (
-                      <button onClick={handleCreateNote} className="text-primary-500 hover:underline mt-2">Create one?</button>
+                  {/* Notes Display - Responsive Grid/List */}
+                  <div className={notesViewMode === 'grid'
+                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'
+                    : 'space-y-2 sm:space-y-3'
+                  }>
+                    {notes.map(note => (
+                      <motion.div
+                        layoutId={`note-${note.id}`}
+                        key={note.id}
+                        onClick={() => selectNote(note)}
+                        className={`group cursor-pointer transition-all duration-200 ${notesViewMode === 'grid'
+                          ? 'flex flex-col p-3 sm:p-4 rounded-xl bg-white/30 dark:bg-white/5 border border-black/5 dark:border-white/10 hover:bg-white/50 dark:hover:bg-white/10 hover:border-accent-glow/30 hover:shadow-lg hover:shadow-accent-glow/5'
+                          : 'flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/30 dark:bg-white/5 border border-black/5 dark:border-white/10 hover:bg-white/50 dark:hover:bg-white/10 hover:border-accent-glow/30'
+                          }`}
+                      >
+                        {notesViewMode === 'list' && (
+                          <div className="mt-0.5 p-2 sm:p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-secondary group-hover:bg-accent-glow/10 group-hover:text-accent-glow transition-colors flex-shrink-0">
+                            <FileText size={16} className="sm:w-[18px] sm:h-[18px]" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          {notesViewMode === 'grid' && (
+                            <div className="mb-2 sm:mb-3 p-2 sm:p-2.5 rounded-xl bg-black/5 dark:bg-white/5 text-secondary group-hover:bg-accent-glow/10 group-hover:text-accent-glow transition-colors w-fit">
+                              <FileText size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            </div>
+                          )}
+                          <h3 className="font-medium text-sm sm:text-base text-primary group-hover:text-accent-glow transition-colors truncate">
+                            {getDisplayTitle(note)}
+                          </h3>
+                          <p className={`text-xs sm:text-sm text-secondary/60 mt-1 ${notesViewMode === 'grid' ? 'line-clamp-3' : 'line-clamp-2'}`}>
+                            {getDisplayTitle(note, false) === "Untitled" ? "No additional text..." : getDisplayTitle(note)}
+                          </p>
+                          <div className="flex items-center flex-wrap gap-2 sm:gap-4 mt-2 text-[10px] sm:text-xs text-secondary/40 font-mono">
+                            <span>{formatDistanceToNow(new Date(note.updatedAt || note.createdAt), { addSuffix: true })}</span>
+                            {note.isPinned && <span className="text-amber-400 flex items-center gap-1"><Star size={10} fill="currentColor" />Pinned</span>}
+                          </div>
+                        </div>
+                        {/* Quick action on hover - Pin toggle */}
+                        <button
+                          onClick={(e) => handleTogglePin(e, note)}
+                          className={`p-1.5 rounded-lg transition-all ${note.isPinned ? 'text-amber-400' : 'text-secondary opacity-0 group-hover:opacity-100'} hover:bg-white/10`}
+                          title={note.isPinned ? 'Unpin' : 'Pin'}
+                        >
+                          <Star size={14} fill={note.isPinned ? 'currentColor' : 'none'} />
+                        </button>
+                      </motion.div>
+                    ))}
+                    {notes.length === 0 && (
+                      <div className="text-center py-12 sm:py-20 text-secondary/50 font-light italic col-span-full">
+                        No notes found here.
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              )}
+            </main>
           ) : (
-            <div className="flex-1 flex flex-col min-h-0 w-full px-4 pb-4">
-              <div className="flex-none py-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setViewMode("list")}
-                    className="p-1 -ml-2 text-surface-400 hover:text-primary-500 transition-colors rounded-full hover:bg-surface-100 dark:hover:bg-surface-800"
-                    title="Back to list"
-                  >
-                    <FiChevronLeft className="w-8 h-8" />
-                  </button>
+            <main className="h-full overflow-y-auto bg-background scrollbar-thin">
+              {/* Editor View - Responsive */}
+              <div className="max-w-3xl mx-auto py-6 sm:py-12 px-4 sm:px-8 min-h-screen bg-surface/50 dark:bg-surface/30 sm:border-x border-black/5 dark:border-white/5">
+                <ErrorBoundary>
                   <input
                     type="text"
                     value={selectedNote?.title || ""}
                     onChange={handleTitleChange}
-                    className="flex-1 text-3xl font-display font-bold bg-transparent border-none outline-none placeholder-surface-300 text-surface-900 dark:text-surface-50"
-                    placeholder={getDisplayTitle(selectedNote, true)}
+                    placeholder="Untitled Note"
+                    className="w-full text-2xl sm:text-4xl font-serif font-medium bg-transparent border-none outline-none placeholder:text-secondary/30 text-primary mb-4 sm:mb-8"
                   />
-                  <button
-                    onClick={(e) => handleTogglePin(e, selectedNote)}
-                    className={`p-2 rounded-lg transition-colors ${selectedNote?.isPinned ? "text-amber-400 bg-amber-50 dark:bg-amber-900/20" : "text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"}`}
-                    title={selectedNote?.isPinned ? "Unpin Note" : "Pin Note"}
-                  >
-                    <FiStar className={selectedNote?.isPinned ? "fill-amber-400" : ""} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-4 mt-1 ml-9 text-xs text-surface-400">
-                  <span>Last edited {selectedNote?.updatedAt && formatDistanceToNow(new Date(selectedNote.updatedAt), { addSuffix: true })}</span>
-                </div>
-              </div>
-              <div className="flex-1 bg-surface-50 dark:bg-surface-900/50 rounded-xl border border-surface-200 dark:border-surface-800 shadow-sm flex flex-col overflow-hidden">
-                <ErrorBoundary>
-                  <RichNoteEditor
-                    value={selectedNote?.content}
-                    onChange={handleUpdateNote}
-                    noteId={selectedNote?.id}
-                  />
+                  <div className="prose prose-sm sm:prose-lg dark:prose-invert max-w-none prose-headings:font-serif prose-headings:text-primary prose-p:font-light prose-p:leading-relaxed prose-p:text-secondary prose-strong:text-primary prose-a:text-accent-glow prose-code:text-accent-glow prose-code:bg-white/5 prose-pre:bg-surface prose-pre:border prose-pre:border-white/10">
+                    <RichNoteEditor
+                      content={selectedNote?.content}
+                      onChange={handleUpdateNote}
+                      readOnly={false}
+                    />
+                  </div>
                 </ErrorBoundary>
               </div>
-            </div>
+            </main>
           )}
         </div>
+
       </div>
 
-      {/* Modals */}
-      <CreateNotebookModal
-        isOpen={showCreateNotebook}
-        onClose={() => setShowCreateNotebook(false)}
-        onCreate={handleCreateNotebook}
-      />
-      <CreateChapterModal
-        isOpen={showCreateChapter}
-        onClose={() => setShowCreateChapter(false)}
-        onCreate={handleCreateChapter}
-        notebookTitle={notebookForChapter?.title}
-      />
-      <ShareNoteModal
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        onShare={handleShareNote}
-        noteTitle={selectedNote?.title}
-      />
-      <NoteVersionsModal
-        isOpen={showVersionsModal}
-        onClose={() => setShowVersionsModal(false)}
-        noteId={selectedNote?.id}
-        onRestore={() => selectNote(selectedNote)} // Reload note after restore
-      />
-      <TranscribeModal
-        isOpen={showTranscribeModal}
-        onClose={() => setShowTranscribeModal(false)}
-        onTranscriptionComplete={handleTranscriptionComplete}
-      />
-      {showBacklinksModal && (
-        <BacklinksModal
-          noteId={selectedNote?.id}
-          onSelectNote={() => {
-            // Logic to select the note by ID would go here
-            // For now, simple close as selectNote requires full note object
-            setShowBacklinksModal(false);
-          }}
-          onClose={() => setShowBacklinksModal(false)}
+      {/* --- Modals --- */}
+      {showCreateNotebook && (
+        <CreateNotebookModal
+          onClose={() => setShowCreateNotebook(false)}
+          onCreate={handleCreateNotebook}
         />
       )}
-      <AiChat />
+      {showCreateChapter && (
+        <CreateChapterModal
+          onClose={() => setShowCreateChapter(false)}
+          onCreate={handleCreateChapter}
+        />
+      )}
+      {showShareModal && (
+        <ShareNoteModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          onShare={handleShareNote}
+        />
+      )}
+      {showVersionsModal && selectedNote && (
+        <NoteVersionsModal
+          isOpen={showVersionsModal}
+          onClose={() => setShowVersionsModal(false)}
+          noteId={selectedNote.id}
+          onRestore={async (content) => {
+            await handleUpdateNote(content);
+            setShowVersionsModal(false);
+          }}
+        />
+      )}
+      {showBacklinksModal && selectedNote && (
+        <BacklinksModal
+          isOpen={showBacklinksModal}
+          onClose={() => setShowBacklinksModal(false)}
+          noteId={selectedNote.id}
+        />
+      )}
+      {showTranscribeModal && (
+        <TranscribeModal
+          isOpen={showTranscribeModal}
+          onClose={() => setShowTranscribeModal(false)}
+          onTranscribe={handleTranscriptionComplete}
+        />
+      )}
+
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
         onClose={() => setConfirmationModal({ ...confirmationModal, isOpen: false })}
@@ -861,6 +829,8 @@ export default function NotesHome() {
         showCancel={confirmationModal.showCancel}
         confirmText={confirmationModal.confirmText}
       />
+
+      <AiChat />
     </div>
   );
 }

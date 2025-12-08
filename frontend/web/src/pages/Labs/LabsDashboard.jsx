@@ -1,111 +1,192 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { motion } from 'framer-motion';
+import {
+    Terminal, Cpu, Beaker, Calculator, ChevronRight,
+    Code, Activity, Play, Lock, Radio
+} from 'lucide-react';
 
 const LabsDashboard = () => {
     const [stats, setStats] = useState({
         completed: 0,
         inProgress: 0,
-        totalTime: '0h'
+        totalTime: '00:00:00'
     });
 
-    // Mock stats for now
     useEffect(() => {
-        // Fetch stats from API later
-        setStats({ completed: 3, inProgress: 2, totalTime: '5h 30m' });
+        // Mock data
+        setStats({ completed: 3, inProgress: 2, totalTime: '05:30:12' });
     }, []);
 
     const subjects = [
         {
-            name: 'Physics',
-            description: 'Mechanics, Thermodynamics, and Electromagnetism simulations.',
-            color: 'from-blue-500 to-cyan-400',
-            path: '/labs/physics',
-            image: 'https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?auto=format&fit=crop&w=800&q=80'
+            id: 'physics',
+            name: 'PHYSICS_SIM',
+            description: 'Mechanics, Thermodynamics, Electromagnetism.',
+            icon: Activity,
+            color: 'text-cyan-400',
+            borderColor: 'border-cyan-400/30',
+            bgHover: 'hover:bg-cyan-400/10',
+            path: '/labs/physics'
         },
         {
-            name: 'Chemistry',
-            description: 'Virtual titrations, molecular building, and reaction balancing.',
-            color: 'from-green-500 to-emerald-400',
-            path: '/labs/chemistry',
-            image: 'https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?auto=format&fit=crop&w=800&q=80'
+            id: 'chemistry',
+            name: 'CHEM_LAB',
+            description: 'Titrations, Molecular Building, Reactions.',
+            icon: Beaker,
+            color: 'text-emerald-400',
+            borderColor: 'border-emerald-400/30',
+            bgHover: 'hover:bg-emerald-400/10',
+            path: '/labs/chemistry'
         },
         {
-            name: 'Computer Science',
-            description: 'Interactive coding environments for Python, Java, and Web Dev.',
-            color: 'from-purple-500 to-pink-400',
-            path: '/labs/cs',
-            image: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=800&q=80'
+            id: 'cs',
+            name: 'DEV_ENV',
+            description: 'Python, Java, Web Development Environment.',
+            icon: Code,
+            color: 'text-fuchsia-400',
+            borderColor: 'border-fuchsia-400/30',
+            bgHover: 'hover:bg-fuchsia-400/10',
+            path: '/labs/cs'
         },
         {
-            name: 'Mathematics',
-            description: 'Graphing calculators, geometry tools, and algebra solvers.',
-            color: 'from-orange-500 to-yellow-400',
-            path: '/labs/math',
-            image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
+            id: 'math',
+            name: 'MATH_CORE',
+            description: 'Graphing, Geometry, Algebra Solvers.',
+            icon: Calculator,
+            color: 'text-amber-400',
+            borderColor: 'border-amber-400/30',
+            bgHover: 'hover:bg-amber-400/10',
+            path: '/labs/math'
         }
     ];
 
     return (
-        <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white shadow-xl">
-                <div className="relative z-10">
-                    <h1 className="text-3xl font-bold mb-2">Welcome to Muse Labs</h1>
-                    <p className="text-indigo-100 max-w-xl text-lg">
-                        Dive into interactive simulations and coding challenges. Master complex concepts through hands-on practice.
-                    </p>
+        <div className="min-h-screen bg-[#0a0a0a] text-gray-300 font-mono p-4 md:p-8 relative overflow-hidden">
+            {/* Background Grid */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f1f_1px,transparent_1px),linear-gradient(to_bottom,#1f1f1f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 
-                    <div className="mt-8 flex gap-6">
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 min-w-[120px]">
-                            <div className="text-3xl font-bold">{stats.completed}</div>
-                            <div className="text-sm text-indigo-200">Labs Completed</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 min-w-[120px]">
-                            <div className="text-3xl font-bold">{stats.inProgress}</div>
-                            <div className="text-sm text-indigo-200">In Progress</div>
-                        </div>
+            <div className="max-w-6xl mx-auto relative z-10">
+                {/* Header Section */}
+                <header className="mb-12 border-b border-gray-800 pb-8">
+                    <div className="flex items-center gap-3 text-emerald-500 mb-2 animate-pulse">
+                        <Terminal size={20} />
+                        <span className="text-sm tracking-widest">SYSTEM_READY</span>
                     </div>
-                </div>
-                {/* Decorative circles */}
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 right-40 w-64 h-64 bg-purple-500/20 rounded-full blur-2xl"></div>
-            </div>
+                    <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-100 to-gray-500 mb-4 tracking-tighter">
+                        NEURAL LABS v2.0
+                    </h1>
+                    <p className="text-gray-500 max-w-xl text-lg">
+                        Select a simulation environment to begin training.
+                    </p>
+                </header>
 
-            {/* Subjects Grid */}
-            <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Explore Subjects</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                    {subjects.map((subject) => (
-                        <Link
-                            key={subject.name}
-                            to={subject.path}
-                            className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-10 transition-opacity duration-300 ${subject.color}"></div>
-                            <div className="flex h-full">
-                                <div className="w-1/3 relative">
-                                    <img
-                                        src={subject.image}
-                                        alt={subject.name}
-                                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    />
-                                    <div className={`absolute inset-0 bg-gradient-to-r ${subject.color} opacity-60 mix-blend-multiply`}></div>
+                {/* Dashboard Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* Stats Module */}
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="lg:col-span-1 space-y-6"
+                    >
+                        <div className="bg-[#111] border border-gray-800 p-6 rounded-lg relative overflow-hidden group">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/50" />
+                            <h3 className="text-xs uppercase tracking-widest text-gray-500 mb-6 flex items-center gap-2">
+                                <Cpu size={14} /> Performance Metrics
+                            </h3>
+
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-end">
+                                    <div className="text-sm text-gray-400">Total Runtime</div>
+                                    <div className="text-2xl font-bold text-white font-mono">{stats.totalTime}</div>
                                 </div>
-                                <div className="w-2/3 p-6 flex flex-col justify-center">
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                                        {subject.name}
-                                    </h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
-                                        {subject.description}
-                                    </p>
-                                    <div className="flex items-center text-sm font-medium text-purple-600 dark:text-purple-400">
-                                        Start Learning <ArrowRightIcon className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                <div className="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 w-[65%]" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-800">
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">COMPLETED</div>
+                                        <div className="text-xl font-bold text-white">{stats.completed}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">RUNNING</div>
+                                        <div className="text-xl font-bold text-emerald-400 animate-pulse">{stats.inProgress}</div>
                                     </div>
                                 </div>
                             </div>
-                        </Link>
-                    ))}
+                        </div>
+
+                        <div className="bg-[#111] border border-gray-800 p-6 rounded-lg">
+                            <h3 className="text-xs uppercase tracking-widest text-gray-500 mb-4 flex items-center gap-2">
+                                <Radio size={14} /> System Notices
+                            </h3>
+                            <div className="space-y-3 text-xs text-gray-400 font-mono">
+                                <div className="flex gap-2">
+                                    <span className="text-emerald-500">[INFO]</span>
+                                    <span>Physics engine update v2.4 installed.</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <span className="text-amber-500">[WARN]</span>
+                                    <span>High latency detected in Chem_Lab module.</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <span className="text-emerald-500">[INFO]</span>
+                                    <span>New Python libraries available in Dev_Env.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Modules Grid */}
+                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {subjects.map((subject, idx) => (
+                            <Link
+                                key={subject.id}
+                                to={subject.path}
+                                className={`group bg-[#111] border border-gray-800 hover:border-gray-600 p-6 rounded-lg transition-all duration-300 relative overflow-hidden ${subject.bgHover}`}
+                            >
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.1 }}
+                                >
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className={`p-3 rounded-md bg-gray-900 border border-gray-800 ${subject.color}`}>
+                                            <subject.icon size={24} />
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs font-mono text-gray-600 group-hover:text-gray-400">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            ONLINE
+                                        </div>
+                                    </div>
+
+                                    <h3 className={`text-xl font-bold mb-2 tracking-tight ${subject.color}`}>
+                                        {subject.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mb-6 font-sans">
+                                        {subject.description}
+                                    </p>
+
+                                    <div className="flex items-center text-xs font-bold tracking-wider text-gray-400 group-hover:text-white transition-colors">
+                                        INITIALIZE <ChevronRight size={14} className="ml-1" />
+                                    </div>
+
+                                    {/* Decoration */}
+                                    <div className="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                        <subject.icon size={120} />
+                                    </div>
+                                </motion.div>
+                            </Link>
+                        ))}
+
+                        {/* Locked Module */}
+                        <div className="bg-[#050505] border border-gray-900 p-6 rounded-lg opacity-50 flex items-center justify-center flex-col gap-4">
+                            <Lock size={32} className="text-gray-700" />
+                            <span className="text-xs tracking-widest text-gray-700">BIOLOGY MODULE LOCKED</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

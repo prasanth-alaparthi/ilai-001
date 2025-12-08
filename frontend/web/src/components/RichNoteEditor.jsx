@@ -23,6 +23,12 @@ import slashCommand from './editor/slash-command.js';
 import RibbonToolbar from "./editor/RibbonToolbar";
 
 export default function RichNoteEditor({ value, onChange, noteId, onRestore, onEditorReady }) {
+	const onChangeRef = React.useRef(onChange);
+
+	useEffect(() => {
+		onChangeRef.current = onChange;
+	}, [onChange]);
+
 	const editor = useEditor({
 		extensions: [
 			Color.configure({ types: ["textStyle"] }),
@@ -70,7 +76,9 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 		],
 		content: value || "",
 		onUpdate: ({ editor }) => {
-			onChange(editor.getJSON());
+			if (onChangeRef.current) {
+				onChangeRef.current(editor.getJSON());
+			}
 		},
 		editorProps: {
 			attributes: {
@@ -124,7 +132,7 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 				return false;
 			},
 		},
-	});
+	}, []);
 
 	useEffect(() => {
 		if (editor && onEditorReady) {
@@ -155,7 +163,7 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 	}
 
 	return (
-		<div className="flex flex-col h-full bg-white dark:bg-surface-900/50">
+		<div className="flex flex-col h-full bg-transparent">
 			<RibbonToolbar editor={editor} />
 
 			<BubbleMenuComponent editor={editor} />

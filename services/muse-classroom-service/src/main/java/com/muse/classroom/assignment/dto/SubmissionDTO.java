@@ -1,0 +1,20 @@
+package com.muse.classroom.assignment.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SubmissionDTO {
+    private Long id;
+    private Long assignmentId;
+    private String studentId;
+    private String content;
+    private Instant submissionDate;
+}

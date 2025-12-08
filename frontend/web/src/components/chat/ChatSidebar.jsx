@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { FiMessageSquare, FiUsers, FiCpu, FiHash, FiPlus, FiSearch, FiMoreVertical } from 'react-icons/fi';
+import { MessageSquare, Users, Cpu, Hash, Plus, Search, MoreVertical, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SidebarSection = ({ title, icon: Icon, children, isOpen, onToggle }) => (
-    <div className="mb-4">
+    <div className="mb-2">
         <button
             onClick={onToggle}
-            className="flex items-center justify-between w-full px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            className="flex items-center justify-between w-full px-4 py-2 text-[10px] font-bold text-secondary uppercase tracking-widest hover:text-primary transition-colors group"
         >
             <div className="flex items-center gap-2">
-                <Icon size={14} />
+                <Icon size={12} className="group-hover:text-accent-glow transition-colors" />
                 <span>{title}</span>
             </div>
-            {/* <FiChevronDown className={`transition-transform ${isOpen ? 'rotate-0' : '-rotate-90'}`} /> */}
+            <ChevronDown size={12} className={`transition-transform duration-300 ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
         </button>
         <AnimatePresence>
             {isOpen && (
@@ -32,9 +32,9 @@ const SidebarSection = ({ title, icon: Icon, children, isOpen, onToggle }) => (
 const ConversationItem = ({ conversation, isSelected, onClick }) => {
     const getIcon = () => {
         switch (conversation.type) {
-            case 'AI': return <FiCpu className="text-purple-400" />;
-            case 'GROUP': return <FiUsers className="text-blue-400" />;
-            default: return <FiMessageSquare className="text-green-400" />;
+            case 'AI': return <Cpu size={16} className="text-purple-400" />;
+            case 'GROUP': return <Users size={16} className="text-accent-blue" />;
+            default: return <MessageSquare size={16} className="text-accent-green" />;
         }
     };
 
@@ -43,28 +43,31 @@ const ConversationItem = ({ conversation, isSelected, onClick }) => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onClick(conversation)}
-            className={`w-full flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-all duration-200 ${isSelected
-                ? 'bg-indigo-50 dark:bg-white/10 text-indigo-700 dark:text-white shadow-sm backdrop-blur-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200'
+            className={`w-full flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition-all duration-300 relative group overflow-hidden ${isSelected
+                ? 'bg-white/10 text-primary shadow-lg border border-white/10'
+                : 'text-secondary hover:bg-white/5 hover:text-primary border border-transparent'
                 }`}
             style={{ width: 'calc(100% - 16px)' }}
         >
-            <div className={`p-2 rounded-full ${isSelected ? 'bg-indigo-100 dark:bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+            <div className={`p-2 rounded-lg transition-colors ${isSelected ? 'bg-white/10' : 'bg-surface-800'}`}>
                 {getIcon()}
             </div>
-            <div className="flex-1 text-left overflow-hidden">
-                <div className="font-medium truncate text-sm">
+            <div className="flex-1 text-left overflow-hidden z-10">
+                <div className="font-bold truncate text-sm mb-0.5">
                     {conversation.name || (conversation.type === 'AI' ? 'AI Assistant' : 'Chat')}
                 </div>
-                <div className="text-xs opacity-60 truncate">
+                <div className="text-xs opacity-60 truncate font-light">
                     {conversation.lastMessage || 'No messages yet'}
                 </div>
             </div>
             {conversation.unreadCount > 0 && (
-                <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white">
+                <div className="w-5 h-5 rounded-full bg-accent-glow flex items-center justify-center text-[10px] font-bold text-white shadow-glow">
                     {conversation.unreadCount}
                 </div>
             )}
+
+            {/* Subtle glow effect on hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
         </motion.button>
     );
 };
@@ -81,44 +84,44 @@ export default function ChatSidebar({
     const aiChats = conversations.filter(c => c.type === 'AI');
     const directChats = conversations.filter(c => c.type === 'DIRECT');
     const groupChats = conversations.filter(c => c.type === 'GROUP' && c.contextType === 'GENERAL');
-    const spaceChats = conversations.filter(c => c.contextType !== 'GENERAL'); // Classrooms, Projects, etc.
+    const spaceChats = conversations.filter(c => c.contextType !== 'GENERAL');
 
     const filtered = (list) => list.filter(c =>
         (c.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
-        <div className="w-full h-full bg-white dark:bg-slate-900 flex flex-col border-r border-slate-200 dark:border-slate-800">
+        <div className="w-full h-full flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Messages</h1>
+            <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-2xl font-serif font-bold text-primary tracking-tight">Messages</h1>
                     <button
                         onClick={onNewChat}
-                        className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+                        className="p-2 bg-primary text-background rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-primary/20"
                     >
-                        <FiPlus size={20} />
+                        <Plus size={20} />
                     </button>
                 </div>
 
-                <div className="relative">
-                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <div className="relative group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary group-focus-within:text-accent-glow transition-colors" size={16} />
                     <input
                         type="text"
                         placeholder="Search conversations..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder-slate-400 dark:placeholder-slate-500 text-sm"
+                        className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-primary pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-accent-glow/50 focus:ring-1 focus:ring-accent-glow/50 placeholder:text-secondary/50 text-sm transition-all"
                     />
                 </div>
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto py-4 space-y-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto py-2 space-y-6 custom-scrollbar px-2">
 
                 {/* AI Assistant Section */}
                 {aiChats.length > 0 && (
-                    <SidebarSection title="AI Assistant" icon={FiCpu} isOpen={true} onToggle={() => { }}>
+                    <SidebarSection title="AI Assistant" icon={Cpu} isOpen={true} onToggle={() => { }}>
                         {filtered(aiChats).map(c => (
                             <ConversationItem
                                 key={c.id}
@@ -132,7 +135,7 @@ export default function ChatSidebar({
 
                 {/* Spaces / Contextual */}
                 {spaceChats.length > 0 && (
-                    <SidebarSection title="Spaces" icon={FiHash} isOpen={true} onToggle={() => { }}>
+                    <SidebarSection title="Spaces" icon={Hash} isOpen={true} onToggle={() => { }}>
                         {filtered(spaceChats).map(c => (
                             <ConversationItem
                                 key={c.id}
@@ -145,7 +148,7 @@ export default function ChatSidebar({
                 )}
 
                 {/* Direct Messages */}
-                <SidebarSection title="Direct Messages" icon={FiMessageSquare} isOpen={true} onToggle={() => { }}>
+                <SidebarSection title="Direct Messages" icon={MessageSquare} isOpen={true} onToggle={() => { }}>
                     {filtered(directChats).map(c => (
                         <ConversationItem
                             key={c.id}
@@ -158,7 +161,7 @@ export default function ChatSidebar({
 
                 {/* Groups */}
                 {groupChats.length > 0 && (
-                    <SidebarSection title="Groups" icon={FiUsers} isOpen={true} onToggle={() => { }}>
+                    <SidebarSection title="Groups" icon={Users} isOpen={true} onToggle={() => { }}>
                         {filtered(groupChats).map(c => (
                             <ConversationItem
                                 key={c.id}
@@ -171,13 +174,13 @@ export default function ChatSidebar({
                 )}
             </div>
 
-            {/* User Profile / Settings (Bottom) */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500" />
-                    <div className="flex-1 text-sm font-medium">My Profile</div>
-                    <FiMoreVertical />
-                </div>
+            {/* Uses Profile / Settings (Bottom) */}
+            <div className="p-4 border-t border-black/5 dark:border-white/10 mx-4 mb-4">
+                <button className="flex items-center gap-3 w-full p-2 hover:bg-white/5 rounded-xl transition-colors group">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-accent-blue to-accent-green border border-white/10" />
+                    <div className="flex-1 text-sm font-bold text-left text-secondary group-hover:text-primary transition-colors">My Profile</div>
+                    <MoreVertical size={16} className="text-secondary group-hover:text-primary" />
+                </button>
             </div>
         </div>
     );

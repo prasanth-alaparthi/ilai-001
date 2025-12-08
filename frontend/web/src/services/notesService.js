@@ -152,5 +152,27 @@ export const notesService = {
     async suggestOrganization(content) {
         const res = await apiClient.post("/ai/suggest-organization", { content });
         return res.data;
+    },
+
+    // AI Writing Assistant (Grammarly-like features)
+    async grammarCheck(text) {
+        const res = await apiClient.post("/ai/writing/grammar-check", { text });
+        return res.data;
+    },
+    async spellCheck(text) {
+        const res = await apiClient.post("/ai/writing/spell-check", { text });
+        return res.data;
+    },
+    async improveSentence(text, style = "academic") {
+        const res = await apiClient.post("/ai/writing/improve", { text, style });
+        return res.data;
+    },
+    async getWritingScore(text) {
+        const res = await apiClient.post("/ai/writing/score", { text });
+        return res.data;
+    },
+    async getWritingSuggestions(text) {
+        const res = await apiClient.post("/ai/writing/suggestions", { text });
+        return res.data;
     }
 };

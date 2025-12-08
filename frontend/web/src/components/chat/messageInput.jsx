@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { FiSend, FiPaperclip, FiX } from "react-icons/fi";
+import { Send, Paperclip, X } from "lucide-react";
 import apiClient from "../../services/apiClient";
 
 export default function MessageInput({ onSend, disabled, replyingTo, onCancelReply }) {
@@ -37,23 +37,23 @@ export default function MessageInput({ onSend, disabled, replyingTo, onCancelRep
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col">
+    <div className="flex flex-col relative w-full">
       {replyingTo && (
-        <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-1 h-8 bg-indigo-500 rounded-full flex-shrink-0" />
+        <div className="absolute bottom-full left-0 right-0 mb-2 mx-4 px-4 py-3 bg-black/10 dark:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-between shadow-xl animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-1 h-8 bg-accent-glow rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,144,226,0.6)]" />
             <div className="flex flex-col text-xs">
-              <span className="font-semibold text-indigo-600 dark:text-indigo-400">Replying to {replyingTo.senderId}</span>
-              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{replyingTo.content || "Media"}</span>
+              <span className="font-bold text-accent-glow">Replying to {replyingTo.senderId}</span>
+              <span className="text-secondary truncate max-w-[200px] opacity-80">{replyingTo.content || "Media"}</span>
             </div>
           </div>
-          <button onClick={onCancelReply} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
-            <FiX size={14} />
+          <button onClick={onCancelReply} className="p-1.5 hover:bg-white/10 rounded-full text-secondary hover:text-primary transition-colors">
+            <X size={14} />
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSend} className="p-4 flex items-center gap-3">
+      <form onSubmit={handleSend} className="flex items-center gap-3 bg-surface/30 backdrop-blur-md p-1.5 rounded-full border border-white/10 shadow-lg relative z-10 w-full">
         <input
           type="file"
           ref={fileInputRef}
@@ -62,15 +62,15 @@ export default function MessageInput({ onSend, disabled, replyingTo, onCancelRep
           accept="image/*,video/*,audio/*"
         />
 
-        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
-          <FiPaperclip size={20} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-secondary hover:text-accent-glow transition-all rounded-full hover:bg-white/5 mx-1">
+          <Paperclip size={20} />
         </button>
 
         <div className="flex-1 relative">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
-            className="w-full bg-slate-100 dark:bg-slate-800 border-transparent focus:border-indigo-500 rounded-full py-3 px-5 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-900 transition-all placeholder-slate-400 dark:placeholder-slate-500 text-slate-800 dark:text-slate-100"
+            className="w-full bg-transparent border-none text-primary placeholder:text-secondary/50 focus:ring-0 text-sm font-medium py-2"
             placeholder={uploading ? "Uploading..." : "Type a message..."}
             disabled={disabled || uploading}
           />
@@ -79,9 +79,9 @@ export default function MessageInput({ onSend, disabled, replyingTo, onCancelRep
         <button
           type="submit"
           disabled={!text.trim() || disabled || uploading}
-          className="p-3 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 disabled:opacity-50 disabled:shadow-none transition-all transform active:scale-95 flex items-center justify-center"
+          className="p-3 bg-gradient-to-r from-accent-blue to-accent-glow text-white rounded-full shadow-lg shadow-accent-blue/20 hover:shadow-accent-blue/40 disabled:opacity-50 disabled:shadow-none transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center m-1"
         >
-          <FiSend size={18} className={text.trim() ? "ml-0.5" : ""} />
+          <Send size={18} className={text.trim() ? "translate-x-0.5 transition-transform" : ""} />
         </button>
       </form>
     </div>

@@ -113,7 +113,7 @@ const AiMenu = ({ editor, variant = 'default' }) => {
       type="button"
       onClick={onClick}
       disabled={isLoading}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:border-primary-200 dark:hover:border-primary-800 hover:text-primary-600 dark:hover:text-primary-400 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/10 dark:border-white/10 bg-white/50 dark:bg-white/5 text-secondary hover:bg-accent-blue/10 hover:border-accent-blue/30 hover:text-accent-blue transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Icon className="w-3.5 h-3.5" />
       <span>{label}</span>
@@ -122,16 +122,16 @@ const AiMenu = ({ editor, variant = 'default' }) => {
 
   const containerClass = variant === 'ribbon'
     ? "flex flex-wrap gap-2"
-    : "flex flex-wrap gap-2 p-2 bg-surface-50 dark:bg-surface-900/50 rounded-xl border border-surface-100 dark:border-surface-800";
+    : "flex flex-wrap gap-2 p-2 bg-white/50 dark:bg-white/5 rounded-xl border border-black/10 dark:border-white/10";
 
   return (
     <>
       <div className={containerClass}>
-        <div className="flex items-center gap-2 px-2 text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+        <div className="flex items-center gap-2 px-2 text-xs font-bold text-accent-blue uppercase tracking-wider">
           <FiCpu className="w-4 h-4" />
           AI Tools
         </div>
-        <div className="w-px h-6 bg-surface-200 dark:bg-surface-700 mx-1" />
+        <div className="w-px h-6 bg-black/10 dark:bg-white/10 mx-1" />
         <AiButton onClick={handleSummarize} icon={FiBookOpen} label="Summarize" />
         <AiButton onClick={handleExplain} icon={FiHelpCircle} label="Explain" />
         <AiButton onClick={handleFlashcards} icon={FiLayers} label="Flashcards" />
@@ -151,15 +151,15 @@ const AiMenu = ({ editor, variant = 'default' }) => {
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                className="bg-white dark:bg-surface-900 p-6 rounded-2xl shadow-2xl max-w-2xl w-full border border-surface-200 dark:border-surface-700 max-h-[80vh] overflow-y-auto"
+                className="bg-white dark:bg-surface p-6 rounded-2xl shadow-2xl max-w-2xl w-full border border-black/10 dark:border-white/10 max-h-[80vh] overflow-y-auto"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-display font-bold text-surface-900 dark:text-surface-100">{modalTitle}</h3>
-                  <button onClick={closeModal} className="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200">
+                  <h3 className="text-xl font-display font-medium text-primary">{modalTitle}</h3>
+                  <button onClick={closeModal} className="text-secondary hover:text-primary transition-colors">
                     ✕
                   </button>
                 </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-surface-600 dark:text-surface-300">
+                <div className="prose prose-sm dark:prose-invert max-w-none text-secondary">
                   {modalContent.split('\n').map((line, i) => (
                     <p key={i}>{line}</p>
                   ))}
@@ -167,7 +167,7 @@ const AiMenu = ({ editor, variant = 'default' }) => {
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={closeModal}
-                    className="px-4 py-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-200 rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-primary rounded-lg font-medium transition-colors"
                   >
                     Close
                   </button>

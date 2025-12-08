@@ -56,13 +56,13 @@ const SlashCommands = forwardRef((props, ref) => {
   };
 
   return (
-    <div className="bg-white dark:bg-surface-800 rounded-lg shadow-xl border border-surface-200 dark:border-surface-700 overflow-hidden min-w-[200px] p-1">
+    <div className="bg-white dark:bg-surface rounded-lg shadow-xl border border-black/10 dark:border-white/10 overflow-hidden min-w-[200px] p-1">
       {props.items.length ? (
         props.items.map((item, index) => (
           <button
             className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${index === selectedIndex
-                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
-                : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700'
+              ? 'bg-accent-blue/10 text-accent-blue'
+              : 'text-secondary hover:bg-black/5 dark:hover:bg-white/10 hover:text-primary'
               }`}
             key={index}
             onClick={() => selectItem(index)}
@@ -72,7 +72,7 @@ const SlashCommands = forwardRef((props, ref) => {
           </button>
         ))
       ) : (
-        <div className="px-3 py-2 text-sm text-surface-500">
+        <div className="px-3 py-2 text-sm text-secondary">
           No results
         </div>
       )}

@@ -49,21 +49,21 @@ const RibbonToolbar = ({ editor }) => {
             className={`
                 group relative flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl transition-all duration-200
                 ${isActive
-                    ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400 shadow-sm scale-105'
-                    : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-900 dark:hover:text-surface-100 hover:scale-110'
+                    ? 'bg-accent-blue/10 text-accent-blue shadow-sm scale-105'
+                    : 'text-secondary hover:bg-black/5 dark:hover:bg-white/10 hover:text-primary hover:scale-110'
                 }
                 ${disabled ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}
             `}
         >
             <Icon className={`w-4 h-4 md:w-5 md:h-5 ${color ? color : ''}`} />
-            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-surface-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-primary text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-md">
                 {label}
             </span>
         </button>
     );
 
     const Divider = () => (
-        <div className="w-px h-6 bg-surface-200 dark:bg-surface-700 mx-1 self-center flex-shrink-0" />
+        <div className="w-px h-6 bg-black/10 dark:bg-white/15 mx-1 self-center flex-shrink-0" />
     );
 
     const FontSelect = () => (
@@ -71,7 +71,7 @@ const RibbonToolbar = ({ editor }) => {
             <select
                 onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
                 value={editor.getAttributes('textStyle').fontFamily || ''}
-                className="h-8 text-xs border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-700 dark:text-surface-200 focus:outline-none focus:ring-1 focus:ring-primary-500 w-24 px-1 appearance-none cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
+                className="h-8 text-xs border border-black/10 dark:border-white/10 rounded-lg bg-white/50 dark:bg-white/5 text-primary focus:outline-none focus:ring-1 focus:ring-accent-blue w-24 px-1 appearance-none cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                 title="Font Family"
             >
                 <option value="" disabled>Font</option>
@@ -91,7 +91,7 @@ const RibbonToolbar = ({ editor }) => {
             <select
                 onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
                 value={editor.getAttributes('textStyle').fontSize || ''}
-                className="h-8 text-xs border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-700 dark:text-surface-200 focus:outline-none focus:ring-1 focus:ring-primary-500 w-14 px-1 appearance-none cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
+                className="h-8 text-xs border border-black/10 dark:border-white/10 rounded-lg bg-white/50 dark:bg-white/5 text-primary focus:outline-none focus:ring-1 focus:ring-accent-blue w-14 px-1 appearance-none cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                 title="Font Size"
             >
                 <option value="" disabled>Size</option>
@@ -110,7 +110,7 @@ const RibbonToolbar = ({ editor }) => {
 
     return (
         <div className="relative z-50 flex justify-center px-4 py-2 pointer-events-none w-full">
-            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 p-2 bg-white/90 dark:bg-surface-900/90 backdrop-blur-md border border-surface-200 dark:border-surface-700 rounded-2xl shadow-lg shadow-surface-200/50 dark:shadow-black/20 transition-all hover:shadow-xl max-w-full">
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 p-2 bg-white/90 dark:bg-surface/90 backdrop-blur-md border border-black/10 dark:border-white/10 rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/20 transition-all hover:shadow-xl max-w-full">
 
                 {/* AI & Magic (Moved to Start) */}
                 <div className="flex items-center gap-0.5 relative flex-shrink-0" ref={menuRef}>
@@ -119,19 +119,19 @@ const RibbonToolbar = ({ editor }) => {
                         className={`
                             group relative flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl transition-all duration-200
                             ${showAiMenu
-                                ? 'bg-gradient-to-tr from-primary-500 to-purple-600 text-white shadow-lg scale-105'
-                                : 'bg-surface-100 dark:bg-surface-800 text-primary-600 dark:text-primary-400 hover:scale-110'
+                                ? 'bg-gradient-to-tr from-accent-blue to-accent-glow text-white shadow-lg scale-105'
+                                : 'bg-black/5 dark:bg-white/5 text-accent-blue hover:scale-110'
                             }
                         `}
                         title="AI Tools"
                     >
                         <FiCpu className="w-4 h-4 md:w-5 md:h-5" />
-                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-surface-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-primary text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                             AI Magic
                         </span>
                     </button>
                     {showAiMenu && (
-                        <div className="absolute top-full left-0 mt-2 bg-white dark:bg-surface-800 rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 p-2 min-w-[200px] z-[9999] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="absolute top-full left-0 mt-2 bg-white dark:bg-surface rounded-xl shadow-xl border border-black/10 dark:border-white/10 p-2 min-w-[200px] z-[9999] animate-in fade-in zoom-in-95 duration-200">
                             <AiMenu editor={editor} variant="ribbon" />
                         </div>
                     )}
@@ -166,9 +166,9 @@ const RibbonToolbar = ({ editor }) => {
                     <div className="relative flex items-center justify-center w-8 h-8 md:w-10 md:h-10 group">
                         <div className={`
                             absolute inset-0 rounded-xl transition-all duration-200 pointer-events-none
-                            ${editor.isActive('highlight') ? 'bg-primary-100 dark:bg-primary-900/40' : 'group-hover:bg-surface-100 dark:group-hover:bg-surface-800'}
+                            ${editor.isActive('highlight') ? 'bg-accent-blue/10' : 'group-hover:bg-black/5 dark:group-hover:bg-white/10'}
                         `} />
-                        <FiEdit3 className={`relative z-10 w-4 h-4 md:w-5 md:h-5 ${editor.isActive('highlight') ? 'text-primary-600 dark:text-primary-400' : 'text-surface-500 dark:text-surface-400'}`} />
+                        <FiEdit3 className={`relative z-10 w-4 h-4 md:w-5 md:h-5 ${editor.isActive('highlight') ? 'text-accent-blue' : 'text-secondary'}`} />
                         <input
                             type="color"
                             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
@@ -176,7 +176,7 @@ const RibbonToolbar = ({ editor }) => {
                             value={editor.getAttributes('highlight').color || '#ffff00'}
                             onChange={(e) => editor.chain().focus().toggleHighlight({ color: e.target.value }).run()}
                         />
-                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-surface-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-primary text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                             Highlight
                         </span>
                     </div>
@@ -185,9 +185,9 @@ const RibbonToolbar = ({ editor }) => {
                     <div className="relative flex items-center justify-center w-8 h-8 md:w-10 md:h-10 group">
                         <div className={`
                             absolute inset-0 rounded-xl transition-all duration-200 pointer-events-none
-                            ${editor.getAttributes('textStyle').color ? 'bg-primary-100 dark:bg-primary-900/40' : 'group-hover:bg-surface-100 dark:group-hover:bg-surface-800'}
+                            ${editor.getAttributes('textStyle').color ? 'bg-accent-blue/10' : 'group-hover:bg-black/5 dark:group-hover:bg-white/10'}
                         `} />
-                        <FiDroplet className={`relative z-10 w-4 h-4 md:w-5 md:h-5 ${editor.getAttributes('textStyle').color ? 'text-primary-600 dark:text-primary-400' : 'text-surface-500 dark:text-surface-400'}`} />
+                        <FiDroplet className={`relative z-10 w-4 h-4 md:w-5 md:h-5 ${editor.getAttributes('textStyle').color ? 'text-accent-blue' : 'text-secondary'}`} />
                         <input
                             type="color"
                             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
@@ -195,7 +195,7 @@ const RibbonToolbar = ({ editor }) => {
                             value={editor.getAttributes('textStyle').color || '#000000'}
                             onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
                         />
-                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-surface-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-primary text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                             Text Color
                         </span>
                     </div>

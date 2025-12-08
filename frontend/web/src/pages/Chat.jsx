@@ -10,22 +10,22 @@ import SockJS from "sockjs-client";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FiSidebar, FiCheckSquare, FiCalendar, FiFile, FiMoreHorizontal,
-  FiPhone, FiVideo, FiSearch, FiPlus, FiX, FiClock, FiCpu, FiUsers, FiHash
-} from "react-icons/fi";
+  Sidebar, CheckSquare, Calendar, FileText, MoreHorizontal,
+  Phone, Video, Search, Plus, X, Clock, Cpu, Users, Hash
+} from "lucide-react";
 
 // --- Right Panel Components ---
 
 const TaskItem = ({ task }) => (
-  <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm mb-2 flex items-start gap-3 group">
-    <div className={`mt-1 w-4 h-4 rounded border flex items-center justify-center cursor-pointer ${task.completed ? 'bg-green-500 border-green-500' : 'border-slate-300 dark:border-slate-500'}`}>
-      {task.completed && <FiCheckSquare size={10} className="text-white" />}
+  <div className="p-4 glass-panel rounded-xl mb-3 flex items-start gap-4 group hover:bg-white/5 transition-colors">
+    <div className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-all ${task.completed ? 'bg-accent-green border-accent-green' : 'border-secondary/50 hover:border-primary'}`}>
+      {task.completed && <CheckSquare size={14} className="text-white" />}
     </div>
     <div className="flex-1">
-      <div className={`text-sm font-medium ${task.completed ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-slate-200'}`}>{task.title}</div>
+      <div className={`text-sm font-medium ${task.completed ? 'text-secondary line-through' : 'text-primary'}`}>{task.title}</div>
       {task.dueDate && (
-        <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-          <FiClock size={10} /> {task.dueDate}
+        <div className="text-xs text-secondary mt-1 flex items-center gap-1.5 font-mono">
+          <Clock size={12} /> {task.dueDate}
         </div>
       )}
     </div>
@@ -38,45 +38,42 @@ const RightPanel = ({ isOpen, onClose, activeTab, setActiveTab, tasks, onAddTask
       {isOpen && (
         <motion.div
           initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 320, opacity: 1 }}
+          animate={{ width: 340, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
-          className="h-full bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden"
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="h-full bg-surface/30 backdrop-blur-xl border-l border-black/5 dark:border-white/10 flex flex-col overflow-hidden"
         >
           {/* Tabs */}
-          <div className="flex items-center border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <button
-              onClick={() => setActiveTab('TASKS')}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'TASKS' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <FiCheckSquare /> Tasks
-            </button>
-            <button
-              onClick={() => setActiveTab('SCHEDULE')}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'SCHEDULE' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <FiCalendar /> Schedule
-            </button>
-            <button
-              onClick={() => setActiveTab('FILES')}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'FILES' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <FiFile /> Files
-            </button>
+          <div className="flex items-center border-b border-black/5 dark:border-white/10 bg-surface/50">
+            {['TASKS', 'SCHEDULE', 'FILES'].map((tab) => {
+              const isActive = activeTab === tab;
+              const Icons = { TASKS: CheckSquare, SCHEDULE: Calendar, FILES: FileText };
+              const Icon = Icons[tab];
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${isActive ? 'text-accent-glow bg-white/5' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
+                >
+                  <Icon size={14} /> {tab}
+                </button>
+              )
+            })}
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
             {activeTab === 'TASKS' && (
               <>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-700 dark:text-slate-300">To-Do List</h3>
-                  <button onClick={onAddTask} className="p-1.5 bg-indigo-100 text-indigo-600 rounded-md hover:bg-indigo-200">
-                    <FiPlus size={16} />
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-serif font-bold text-primary">To-Do List</h3>
+                  <button onClick={onAddTask} className="p-2 bg-accent-glow/10 text-accent-glow rounded-lg hover:bg-accent-glow/20 transition-all">
+                    <Plus size={16} />
                   </button>
                 </div>
                 {tasks.map(t => <TaskItem key={t.id} task={t} />)}
                 {tasks.length === 0 && (
-                  <div className="text-center py-10 text-slate-400 text-sm">
+                  <div className="text-center py-12 text-secondary text-sm glass-panel rounded-xl border-dashed">
                     No tasks yet. <br /> Create one from a message!
                   </div>
                 )}
@@ -84,15 +81,15 @@ const RightPanel = ({ isOpen, onClose, activeTab, setActiveTab, tasks, onAddTask
             )}
 
             {activeTab === 'SCHEDULE' && (
-              <div className="text-center py-10 text-slate-400 text-sm">
-                <FiCalendar size={32} className="mx-auto mb-3 opacity-50" />
+              <div className="text-center py-20 text-secondary text-sm">
+                <Calendar size={48} className="mx-auto mb-4 opacity-20" />
                 No upcoming events.
               </div>
             )}
 
             {activeTab === 'FILES' && (
-              <div className="text-center py-10 text-slate-400 text-sm">
-                <FiFile size={32} className="mx-auto mb-3 opacity-50" />
+              <div className="text-center py-20 text-secondary text-sm">
+                <FileText size={48} className="mx-auto mb-4 opacity-20" />
                 No shared files.
               </div>
             )}
@@ -235,16 +232,16 @@ export default function ChatApp() {
 
   const getConversationIcon = (conv) => {
     switch (conv.type) {
-      case 'AI': return <FiCpu />;
-      case 'GROUP': return <FiUsers />;
-      default: return conv.contextType !== 'GENERAL' ? <FiHash /> : null;
+      case 'AI': return <Cpu />;
+      case 'GROUP': return <Users />;
+      default: return conv.contextType !== 'GENERAL' ? <Hash /> : null;
     }
   };
 
   return (
-    <div className="flex h-full bg-white dark:bg-black overflow-hidden font-sans">
+    <div className="flex h-full bg-background overflow-hidden font-sans">
       {/* Left Sidebar */}
-      <div className="w-80 h-full flex-shrink-0 border-r border-slate-200 dark:border-slate-800">
+      <div className="w-80 h-full flex-shrink-0 border-r border-black/5 dark:border-white/10 bg-surface/30 backdrop-blur-md">
         <ChatSidebar
           conversations={conversations}
           selectedId={selectedConversation?.id}
@@ -254,46 +251,46 @@ export default function ChatApp() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col h-full relative min-w-0 overflow-hidden bg-background">
         {selectedConversation ? (
           <>
             {/* Header */}
-            <div className="h-16 px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${selectedConversation.type === 'AI'
-                  ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400'
+            <div className="h-20 px-8 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-surface/50 backdrop-blur-xl z-10 shadow-sm">
+              <div className="flex items-center gap-5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold shadow-inner ${selectedConversation.type === 'AI'
+                  ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                  : 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20'
                   }`}>
-                  {getConversationIcon(selectedConversation) || selectedConversation.name?.[0] || '#'}
+                  {getConversationIcon(selectedConversation) || <span className="text-lg">{selectedConversation.name?.[0] || '#'}</span>}
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-primary flex items-center gap-3">
                     {selectedConversation.name || (selectedConversation.type === 'AI' ? 'AI Assistant' : 'Chat')}
                     {selectedConversation.contextType !== 'GENERAL' && (
-                      <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full border border-slate-200 dark:border-slate-700 uppercase tracking-wide">
+                      <span className="text-[10px] px-2 py-0.5 bg-white/5 text-secondary rounded-full border border-black/5 dark:border-white/10 uppercase tracking-wide font-mono">
                         {selectedConversation.contextType}
                       </span>
                     )}
                   </h2>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-xs text-secondary/70 font-medium">
                     {selectedConversation.participantIds?.length || 1} members
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-full transition-colors">
-                  <FiPhone size={18} />
+              <div className="flex items-center gap-3">
+                <button className="p-3 text-secondary hover:text-accent-glow hover:bg-white/5 rounded-xl transition-all">
+                  <Phone size={20} />
                 </button>
-                <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-full transition-colors">
-                  <FiVideo size={18} />
+                <button className="p-3 text-secondary hover:text-accent-glow hover:bg-white/5 rounded-xl transition-all">
+                  <Video size={20} />
                 </button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+                <div className="w-px h-8 bg-white/10 mx-2" />
                 <button
                   onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-                  className={`p-2 rounded-full transition-colors ${isRightPanelOpen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                  className={`p-3 rounded-xl transition-all ${isRightPanelOpen ? 'text-accent-glow bg-accent-glow/10' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
                 >
-                  <FiSidebar size={18} />
+                  <Sidebar size={20} />
                 </button>
               </div>
             </div>
@@ -307,19 +304,21 @@ export default function ChatApp() {
             />
 
             {/* Input */}
-            <MessageInput
-              onSend={handleSend}
-              replyingTo={replyingTo}
-              onCancelReply={() => setReplyingTo(null)}
-            />
+            <div className="p-6">
+              <MessageInput
+                onSend={handleSend}
+                replyingTo={replyingTo}
+                onCancelReply={() => setReplyingTo(null)}
+              />
+            </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-400">
-            <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-              <FiMoreHorizontal size={40} className="text-slate-300 dark:text-slate-600" />
+          <div className="flex-1 flex flex-col items-center justify-center bg-background text-secondary">
+            <div className="w-24 h-24 bg-surface/50 rounded-full flex items-center justify-center mb-6 animate-pulse">
+              <MoreHorizontal size={40} className="text-secondary/50" />
             </div>
-            <h3 className="text-lg font-medium text-slate-600 dark:text-slate-300">No Chat Selected</h3>
-            <p className="text-sm">Select a conversation to start collaborating.</p>
+            <h3 className="text-xl font-serif font-medium text-primary mb-2">No Chat Selected</h3>
+            <p className="text-sm font-light opacity-70">Select a conversation to start collaborating.</p>
           </div>
         )}
       </div>

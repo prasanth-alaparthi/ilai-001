@@ -1,0 +1,62 @@
+-- Create RSS Feed Sources table for dynamic feed management
+CREATE TABLE IF NOT EXISTS rss_feed_sources (
+    id BIGSERIAL PRIMARY KEY,
+    url VARCHAR(500) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    category VARCHAR(100),
+    is_active BOOLEAN DEFAULT true,
+    priority INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_fetched_at TIMESTAMP,
+    fetch_error_count INT DEFAULT 0
+);
+
+CREATE INDEX idx_rss_active ON rss_feed_sources(is_active);
+CREATE INDEX idx_rss_category ON rss_feed_sources(category);
+
+-- Insert initial diverse educational RSS feeds
+INSERT INTO rss_feed_sources (url, name, category, priority) VALUES
+-- Science & Environment
+('http://feeds.bbci.co.uk/news/science_and_environment/rss.xml', 'BBC Science & Environment', 'Science', 10),
+('https://www.sciencedaily.com/rss/all.xml', 'Science Daily', 'Science', 10),
+('https://phys.org/rss-feed/', 'Phys.org', 'Science', 9),
+('https://www.livescience.com/feeds/all', 'Live Science', 'Science', 9),
+
+-- Space & Astronomy
+('https://www.nasa.gov/rss/dyn/breaking_news.rss', 'NASA Breaking News', 'Space', 10),
+('https://www.space.com/feeds/all', 'Space.com', 'Space', 9),
+('https://www.planetary.org/feeds/articles.xml', 'The Planetary Society', 'Space', 8),
+
+-- Technology & Innovation
+('https://www.technologyreview.com/feed/', 'MIT Technology Review', 'Technology', 10),
+('https://techcrunch.com/feed/', 'TechCrunch', 'Technology', 8),
+('https://www.wired.com/feed/rss', 'Wired', 'Technology', 9),
+
+-- Education & Learning
+('https://www.edutopia.org/rss.xml', 'Edutopia', 'Education', 10),
+('https://feeds.feedburner.com/tedblog', 'TED Blog', 'Education', 10),
+('https://www.khanacademy.org/blog/rss.xml', 'Khan Academy Blog', 'Education', 9),
+
+-- History & Culture
+('https://daily.jstor.org/feed/', 'JSTOR Daily', 'History', 9),
+('https://www.smithsonianmag.com/rss/latest_articles/', 'Smithsonian Magazine', 'History', 10),
+('https://www.ancient-origins.net/rss.xml', 'Ancient Origins', 'History', 7),
+
+-- Mathematics
+('https://mathworld.wolfram.com/news/rss.xml', 'Wolfram MathWorld', 'Mathematics', 8),
+('https://www.ams.org/rss/mathvoices.rss', 'AMS Math Voices', 'Mathematics', 8),
+
+-- Arts & Creativity
+('https://www.artsy.net/rss/news', 'Artsy', 'Arts', 8),
+('https://hyperallergic.com/feed/', 'Hyperallergic', 'Arts', 7),
+
+-- Environment & Climate
+('https://e360.yale.edu/feed', 'Yale Environment 360', 'Environment', 9),
+('https://www.nationalgeographic.com/pages/topic/latest-stories/_jcr_content.feed', 'National Geographic', 'Environment', 10),
+
+-- Philosophy & Critical Thinking
+('https://aeon.co/feed.rss', 'Aeon', 'Philosophy', 9),
+('https://philosophynow.org/rss/articles.xml', 'Philosophy Now', 'Philosophy', 8)
+
+ON CONFLICT (url) DO NOTHING;

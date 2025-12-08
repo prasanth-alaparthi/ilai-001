@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../state/UserContext';
 import apiClient from '../services/apiClient';
-import { FiUser, FiSettings, FiGrid, FiBookmark, FiTag, FiMoreHorizontal } from 'react-icons/fi';
+import {
+  Settings, Grid, Bookmark, Tag, MoreHorizontal, UserPlus, MessageCircle, Heart
+} from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ProfileHeader = ({ user, isOwnProfile, stats, onFollow, isFollowing, navigate }) => (
-  <div className="flex flex-col md:flex-row items-center md:items-start gap-8 px-4 md:px-16 py-8 border-b border-slate-200 dark:border-slate-800">
-    <div className="flex-shrink-0">
-      <div className="w-20 h-20 md:w-36 md:h-36 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500">
-        <div className="w-full h-full rounded-full bg-white dark:bg-black p-[2px]">
+  <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 px-6 py-10">
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="flex-shrink-0 relative group"
+    >
+      <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-accent-glow via-purple-500 to-pink-500">
+        <div className="w-full h-full rounded-full bg-background p-1">
           <img
             src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
             alt={user.username}
@@ -16,122 +23,119 @@ const ProfileHeader = ({ user, isOwnProfile, stats, onFollow, isFollowing, navig
           />
         </div>
       </div>
-    </div>
+    </motion.div>
 
-    <div className="flex-1 flex flex-col gap-4 w-full">
-      <div className="flex flex-col md:flex-row items-center gap-4">
-        <h2 className="text-xl md:text-2xl font-light text-slate-900 dark:text-white">{user.username}</h2>
+    <div className="flex-1 flex flex-col gap-6 w-full text-center md:text-left">
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        <h2 className="text-3xl font-serif text-primary">{user.username}</h2>
         {isOwnProfile ? (
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               onClick={() => navigate('/account')}
-              className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-semibold text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-2"
+              className="px-4 py-2 bg-surface-800 hover:bg-surface-700 rounded-xl text-sm font-medium text-primary transition-colors flex items-center gap-2 border border-black/5 dark:border-white/10"
             >
-              <FiSettings size={16} /> Settings
+              <Settings size={16} /> Edit Profile
             </button>
           </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               onClick={onFollow}
-              className={`px-6 py-1.5 rounded-lg text-sm font-semibold ${isFollowing
-                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
-                : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all shadow-lg ${isFollowing
+                ? 'bg-surface-800 text-primary border border-white/10'
+                : 'bg-primary text-background hover:bg-primary/90'}`}
             >
               {isFollowing ? 'Following' : 'Follow'}
             </button>
-            <button className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-semibold text-slate-900 dark:text-white">
+            <button className="px-4 py-2 bg-surface-800 hover:bg-surface-700 rounded-xl text-sm font-medium text-primary transition-colors border border-black/5 dark:border-white/10">
               Message
             </button>
           </div>
         )}
       </div>
 
-      <div className="flex justify-center md:justify-start gap-8 md:gap-12 text-slate-900 dark:text-white">
+      <div className="flex justify-center md:justify-start gap-10 text-primary">
         <div className="text-center md:text-left">
-          <span className="font-semibold">{stats.posts}</span> posts
+          <span className="font-bold text-lg block">{stats.posts}</span>
+          <span className="text-secondary text-sm">posts</span>
         </div>
-        <div className="text-center md:text-left cursor-pointer">
-          <span className="font-semibold">{stats.followers}</span> followers
+        <div className="text-center md:text-left cursor-pointer hover:text-accent-glow transition-colors">
+          <span className="font-bold text-lg block">{stats.followers}</span>
+          <span className="text-secondary text-sm">followers</span>
         </div>
-        <div className="text-center md:text-left cursor-pointer">
-          <span className="font-semibold">{stats.following}</span> following
+        <div className="text-center md:text-left cursor-pointer hover:text-accent-glow transition-colors">
+          <span className="font-bold text-lg block">{stats.following}</span>
+          <span className="text-secondary text-sm">following</span>
         </div>
       </div>
 
-      <div className="hidden md:block text-slate-900 dark:text-white">
-        <div className="font-semibold">{user.displayName || user.username}</div>
-        <div className="whitespace-pre-wrap">{user.bio}</div>
+      <div className="text-primary max-w-md">
+        <div className="font-bold mb-1">{user.displayName || user.username}</div>
+        <div className="whitespace-pre-wrap text-secondary/80 text-sm leading-relaxed mb-2">{user.bio}</div>
         {user.website && (
-          <a href={user.website} target="_blank" rel="noreferrer" className="text-blue-900 dark:text-blue-100 font-semibold">
+          <a href={user.website} target="_blank" rel="noreferrer" className="text-accent-glow hover:text-accent-glow/80 text-sm font-medium flex items-center gap-1 justify-center md:justify-start">
             {user.website.replace(/^https?:\/\//, '')}
           </a>
         )}
       </div>
     </div>
-
-    {/* Mobile Bio */}
-    <div className="md:hidden w-full text-sm text-slate-900 dark:text-white px-2">
-      <div className="font-semibold">{user.displayName || user.username}</div>
-      <div className="whitespace-pre-wrap">{user.bio}</div>
-      {user.website && (
-        <a href={user.website} target="_blank" rel="noreferrer" className="text-blue-900 dark:text-blue-100 font-semibold">
-          {user.website.replace(/^https?:\/\//, '')}
-        </a>
-      )}
-    </div>
   </div>
 );
 
 const ProfileTabs = ({ activeTab, setActiveTab }) => (
-  <div className="flex justify-center border-t border-slate-200 dark:border-slate-800">
-    <button
-      onClick={() => setActiveTab('POSTS')}
-      className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold tracking-widest uppercase border-t ${activeTab === 'POSTS' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500'}`}
-    >
-      <FiGrid size={12} /> Posts
-    </button>
-    <button
-      onClick={() => setActiveTab('SAVED')}
-      className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold tracking-widest uppercase border-t ${activeTab === 'SAVED' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500'}`}
-    >
-      <FiBookmark size={12} /> Saved
-    </button>
-    <button
-      onClick={() => setActiveTab('TAGGED')}
-      className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold tracking-widest uppercase border-t ${activeTab === 'TAGGED' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-500'}`}
-    >
-      <FiTag size={12} /> Tagged
-    </button>
+  <div className="flex justify-center border-t border-white/10 mb-4">
+    {['POSTS', 'SAVED', 'TAGGED'].map((tab) => {
+      const icons = { POSTS: Grid, SAVED: Bookmark, TAGGED: Tag };
+      const Icon = icons[tab];
+      const isActive = activeTab === tab;
+      return (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`relative flex items-center gap-2 px-8 py-4 text-xs font-bold tracking-widest uppercase transition-colors ${isActive ? 'text-primary' : 'text-secondary hover:text-primary'}`}
+        >
+          {isActive && (
+            <motion.div layoutId="activeTab" className="absolute top-0 left-0 right-0 h-[1px] bg-primary" />
+          )}
+          <Icon size={12} /> {tab}
+        </button>
+      )
+    })}
   </div>
 );
 
 const PostGrid = ({ posts }) => (
   <div className="grid grid-cols-3 gap-1 md:gap-8">
-    {posts.map(post => (
-      <div key={post.id} className="aspect-square relative group cursor-pointer bg-slate-100 dark:bg-slate-800 overflow-hidden">
+    {posts.map((post, idx) => (
+      <motion.div
+        key={post.id}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: idx * 0.05 }}
+        className="aspect-square relative group cursor-pointer bg-surface-800 overflow-hidden rounded-md md:rounded-xl"
+      >
         {post.mediaUrls && post.mediaUrls.length > 0 ? (
           post.mediaType === 'VIDEO' ? (
             <video src={post.mediaUrls[0]} className="w-full h-full object-cover" />
           ) : (
-            <img src={post.mediaUrls[0]} alt="" className="w-full h-full object-cover" />
+            <img src={post.mediaUrls[0]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
           )
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs p-2 text-center">
-            {post.content}
+          <div className="w-full h-full flex items-center justify-center p-4 text-center">
+            <p className="text-xs md:text-sm text-secondary line-clamp-4 font-serif italic">"{post.content}"</p>
           </div>
         )}
 
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center gap-6 text-white font-bold">
-          <div className="flex items-center gap-1">
-            <span className="text-lg">❤️</span> {post.likeCount}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white font-bold backdrop-blur-[2px]">
+          <div className="flex items-center gap-2">
+            <Heart className="fill-white" size={20} /> {post.likeCount}
           </div>
-          <div className="flex items-center gap-1">
-            <span className="text-lg">💬</span> {post.commentCount}
+          <div className="flex items-center gap-2">
+            <MessageCircle size={20} className="fill-white" /> {post.commentCount}
           </div>
         </div>
-      </div>
+      </motion.div>
     ))}
   </div>
 );
@@ -145,6 +149,7 @@ export default function ProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('POSTS');
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProfile();
@@ -153,38 +158,29 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      // 1. Get User Details
       const userRes = await apiClient.get(`/users/username/${username}`);
       const user = userRes.data;
       setProfileUser(user);
 
-      // 2. Get Follow Stats
-      const statsRes = await apiClient.get(`/follows/stats/${user.id}`);
+      try {
+        const statsRes = await apiClient.get(`/follows/stats/${user.id}`);
+        setStats(prev => ({ ...prev, followers: statsRes.data.followers, following: statsRes.data.following }));
+      } catch (e) { console.warn("Stats fetch error", e); }
 
-      // 3. Get Posts (We need a specific endpoint for user posts, reusing feed service)
-      // Assuming we have an endpoint or can filter. For now, let's assume /feed/posts?userId=... or similar
-      // Actually, PostController has getFeed which is for current user. 
-      // We need a public endpoint for user posts. Let's assume we added it or use existing if adaptable.
-      // Wait, PostController.getFeed calls postService.getPostsForUser(userId). 
-      // But that endpoint is @GetMapping("/api/feed/posts") which uses Auth token.
-      // We need to fetch posts for THIS profile user, not the logged in user.
-      // Let's assume we will add /api/feed/posts/user/{userId}
+      try {
+        const postsRes = await apiClient.get(`/feed/posts/user/${user.id}`);
+        setPosts(postsRes.data || []);
+        setStats(prev => ({ ...prev, posts: postsRes.data?.length || 0 }));
+      } catch (e) {
+        console.warn("User posts fetch error", e);
+        setPosts([]);
+      }
 
-      // Temporary: Mock posts or try to fetch if we added the endpoint. 
-      // I'll add the endpoint in the next step.
-      const postsRes = await apiClient.get(`/feed/posts/user/${user.id}`);
-      setPosts(postsRes.data || []);
-
-      setStats({
-        posts: postsRes.data?.length || 0,
-        followers: statsRes.data.followers,
-        following: statsRes.data.following
-      });
-
-      // 4. Check Follow Status
       if (currentUser) {
-        const checkRes = await apiClient.get(`/follows/check/${user.id}`);
-        setIsFollowing(checkRes.data.isFollowing);
+        try {
+          const checkRes = await apiClient.get(`/follows/check/${user.id}`);
+          setIsFollowing(checkRes.data.isFollowing);
+        } catch (e) { }
       }
 
     } catch (e) {
@@ -210,36 +206,46 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20">Loading...</div>;
-  if (!profileUser) return <div className="text-center py-20">User not found</div>;
+  if (loading) return <div className="flex h-screen items-center justify-center text-secondary animate-pulse">Loading profile...</div>;
+  if (!profileUser) return <div className="flex h-screen items-center justify-center text-secondary">User not found</div>;
 
   const isOwnProfile = currentUser?.username === username;
 
   return (
-    <div className="max-w-4xl mx-auto pb-20 bg-white dark:bg-black min-h-screen">
-      <ProfileHeader
-        user={profileUser}
-        isOwnProfile={isOwnProfile}
-        stats={stats}
-        onFollow={handleFollow}
-        isFollowing={isFollowing}
-        navigate={navigate}
-      />
+    <div className="min-h-screen bg-background text-primary pb-20">
+      <div className="max-w-4xl mx-auto">
+        <ProfileHeader
+          user={profileUser}
+          isOwnProfile={isOwnProfile}
+          stats={stats}
+          onFollow={handleFollow}
+          isFollowing={isFollowing}
+          navigate={navigate}
+        />
 
-      <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="px-4 md:px-0">
-        {activeTab === 'POSTS' && <PostGrid posts={posts} />}
-        {activeTab === 'SAVED' && (
-          <div className="text-center py-20 text-slate-500 text-sm">
-            Only you can see what you've saved
-          </div>
-        )}
-        {activeTab === 'TAGGED' && (
-          <div className="text-center py-20 text-slate-500 text-sm">
-            Photos of you
-          </div>
-        )}
+        <div className="px-4 md:px-0">
+          <AnimatePresence mode="wait">
+            {activeTab === 'POSTS' && (
+              <motion.div key="posts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <PostGrid posts={posts} />
+              </motion.div>
+            )}
+            {activeTab === 'SAVED' && (
+              <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-secondary/50">
+                <Bookmark size={48} className="mb-4 opacity-50" />
+                <p className="text-sm font-medium">Save photos and videos that you want to see again.</p>
+              </motion.div>
+            )}
+            {activeTab === 'TAGGED' && (
+              <motion.div key="tagged" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-secondary/50">
+                <Tag size={48} className="mb-4 opacity-50" />
+                <p className="text-sm font-medium">Photos of you will appear here.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

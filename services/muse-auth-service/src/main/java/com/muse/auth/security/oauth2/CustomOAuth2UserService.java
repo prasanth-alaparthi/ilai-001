@@ -50,16 +50,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
         }
 
-        Optional<User> userOptional = userRepository.findByEmail(email);
+        // Check by both username and email to prevent duplicate key violations
+        Optional<User> userOptional = userRepository.findByUsernameOrEmail(email, email);
         User user;
         if (userOptional.isPresent()) {
             user = userOptional.get();
+            // Update provider info if it's a local user converting to OAuth
             if (user.getProvider() == null || user.getProvider() == AuthProvider.LOCAL) {
                 user.setProvider(provider);
                 user.setProviderId(oAuth2User.getName());
                 userRepository.save(user);
             }
         } else {
+            // Create new user only if not found by username or email
             user = User.builder()
                     .username(email)
                     .email(email)

@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import App from './App';
 import './index.css'; // tailwind / global styles
-import '../styles/theme.css';
+// import '../styles/theme.css'; // Removed for redesign
 import { ThemeProvider } from './components/theme/ThemeProvider';
 
 // axios defaults are configured in apiClient.js

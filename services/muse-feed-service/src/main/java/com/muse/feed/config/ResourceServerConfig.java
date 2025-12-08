@@ -46,6 +46,7 @@ public class ResourceServerConfig {
                                                                                                          // checks
                         .requestMatchers("/uploads/**").permitAll() // Allow access to uploaded files
                         .requestMatchers("/api/feed/posts/fetch-news").permitAll() // Allow manual news fetch
+                        .requestMatchers("/api/feed/sources/**").permitAll() // Allow public access to feed sources
                         .anyRequest().authenticated() // All other API requests require authentication
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt());

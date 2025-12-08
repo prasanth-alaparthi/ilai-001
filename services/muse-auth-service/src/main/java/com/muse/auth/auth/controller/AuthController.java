@@ -166,8 +166,11 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> refresh(@RequestBody(required = false) Map<String, String> body,
+            HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = null;
+
+        // First, try to get refresh token from cookies (existing behavior)
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie c : cookies) {
@@ -177,6 +180,12 @@ public class AuthController {
                 }
             }
         }
+
+        // If not in cookies, check request body (for OAuth flow)
+        if (refreshToken == null && body != null) {
+            refreshToken = body.get("refreshToken");
+        }
+
         logger.debug("Refresh endpoint hit. Received refreshToken: {}",
                 refreshToken != null ? "[PRESENT]" : "[MISSING]");
         if (refreshToken == null) {

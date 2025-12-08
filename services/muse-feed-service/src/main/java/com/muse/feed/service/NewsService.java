@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.URL;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -31,13 +32,7 @@ public class NewsService {
     private final PostService postService;
     private final AiContentService aiContentService;
     private final PostRepository postRepository;
-
-    // Comprehensive Educational Feeds
-    private static final List<String> RSS_FEEDS = List.of(
-            "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
-            "https://www.nasa.gov/rss/dyn/breaking_news.rss",
-            "https://www.history.com/.rss/full/this-day-in-history",
-            "https://feeds.feedburner.com/tedblog");
+    private final com.muse.feed.repository.RssFeedSourceRepository rssFeedSourceRepository;
 
     private static final List<String> BLOCKED_KEYWORDS = List.of(
             "murder", "kill", "death", "war", "crime", "assault", "drug", "sex",
@@ -48,16 +43,28 @@ public class NewsService {
         cleanupDuplicates();
         log.info("Starting educational news fetch cycle...");
 
-        // Create a mutable copy of the feeds list to shuffle it
-        List<String> shuffledFeeds = new ArrayList<>(RSS_FEEDS);
+        // Fetch active RSS feeds from database, ordered by priority
+        List<com.muse.feed.entity.RssFeedSource> feedSources = rssFeedSourceRepository
+                .findByActiveTrueOrderByPriorityDesc();
+
+        if (feedSources.isEmpty()) {
+            log.warn("No active RSS feed sources found in database");
+            return;
+        }
+
+        log.info("Found {} active RSS feed sources", feedSources.size());
+
+        // Shuffle feeds for variety
+        List<com.muse.feed.entity.RssFeedSource> shuffledFeeds = new ArrayList<>(feedSources);
         java.util.Collections.shuffle(shuffledFeeds);
 
         // Create HTTP client with redirect policy
         try (java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
                 .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
                 .build()) {
-            for (String feedUrl : shuffledFeeds) {
-                log.info("Fetching feed: {}", feedUrl);
+            for (com.muse.feed.entity.RssFeedSource feedSource : shuffledFeeds) {
+                String feedUrl = feedSource.getUrl();
+                log.info("Fetching feed: {} ({})", feedSource.getName(), feedUrl);
                 try {
                     java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
                             .uri(java.net.URI.create(feedUrl))
@@ -70,7 +77,11 @@ public class NewsService {
                             java.net.http.HttpResponse.BodyHandlers.ofString());
 
                     if (response.statusCode() != 200) {
-                        log.error("Failed to fetch feed {}. Status: {}", feedUrl, response.statusCode());
+                        log.error("Failed to fetch feed {} ({}). Status: {}", feedSource.getName(), feedUrl,
+                                response.statusCode());
+                        // Track error
+                        feedSource.setFetchErrorCount(feedSource.getFetchErrorCount() + 1);
+                        rssFeedSourceRepository.save(feedSource);
                         continue;
                     }
 
@@ -83,20 +94,29 @@ public class NewsService {
                     SyndFeedInput input = new SyndFeedInput();
                     SyndFeed feed = input.build(new java.io.StringReader(body));
 
-                    log.info("Feed {} fetched. Entries found: {}", feedUrl, feed.getEntries().size());
+                    log.info("Feed {} ({}) fetched. Entries found: {}", feedSource.getName(), feedUrl,
+                            feed.getEntries().size());
 
                     int count = 0;
                     for (SyndEntry entry : feed.getEntries()) {
-                        if (count >= 10) // Increased limit to 10 per feed for more variety
+                        if (count >= 10) // Limit to 10 per feed for variety
                             break;
 
                         if (processEntry(entry)) {
                             count++;
                         }
                     }
+
+                    // Update last fetched timestamp and reset error count on success
+                    feedSource.setLastFetchedAt(Instant.now());
+                    feedSource.setFetchErrorCount(0);
+                    rssFeedSourceRepository.save(feedSource);
+
                 } catch (Throwable e) {
-                    log.error("Error fetching feed: {}", feedUrl, e);
-                    e.printStackTrace();
+                    log.error("Error fetching feed: {} ({})", feedSource.getName(), feedUrl, e);
+                    // Track error
+                    feedSource.setFetchErrorCount(feedSource.getFetchErrorCount() + 1);
+                    rssFeedSourceRepository.save(feedSource);
                 }
             }
         } catch (Throwable e) {
@@ -192,12 +212,13 @@ public class NewsService {
 
     @Transactional
     public void cleanupDuplicates() {
-        try {
-            postRepository.deleteDuplicatePosts();
-            log.info("Cleaned up duplicate posts.");
-        } catch (Exception e) {
-            log.error("Failed to cleanup duplicates", e);
-        }
+        // Temporarily disabled - causing query errors
+        // try {
+        // postRepository.deleteDuplicatePosts();
+        // log.info("Cleaned up duplicate posts.");
+        // } catch (Exception e) {
+        // log.error("Failed to cleanup duplicates", e);
+        // }
     }
 
     private String normalizeUrl(String url) {

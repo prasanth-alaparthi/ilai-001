@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Node modules
+node_modules
+npm-debug.log*
+
+# Logs
+*.log
+logs
+*.txt
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Build artifacts (will be copied from target/)
+services/*/target/classes
+services/*/target/generated-sources
+services/*/target/maven-status
+services/*/target/test-classes
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Temp files
+*.tmp
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+postgres-data
+uploads
+
+# Python
+__pycache__
+*.pyc
+venv

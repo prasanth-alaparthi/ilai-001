@@ -21,7 +21,20 @@ export function UserProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    // Skip fetching if user is already set (e.g., from OAuth2RedirectHandler)
+    if (user) {
+      setLoading(false);
+      return;
+    }
+
     (async () => {
+      const token = localStorage.getItem("accessToken");
+      // Only fetch user if we have a token
+      if (!token) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
       try {
         const res = await apiClient.get("/auth/me");
         if (mounted) setUser(res.data);
@@ -35,12 +48,14 @@ export function UserProvider({ children }) {
       }
     })();
     return () => (mounted = false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handleAuthError = () => {
       localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       setUser(null);
+      setLoading(false); // Ensure loading terminates on auth errors
     };
     window.addEventListener("auth-error", handleAuthError);
     return () => window.removeEventListener("auth-error", handleAuthError);

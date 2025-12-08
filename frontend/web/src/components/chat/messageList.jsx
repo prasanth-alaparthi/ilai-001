@@ -1,14 +1,12 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { motion } from "framer-motion";
-import { FiCpu, FiCheck, FiCheckCircle, FiCornerUpLeft, FiCheckSquare } from "react-icons/fi";
+import { Cpu, Check, CheckCircle, CornerUpLeft, CheckSquare } from "lucide-react";
 
 export default function MessageList({ messages = [], meUserId, onReply, onAction }) {
   const elRef = useRef();
 
-  // No manual scroll needed with flex-col-reverse
-
   return (
-    <div ref={elRef} className="flex-1 overflow-y-auto p-6 flex flex-col-reverse gap-6 bg-slate-50 dark:bg-slate-900 custom-scrollbar scrollbar-hide">
+    <div ref={elRef} className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col-reverse gap-6 custom-scrollbar scrollbar-hide">
       {messages.map((m, i) => {
         const isMe = m.senderId === meUserId;
         const isAi = m.type === "AI_RESPONSE" || m.senderId === "AI_BOT";
@@ -18,7 +16,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
         if (isSystem) {
           return (
             <div key={m.id || i} className="flex justify-center my-4">
-              <span className="text-xs font-medium text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+              <span className="text-xs font-mono font-bold text-secondary bg-black/5 dark:bg-white/5 px-3 py-1 rounded-full border border-black/10 dark:border-black/5 dark:border-white/10 uppercase tracking-wide">
                 {m.content}
               </span>
             </div>
@@ -27,73 +25,74 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
 
         return (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             key={m.id || i}
-            className={`flex gap-3 group/msg ${isMe ? "flex-row-reverse" : "flex-row"}`}
+            className={`flex gap-4 group/msg ${isMe ? "flex-row-reverse" : "flex-row"}`}
           >
             {/* Avatar */}
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0 ${isMe ? "bg-indigo-100 text-indigo-600" :
-              isAi ? "bg-purple-100 text-purple-600" : "bg-white text-slate-600 border border-slate-200"
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shadow-lg flex-shrink-0 border border-black/5 dark:border-white/10 ${isMe ? "bg-accent-glow text-white shadow-glow" :
+              isAi ? "bg-purple-500/20 text-purple-400" : "bg-black/5 dark:bg-white/5 text-secondary"
               }`}>
-              {isMe ? "ME" : isAi ? <FiCpu size={14} /> : (m.senderId || "?").substring(0, 2).toUpperCase()}
+              {isMe ? "ME" : isAi ? <Cpu size={16} /> : (m.senderId || "?").substring(0, 2).toUpperCase()}
             </div>
 
-            <div className={`max-w-[70%] flex flex-col relative ${isMe ? "items-end" : "items-start"}`}>
+            <div className={`max-w-[75%] md:max-w-[65%] flex flex-col relative ${isMe ? "items-end" : "items-start"}`}>
 
               {/* Actions */}
-              <div className={`absolute top-2 ${isMe ? "-left-16" : "-right-16"} flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity`}>
+              <div className={`absolute top-0 ${isMe ? "-left-14" : "-right-14"} flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-200`}>
                 <button
                   onClick={() => onReply(m)}
-                  className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+                  className="p-2 text-secondary hover:text-accent-glow bg-black/5 dark:bg-white/5 rounded-full shadow-lg border border-black/10 dark:border-black/5 dark:border-white/10 hover:border-accent-glow/50 transition-all"
                   title="Reply"
                 >
-                  <FiCornerUpLeft size={14} />
+                  <CornerUpLeft size={14} />
                 </button>
                 <button
                   onClick={() => onAction && onAction(m, 'TASK')}
-                  className="p-1.5 text-slate-400 hover:text-green-600 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+                  className="p-2 text-secondary hover:text-green-400 bg-black/5 dark:bg-white/5 rounded-full shadow-lg border border-black/10 dark:border-black/5 dark:border-white/10 hover:border-green-400/50 transition-all"
                   title="Create Task"
                 >
-                  <FiCheckSquare size={14} />
+                  <CheckSquare size={14} />
                 </button>
               </div>
 
-              <div className={`px-5 py-3 rounded-2xl shadow-sm text-sm leading-relaxed relative group ${isMe
-                ? "bg-indigo-600 text-white rounded-tr-none"
+              <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed relative shadow-xl backdrop-blur-sm border ${isMe
+                ? "bg-accent-glow text-white rounded-tr-sm border-white/10"
                 : isAi
-                  ? "bg-white border border-purple-100 text-slate-800 rounded-tl-none shadow-purple-100"
-                  : "bg-white border border-slate-100 text-slate-800 rounded-tl-none"
+                  ? "bg-black/5 dark:bg-white/5 text-primary rounded-tl-sm border-purple-500/20 shadow-purple-900/10"
+                  : "bg-black/5 dark:bg-white/5 text-primary rounded-tl-sm border-black/10 dark:border-black/5 dark:border-white/10"
                 }`}>
 
                 {/* Replied Context */}
                 {repliedMsg && (
-                  <div className={`mb-2 text-xs border-l-2 pl-2 opacity-80 ${isMe ? "border-indigo-300" : "border-slate-300"}`}>
-                    <div className="font-semibold opacity-75">{repliedMsg.senderId === meUserId ? "You" : repliedMsg.senderId}</div>
-                    <div className="truncate">{repliedMsg.content || "Media"}</div>
+                  <div className={`mb-2 text-xs border-l-2 pl-3 py-1 rounded bg-black/10 ${isMe ? "border-black/5 dark:border-white/100 text-white/80" : "border-accent-glow text-secondary"}`}>
+                    <div className="font-bold mb-0.5">{repliedMsg.senderId === meUserId ? "You" : repliedMsg.senderId}</div>
+                    <div className="truncate opacity-80 italic">{repliedMsg.content || "Media"}</div>
                   </div>
                 )}
 
                 {/* Media */}
                 {m.mediaUrl && (
-                  <div className="mb-2">
+                  <div className="mb-3 mt-1 overflow-hidden rounded-lg">
                     {m.type === 'VIDEO' ? (
-                      <video src={m.mediaUrl} controls className="rounded-lg max-w-full max-h-60 object-cover" />
+                      <video src={m.mediaUrl} controls className="w-full max-h-60 object-cover" />
                     ) : m.type === 'AUDIO' ? (
                       <audio src={m.mediaUrl} controls className="w-full" />
                     ) : (
-                      <img src={m.mediaUrl} alt="Attachment" className="rounded-lg max-w-full max-h-60 object-cover" />
+                      <img src={m.mediaUrl} alt="Attachment" className="w-full max-h-60 object-cover hover:scale-105 transition-transform duration-500 cursor-pointer" />
                     )}
                   </div>
                 )}
 
-                {m.content}
+                <div className="whitespace-pre-wrap">{m.content}</div>
               </div>
-              <div className={`text-[10px] mt-1 px-1 flex items-center gap-1 ${isMe ? "justify-end text-slate-400" : "text-slate-400"}`}>
+
+              <div className={`text-[10px] mt-1.5 px-1 flex items-center gap-1.5 font-mono ${isMe ? "justify-end text-secondary/70" : "text-secondary/50"}`}>
                 <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 {isMe && (
                   <span className="ml-1">
-                    {m.status === 'READ' ? <FiCheckCircle size={12} className="text-blue-500" /> : <FiCheck size={12} />}
+                    {m.status === 'READ' ? <CheckCircle size={12} className="text-accent-glow" /> : <Check size={12} />}
                   </span>
                 )}
               </div>

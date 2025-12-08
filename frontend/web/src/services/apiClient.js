@@ -65,11 +65,18 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       return new Promise((resolve, reject) => {
-        apiClient.post("/auth/refresh", {}, { withCredentials: true })
+        const refreshToken = localStorage.getItem("refreshToken");
+        const refreshPayload = refreshToken ? { refreshToken } : {};
+
+        apiClient.post("/auth/refresh", refreshPayload, { withCredentials: true })
           .then(response => {
             const { accessToken } = response.data;
             if (accessToken) {
               localStorage.setItem("accessToken", accessToken);
+              // Also update refreshToken if provided
+              if (response.data.refreshToken) {
+                localStorage.setItem("refreshToken", response.data.refreshToken);
+              }
               apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
               originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
               processQueue(null, accessToken);

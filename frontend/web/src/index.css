@@ -1,195 +1,98 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-surface-50 text-surface-900 dark:bg-background dark:text-surface-100 font-sans antialiased transition-colors duration-300;
-  }
+    :root {
+        /* Light Mode Defaults */
+        --color-background: 250 250 250;
+        /* #fafafa */
+        --color-surface: 255 255 255;
+        /* #ffffff */
+        --color-primary: 24 24 27;
+        /* #18181b (zinc-900) */
+        --color-secondary: 113 113 122;
+        /* #71717a (zinc-500) */
+        --color-border: 0 0 0;
+        /* #000000 (Applied as border/10 in config) */
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-display font-bold tracking-tight;
-  }
+        --color-accent-blue: 74 144 226;
+        --color-accent-green: 45 80 54;
+        --color-accent-glow: 74 144 226;
+    }
+
+    .dark {
+        /* Dark Mode Overrides */
+        --color-background: 10 10 10;
+        /* #0a0a0a */
+        --color-surface: 18 18 18;
+        /* #121212 */
+        --color-primary: 250 250 250;
+        /* #fafafa */
+        --color-secondary: 161 161 170;
+        /* #a1a1aa */
+        --color-border: 255 255 255;
+
+        --color-accent-blue: 74 144 226;
+        /* Brighter blue for dark mode visibility */
+        --color-accent-green: 74 222 128;
+        /* Brighter green for dark mode */
+        --color-accent-glow: 99 179 237;
+        /* Light blue glow for dark mode - wcag AA compliant */
+    }
+
+    body {
+        @apply bg-background text-primary antialiased font-sans selection:bg-accent-glow selection:text-white transition-colors duration-300;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-serif tracking-tight;
+    }
 }
 
-@layer utilities {
-  .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-lg;
-  }
+@layer components {
 
-  .glass-dark {
-    @apply bg-surface-900/70 backdrop-blur-md border border-surface-700/50 shadow-lg;
-  }
+    /* Glassmorphism Utilities */
+    .glass-card {
+        @apply bg-glass backdrop-blur-md border border-border rounded-xl shadow-lg transition-all duration-300 hover:border-white/20 hover:bg-glass-hover;
+    }
 
-  .glass-panel {
-    @apply bg-white/80 dark:bg-surface-800/80 backdrop-blur-lg border border-surface-200 dark:border-surface-700 shadow-xl;
-  }
+    .glass-panel {
+        @apply bg-white/70 dark:bg-surface/50 backdrop-blur-xl border border-black/5 dark:border-white/10;
+    }
 
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-secondary-500;
-  }
+    /* Form Elements */
+    .input-minimal {
+        @apply bg-transparent border-b border-secondary/30 px-0 py-2 focus:outline-none focus:border-primary transition-colors duration-300 w-full font-light text-primary placeholder:text-secondary/50;
+    }
 
-  /* Thin scrollbar utility */
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 3px;
-    height: 3px;
-  }
+    /* Buttons */
+    .btn-primary {
+        @apply bg-primary text-background px-6 py-2.5 rounded-full font-medium tracking-wide hover:bg-white hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-95;
+    }
 
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
+    .btn-ghost {
+        @apply text-secondary hover:text-primary transition-colors duration-200;
+    }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-surface-300 dark:bg-surface-700 rounded-full;
-  }
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-400 dark:bg-surface-600;
-  }
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
 
-  /* Hide Scrollbar */
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-}
-
-/* Custom Scrollbar (Default) */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-surface-300 dark:bg-surface-700 rounded-full hover:bg-surface-400 dark:hover:bg-surface-600 transition-colors;
-}
-
-/* Prose overrides for dark mode */
-.dark .prose {
-  @apply prose-invert;
-}
-
-.prose pre {
-  @apply bg-surface-900 dark:bg-black/50 border border-surface-700/50;
-}
-
-/* Animations */
-.animate-enter {
-  animation: enter 0.5s ease-out forwards;
-}
-
-@keyframes enter {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Tiptap Placeholder */
-.is-editor-empty:first-child::before {
-  color: #9ca3af;
-  /* text-surface-400 */
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-.dark .is-editor-empty:first-child::before {
-  color: #9ca3af;
-  /* text-surface-400 */
-}
-
-/* 3D Transform Utilities for Flashcards */
-.perspective-1000 {
-  perspective: 1000px;
-}
-
-.transform-style-3d {
-  transform-style: preserve-3d;
-}
-
-.backface-hidden {
-  backface-visibility: hidden;
-}
-
-.rotate-y-180 {
-  transform: rotateY(180deg);
-}
-
-/* Ensure highlighted text is readable in dark mode */
-mark {
-  color: #000000 !important;
-}
-
-/* --- Modern Calendar Styles --- */
-.modern-calendar .rbc-header {
-  @apply py-4 font-bold text-slate-500 dark:text-slate-400 uppercase text-xs tracking-wider border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-black;
-}
-
-.modern-calendar .rbc-month-view,
-.modern-calendar .rbc-time-view,
-.modern-calendar .rbc-agenda-view {
-  @apply border-none;
-}
-
-.modern-calendar .rbc-day-bg {
-  @apply border-l border-slate-50 dark:border-slate-800/50;
-}
-
-.modern-calendar .rbc-off-range-bg {
-  @apply bg-slate-50/50 dark:bg-slate-900/30;
-}
-
-.modern-calendar .rbc-today {
-  @apply bg-indigo-50/30 dark:bg-indigo-900/10;
-}
-
-.modern-calendar .rbc-event {
-  @apply rounded-md shadow-sm border-none px-2 py-1 text-xs font-semibold;
-}
-
-.modern-calendar .rbc-time-content {
-  @apply border-t border-slate-100 dark:border-slate-800;
-}
-
-.modern-calendar .rbc-timeslot-group {
-  @apply border-b border-slate-50 dark:border-slate-800/50;
-}
-
-.modern-calendar .rbc-time-gutter .rbc-timeslot-group {
-  @apply border-none;
-}
-
-.modern-calendar .rbc-label {
-  @apply text-xs font-medium text-slate-400 py-2 pr-2;
-}
-
-.modern-calendar .rbc-current-time-indicator {
-  @apply bg-red-500 h-[2px];
-}
-
-/* Hide default toolbar since we use custom one */
-.modern-calendar .rbc-toolbar {
-  display: none;
+    ::-webkit-scrollbar-thumb {
+        @apply bg-secondary/20 rounded-full hover:bg-secondary/40 transition-colors;
+    }
 }
