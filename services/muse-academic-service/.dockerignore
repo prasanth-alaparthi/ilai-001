@@ -1,0 +1,30 @@
+# Source code (already compiled into JAR)
+src
+
+# Build files
+.mvn
+mvnw
+mvnw.cmd
+pom.xml
+
+# Development files
+.git
+.gitignore
+*.md
+.vscode
+.idea
+
+# Test files
+**/test
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files
+Dockerfile*
+docker-compose*
+.dockerignore

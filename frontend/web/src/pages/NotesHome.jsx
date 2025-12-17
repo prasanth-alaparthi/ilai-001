@@ -5,7 +5,7 @@ import {
   Plus, Folder, ChevronRight, ChevronDown, ChevronLeft,
   Star, Sidebar, Share2, Clock, Mic, Link as LinkIcon,
   Trash2, Search, Grid, List, Cpu, AlertCircle, Database,
-  Edit2, Trash, FileText, MoreHorizontal
+  Edit2, Trash, FileText, MoreHorizontal, Sparkles, FolderPlus
 } from "lucide-react";
 import { notesService } from "../services/notesService";
 import RichNoteEditor from "../components/RichNoteEditor";
@@ -18,7 +18,9 @@ import BacklinksModal from "../components/modals/BacklinksModal";
 import TranscribeModal from "../components/modals/TranscribeModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import AiChat from "../components/AiChat";
+import AIToolsPanel from "../components/AIToolsPanel";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
+import SectionTree from "../components/notes/SectionTree";
 
 const getDisplayTitle = (note, isPlaceholder = false) => {
   if (note.title && note.title.trim() !== "" && note.title !== "Untitled Note") {
@@ -58,6 +60,16 @@ export default function NotesHome() {
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved"); // 'saved', 'saving', 'error'
   const saveTimeoutRef = React.useRef(null);
+  const selectedNoteRef = React.useRef(null);
+  const contentRef = React.useRef(null); // Track latest content to avoid stale closures
+
+  // Keep refs in sync with state to avoid stale closures in debounced callbacks
+  React.useEffect(() => {
+    selectedNoteRef.current = selectedNote;
+    if (selectedNote) {
+      contentRef.current = selectedNote.content;
+    }
+  }, [selectedNote]);
 
   // Responsive sidebar - default closed on mobile, open on desktop  
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -98,6 +110,7 @@ export default function NotesHome() {
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [showBacklinksModal, setShowBacklinksModal] = useState(false);
   const [showTranscribeModal, setShowTranscribeModal] = useState(false);
+  const [showAITools, setShowAITools] = useState(false);
 
   const [confirmationModal, setConfirmationModal] = useState({
     isOpen: false, title: "", message: "", onConfirm: () => { }, isDanger: false, showCancel: true, confirmText: "Confirm"
@@ -125,7 +138,7 @@ export default function NotesHome() {
       if (notebookId) {
         setExpandedNotebook(notebookId);
         try {
-          const chaptersData = await notesService.listChapters(notebookId);
+          const chaptersData = await notesService.listChaptersHierarchical(notebookId);
           setChapters(prev => ({ ...prev, [notebookId]: chaptersData }));
 
           if (chapterId) {
@@ -204,7 +217,7 @@ export default function NotesHome() {
       setExpandedNotebook(notebookId);
       if (!sections[notebookId]) {
         try {
-          const data = await notesService.listChapters(notebookId);
+          const data = await notesService.listChaptersHierarchical(notebookId);
           setChapters(prev => ({ ...prev, [notebookId]: data }));
         } catch (err) {
           console.error("Failed to load sections", err);
@@ -239,7 +252,9 @@ export default function NotesHome() {
 
   const selectNote = async (note) => {
     try {
+      console.log("[DEBUG] selectNote called for note:", note.id);
       const fullNote = await notesService.getNote(note.id);
+      console.log("[DEBUG] getNote returned:", fullNote.id, fullNote.title, "content length:", JSON.stringify(fullNote.content)?.length);
       setSelectedNote(fullNote);
       setViewMode("editor");
 
@@ -249,6 +264,7 @@ export default function NotesHome() {
       newParams.set("note", note.id);
       setSearchParams(newParams);
     } catch (err) {
+      console.error("[DEBUG] selectNote failed:", err);
       showAlert("Error", "Failed to load note content.");
     }
   };
@@ -267,8 +283,9 @@ export default function NotesHome() {
   const handleUpdateNote = (content) => {
     if (!selectedNote) return;
 
-    // Update local state immediately for responsiveness
+    // Update local state AND ref immediately for responsiveness
     setSelectedNote(prev => ({ ...prev, content }));
+    contentRef.current = content; // Critical: update ref immediately so debounced save uses latest
     setSaveStatus("saving");
 
     // Clear existing timer
@@ -276,10 +293,19 @@ export default function NotesHome() {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Debounce API call
+    // Debounce API call - use refs to get current values (avoids stale closure)
     saveTimeoutRef.current = setTimeout(async () => {
+      const currentNote = selectedNoteRef.current;
+      const currentContent = contentRef.current; // Use ref for latest content
+      console.log("[DEBUG] Save triggered, currentNote:", currentNote?.id, currentNote?.title);
+      if (!currentNote) {
+        console.log("[DEBUG] currentNote is null, aborting save");
+        return;
+      }
       try {
-        await notesService.updateNote(selectedNote.id, selectedNote.title, content);
+        console.log("[DEBUG] Calling updateNote with:", currentNote.id, currentNote.title, "content length:", JSON.stringify(currentContent)?.length);
+        await notesService.updateNote(currentNote.id, currentNote.title, currentContent);
+        console.log("[DEBUG] Save successful");
         setSaveStatus("saved");
       } catch (err) {
         console.error("Auto-save failed", err);
@@ -299,8 +325,11 @@ export default function NotesHome() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(async () => {
+      const currentNote = selectedNoteRef.current;
+      const currentContent = contentRef.current; // Use ref for latest content
+      if (!currentNote) return;
       try {
-        await notesService.updateNote(selectedNote.id, newTitle, selectedNote.content);
+        await notesService.updateNote(currentNote.id, newTitle, currentContent);
         setSaveStatus("saved");
       } catch (err) {
         console.error("Auto-save failed", err);
@@ -567,22 +596,37 @@ export default function NotesHome() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden space-y-0.5 ml-4 border-l border-white/10 pl-2"
+                    className="overflow-hidden ml-4 border-l border-white/10 pl-2"
                   >
-                    {sections[notebook.id]?.map(section => (
-                      <button
-                        key={section.id}
-                        onClick={() => selectChapter(section)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-colors ${selectedChapter?.id === section.id ? 'bg-accent-blue/20 text-accent-glow' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
-                      >
-                        <span className="truncate">{section.title}</span>
-                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => handleRenameChapter(e, section)} className="p-1 text-secondary hover:text-primary"><Edit2 size={12} /></button>
-                          <button onClick={(e) => handleDeleteChapter(e, section)} className="p-1 text-secondary hover:text-red-400"><Trash size={12} /></button>
-                        </div>
-                      </button>
-                    ))}
-                    <button onClick={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-secondary/50 hover:text-primary transition-colors">
+                    <SectionTree
+                      sections={sections[notebook.id] || []}
+                      selectedId={selectedChapter?.id}
+                      onSelect={selectChapter}
+                      onCreateSection={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }}
+                      onCreateSubSection={async (parentId) => {
+                        const title = prompt("Enter sub-section name:");
+                        if (!title) return;
+                        try {
+                          const newSection = await notesService.createSubSection(parentId, title);
+                          // Refresh sections to get updated tree
+                          const chaptersData = await notesService.listChaptersHierarchical(notebook.id);
+                          setChapters(prev => ({ ...prev, [notebook.id]: chaptersData }));
+                        } catch (err) {
+                          console.error("Failed to create sub-section", err);
+                          showAlert("Error", "Failed to create sub-section.");
+                        }
+                      }}
+                      onRenameSection={(section) => {
+                        const e = { stopPropagation: () => { } };
+                        handleRenameChapter(e, section);
+                      }}
+                      onDeleteSection={(section) => {
+                        const e = { stopPropagation: () => { } };
+                        handleDeleteChapter(e, section);
+                      }}
+                      emptyMessage="No chapters yet"
+                    />
+                    <button onClick={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-secondary/50 hover:text-primary transition-colors mt-1">
                       <Plus size={12} /> Add Section
                     </button>
                   </motion.div>
@@ -631,6 +675,7 @@ export default function NotesHome() {
                 </span>
                 <div className="h-4 w-px bg-border mx-1 sm:mx-2 hidden sm:block" />
                 <button onClick={handleSuggestOrganization} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="AI Organize"><Cpu size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowAITools(!showAITools)} className={`p-1.5 sm:p-2 rounded-full transition-colors ${showAITools ? 'text-accent-glow bg-accent-glow/10' : 'text-secondary hover:text-primary hover:bg-white/5'}`} title="AI Study Tools"><Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowVersionsModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="History"><Clock size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowTranscribeModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Transcribe"><Mic size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowShareModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="Share"><Share2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
@@ -760,9 +805,10 @@ export default function NotesHome() {
                   />
                   <div className="prose prose-sm sm:prose-lg dark:prose-invert max-w-none prose-headings:font-serif prose-headings:text-primary prose-p:font-light prose-p:leading-relaxed prose-p:text-secondary prose-strong:text-primary prose-a:text-accent-glow prose-code:text-accent-glow prose-code:bg-white/5 prose-pre:bg-surface prose-pre:border prose-pre:border-white/10">
                     <RichNoteEditor
-                      content={selectedNote?.content}
+                      key={selectedNote?.id}
+                      value={selectedNote?.content}
                       onChange={handleUpdateNote}
-                      readOnly={false}
+                      noteId={selectedNote?.id}
                     />
                   </div>
                 </ErrorBoundary>
@@ -828,6 +874,14 @@ export default function NotesHome() {
         isDanger={confirmationModal.isDanger}
         showCancel={confirmationModal.showCancel}
         confirmText={confirmationModal.confirmText}
+      />
+
+      {/* AI Tools Panel */}
+      <AIToolsPanel
+        isOpen={showAITools}
+        onClose={() => setShowAITools(false)}
+        noteContent={selectedNote?.content}
+        noteTitle={selectedNote?.title}
       />
 
       <AiChat />

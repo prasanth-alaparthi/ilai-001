@@ -7,7 +7,7 @@ const TemplatesModal = ({ onSelect, onClose }) => {
 
   useEffect(() => {
     setIsLoading(true);
-    apiClient.get('/api/notes/templates')
+    apiClient.get('/notes/templates')
       .then(response => {
         setTemplates(response.data);
       })

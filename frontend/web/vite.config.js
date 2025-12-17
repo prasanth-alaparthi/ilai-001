@@ -21,6 +21,44 @@ export default defineConfig({
     include: ['long'], // Explicitly include 'long' for optimization
     exclude: ["libsignal-protocol"],
   },
+  build: {
+    // Increase chunk size warning limit (we'll optimize properly)
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for better caching and smaller initial load
+        manualChunks: {
+          // React core - rarely changes
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // UI libraries
+          'ui-vendor': ['framer-motion', 'lucide-react', '@headlessui/react'],
+          // Rich text editor (large, lazy load recommended)
+          'editor': [
+            '@tiptap/react',
+            '@tiptap/starter-kit',
+            '@tiptap/extension-link',
+            '@tiptap/extension-image',
+            '@tiptap/extension-placeholder',
+            '@tiptap/extension-highlight',
+            '@tiptap/extension-underline',
+          ],
+          // Charts library
+          'charts': ['recharts'],
+          // Calendar library
+          'calendar': ['react-big-calendar', 'date-fns'],
+          // Data fetching
+          'data': ['axios', '@tanstack/react-query'],
+          // State management
+          'state': ['zustand'],
+        },
+      },
+    },
+    // Enable source maps for production debugging
+    sourcemap: false,
+    // Minification settings
+    minify: 'esbuild',
+    target: 'es2020',
+  },
   server: {
     proxy: {
       // Proxy requests starting with /api/auth to the authentication service
@@ -37,9 +75,29 @@ export default defineConfig({
         target: 'http://localhost:8082',
         changeOrigin: true,
       },
-      // Proxy requests starting with /api/ai to the notes service
+      // Proxy requests starting with /api/ai to the AI service (centralized)
       '/api/ai': {
-        target: 'http://localhost:8082',
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/assistant to the AI service
+      '/api/assistant': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/personalization to the AI service
+      '/api/personalization': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/agents to the AI service
+      '/api/agents': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/search to the AI service
+      '/api/search': {
+        target: 'http://localhost:8088',
         changeOrigin: true,
       },
       // Proxy requests starting with /api/sections to the notes service
@@ -86,20 +144,25 @@ export default defineConfig({
         target: 'http://localhost:8082',
         changeOrigin: true,
       },
-      // Proxy requests starting with /api/chat to the chat service
+      // Proxy requests starting with /api/chat to the social service (merged)
       '/api/chat': {
-        target: 'http://localhost:8086',
+        target: 'http://localhost:8083',
         changeOrigin: true,
       },
-      // Proxy WebSocket requests to the chat service
+      // Proxy WebSocket requests to the social service
       '/ws-chat': {
-        target: 'http://localhost:8086',
+        target: 'http://localhost:8083',
         ws: true,
         changeOrigin: true,
       },
       // Proxy requests starting with /api/feed to the feed service
       '/api/feed': {
         target: 'http://localhost:8083',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/quantum to the quantum service
+      '/api/quantum': {
+        target: 'http://localhost:8092',
         changeOrigin: true,
       },
       '/uploads': {
@@ -111,9 +174,14 @@ export default defineConfig({
         target: 'http://localhost:8082',
         changeOrigin: true,
       },
-      // Proxy requests starting with /api/assignments to the classroom service (merged)
+      // Proxy requests starting with /api/assignments to the academic service (merged)
       '/api/assignments': {
-        target: 'http://localhost:8090',
+        target: 'http://localhost:8087',
+        changeOrigin: true,
+      },
+      // Proxy requests starting with /api/clubs to the academic service
+      '/api/clubs': {
+        target: 'http://localhost:8087',
         changeOrigin: true,
       },
       // Proxy all other /api requests to the main backend service

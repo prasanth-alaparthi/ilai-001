@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     Terminal, Cpu, Beaker, Calculator, ChevronRight,
-    Code, Activity, Play, Lock, Radio
+    Code, Activity, Play, Lock, Radio, Atom, Leaf
 } from 'lucide-react';
 
 const LabsDashboard = () => {
@@ -27,7 +27,8 @@ const LabsDashboard = () => {
             color: 'text-cyan-400',
             borderColor: 'border-cyan-400/30',
             bgHover: 'hover:bg-cyan-400/10',
-            path: '/labs/physics'
+            path: '/labs/physics',
+            progress: 45
         },
         {
             id: 'chemistry',
@@ -37,7 +38,8 @@ const LabsDashboard = () => {
             color: 'text-emerald-400',
             borderColor: 'border-emerald-400/30',
             bgHover: 'hover:bg-emerald-400/10',
-            path: '/labs/chemistry'
+            path: '/labs/chemistry',
+            progress: 30
         },
         {
             id: 'cs',
@@ -47,7 +49,8 @@ const LabsDashboard = () => {
             color: 'text-fuchsia-400',
             borderColor: 'border-fuchsia-400/30',
             bgHover: 'hover:bg-fuchsia-400/10',
-            path: '/labs/cs'
+            path: '/labs/cs',
+            progress: 60
         },
         {
             id: 'math',
@@ -57,12 +60,37 @@ const LabsDashboard = () => {
             color: 'text-amber-400',
             borderColor: 'border-amber-400/30',
             bgHover: 'hover:bg-amber-400/10',
-            path: '/labs/math'
+            path: '/labs/math',
+            progress: 25
+        },
+        {
+            id: 'quantum',
+            name: 'QUANTUM_SIM',
+            description: 'Quantum Circuits, Qubits, Entanglement.',
+            icon: Atom,
+            color: 'text-violet-400',
+            borderColor: 'border-violet-400/30',
+            bgHover: 'hover:bg-violet-400/10',
+            path: '/labs/quantum',
+            progress: 15,
+            isNew: true
+        },
+        {
+            id: 'biology',
+            name: 'BIO_LAB',
+            description: 'Cell Structure, DNA, Heart, Ecosystems.',
+            icon: Leaf,
+            color: 'text-green-400',
+            borderColor: 'border-green-400/30',
+            bgHover: 'hover:bg-green-400/10',
+            path: '/labs/biology',
+            progress: 20,
+            isNew: true
         }
     ];
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-gray-300 font-mono p-4 md:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-[#0a0a0a] text-gray-300 font-mono p-4 md:p-8 relative overflow-x-hidden">
             {/* Background Grid */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f1f_1px,transparent_1px),linear-gradient(to_bottom,#1f1f1f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 
@@ -164,13 +192,37 @@ const LabsDashboard = () => {
 
                                     <h3 className={`text-xl font-bold mb-2 tracking-tight ${subject.color}`}>
                                         {subject.name}
+                                        {subject.isNew && (
+                                            <span className="ml-2 text-xs font-normal bg-violet-500 text-white px-2 py-0.5 rounded-full">
+                                                NEW
+                                            </span>
+                                        )}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mb-6 font-sans">
+                                    <p className="text-sm text-gray-500 mb-4 font-sans">
                                         {subject.description}
                                     </p>
 
+                                    {/* Progress Bar */}
+                                    <div className="mb-4">
+                                        <div className="flex justify-between text-xs mb-1">
+                                            <span className="text-gray-500">Progress</span>
+                                            <span className={subject.color}>{subject.progress}%</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full bg-gradient-to-r ${subject.id === 'quantum' ? 'from-violet-500 to-purple-500' :
+                                                    subject.id === 'physics' ? 'from-cyan-500 to-blue-500' :
+                                                        subject.id === 'chemistry' ? 'from-emerald-500 to-green-500' :
+                                                            subject.id === 'cs' ? 'from-fuchsia-500 to-pink-500' :
+                                                                'from-amber-500 to-orange-500'
+                                                    }`}
+                                                style={{ width: `${subject.progress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="flex items-center text-xs font-bold tracking-wider text-gray-400 group-hover:text-white transition-colors">
-                                        INITIALIZE <ChevronRight size={14} className="ml-1" />
+                                        {subject.progress > 0 ? 'CONTINUE' : 'INITIALIZE'} <ChevronRight size={14} className="ml-1" />
                                     </div>
 
                                     {/* Decoration */}
@@ -181,11 +233,6 @@ const LabsDashboard = () => {
                             </Link>
                         ))}
 
-                        {/* Locked Module */}
-                        <div className="bg-[#050505] border border-gray-900 p-6 rounded-lg opacity-50 flex items-center justify-center flex-col gap-4">
-                            <Lock size={32} className="text-gray-700" />
-                            <span className="text-xs tracking-widest text-gray-700">BIOLOGY MODULE LOCKED</span>
-                        </div>
                     </div>
                 </div>
             </div>

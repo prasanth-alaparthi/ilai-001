@@ -76,6 +76,53 @@ public class NoteController extends BaseController {
         return ResponseEntity.ok(dto);
     }
 
+    @PostMapping("/notes")
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> payload, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        logger.info("CREATE NOTE REQUEST: Username: {}, Payload Keys: {}", username, payload.keySet());
+
+        String title = (String) payload.get("title");
+        JsonNode contentNode;
+        try {
+            Object contentObj = payload.get("content");
+            if (contentObj == null) {
+                logger.warn("Content object is null for note creation");
+                contentNode = objectMapper.createObjectNode();
+            } else {
+                contentNode = objectMapper.valueToTree(contentObj);
+            }
+            logger.debug("Parsed content node type: {}", contentNode.getNodeType());
+        } catch (IllegalArgumentException e) {
+            logger.error("Error parsing content for note creation", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Invalid content format", "error", e.getMessage()));
+        } catch (Exception e) {
+             logger.error("Unexpected error parsing content", e);
+             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                     .body(Map.of("message", "Error processing content", "error", e.getMessage()));
+        }
+
+        try {
+            Note note = service.createNote(username, title, contentNode);
+            logger.info("Note created successfully. ID: {}", note.getId());
+
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", note.getId());
+            m.put("title", note.getTitle());
+            m.put("content", note.getContent());
+            m.put("updatedAt", note.getUpdatedAt());
+
+            return ResponseEntity.ok(m);
+        } catch (Exception e) {
+            logger.error("Error in service.createNote", e);
+            throw e;
+        }
+    }
+
     @PostMapping("/sections/{sectionId}/notes")
     public ResponseEntity<?> create(@PathVariable Long sectionId, @RequestBody Map<String, Object> payload,
             Authentication auth) {
@@ -84,21 +131,34 @@ public class NoteController extends BaseController {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
+        logger.info("CREATE NOTE IN SECTION request: SectionID: {}, Username: {}", sectionId, username);
+
         String title = (String) payload.get("title");
         JsonNode contentNode;
         try {
-            contentNode = objectMapper.valueToTree(payload.get("content"));
+            Object contentObj = payload.get("content");
+             if (contentObj == null) {
+                 logger.warn("Content object is null for note creation in section");
+                 contentNode = objectMapper.createObjectNode();
+             } else {
+                 contentNode = objectMapper.valueToTree(contentObj);
+             }
         } catch (IllegalArgumentException e) {
+            logger.error("Error parsing content for note creation in section", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", "Invalid content format", "error", e.getMessage()));
         }
+
         Optional<Note> created = service.createInSection(sectionId, username, title, contentNode);
 
         if (created.isEmpty()) {
+            logger.warn("Section not found for note creation: {}", sectionId);
             return ResponseEntity.status(404).body(Map.of("message", "Section not found"));
         }
 
         Note note = created.get();
+        logger.info("Note created successfully in section. ID: {}", note.getId());
+
         Map<String, Object> m = new HashMap<>();
         m.put("id", note.getId());
         m.put("title", note.getTitle());
@@ -117,7 +177,10 @@ public class NoteController extends BaseController {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
+        logger.info("UPDATE NOTE REQUEST: ID: {}, Username: {}", id, username);
+
         if (!service.canEdit(id, username)) {
+            logger.warn("Permission denied for editing note: {}", id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to edit this note."));
         }
@@ -125,8 +188,19 @@ public class NoteController extends BaseController {
         String title = (String) payload.get("title");
         JsonNode contentNode;
         try {
-            contentNode = objectMapper.valueToTree(payload.get("content"));
+            Object contentObj = payload.get("content");
+            if (contentObj == null) {
+                // If content is missing in payload, it might mean we shouldn't update it, or set it to empty
+                // Assuming null content in update payload means "keep existing" or "empty"?
+                // Standard behavior for map puts often implies replacement.
+                // Let's assume the frontend sends the whole object. If strict null, we treat as json null.
+                logger.warn("Content object is null for note update");
+                 contentNode = null; // Let service handle null to mean "no change" if appropriate, or empty
+            } else {
+                 contentNode = objectMapper.valueToTree(contentObj);
+            }
         } catch (IllegalArgumentException e) {
+            logger.error("Error parsing content for note update", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", "Invalid content format", "error", e.getMessage()));
         }
@@ -134,6 +208,7 @@ public class NoteController extends BaseController {
         Optional<Note> updated = service.updateNote(id, username, title, contentNode);
         if (updated.isPresent()) {
             Note n = updated.get();
+            logger.info("Note updated successfully: {}", id);
             Map<String, Object> m = new HashMap<>();
             m.put("id", n.getId());
             m.put("title", n.getTitle());
@@ -141,6 +216,7 @@ public class NoteController extends BaseController {
             m.put("updatedAt", n.getUpdatedAt());
             return ResponseEntity.ok(m);
         } else {
+            logger.warn("Note not found for update: {}", id);
             return ResponseEntity.status(404).body(Map.of("message", "Note not found"));
         }
     }

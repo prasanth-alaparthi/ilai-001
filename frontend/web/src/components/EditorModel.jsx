@@ -29,7 +29,7 @@ export default function EditorModal({ open, onClose, noteId = null, onSaved }) {
     firstLoad.current = false;
 
     if (noteId) {
-      apiClient.get(`/api/notes/${noteId}`).then(res => {
+      apiClient.get(`/notes/${noteId}`).then(res => {
         const n = res.data;
         if (n) {
           setTitle(n.title || "");
@@ -57,8 +57,8 @@ export default function EditorModal({ open, onClose, noteId = null, onSaved }) {
       const currentContent = editorInstance ? editorInstance.getJSON() : content;
       const dto = { title, content: currentContent };
       let res;
-      if (noteId) res = await apiClient.put(`/api/notes/${noteId}`, dto);
-      else res = await apiClient.post("/api/notes", dto);
+      if (noteId) res = await apiClient.put(`/notes/${noteId}`, dto);
+      else res = await apiClient.post("/notes", dto);
       localStorage.removeItem(localKey);
       setStatus("Saved");
       onSaved && onSaved(res.data);

@@ -1,0 +1,223 @@
+# Cloud Build configuration for ILAI
+# Deploys all services to Cloud Run
+
+substitutions:
+  _REGION: asia-south1
+  _PROJECT_ID: ${PROJECT_ID}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+steps:
+  # Build and deploy Auth Service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-auth
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/muse-auth-service:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/muse-auth-service:latest'
+      - '-f'
+      - 'Dockerfile.prod'
+      - 'services/muse-auth-service'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-auth
+    args: ['push', '--all-tags', 'gcr.io/$PROJECT_ID/muse-auth-service']
+    waitFor: ['build-auth']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-auth
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'muse-auth-service'
+      - '--image=gcr.io/$PROJECT_ID/muse-auth-service:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--port=8081'
+      - '--set-env-vars=SPRING_PROFILES_ACTIVE=prod'
+      - '--set-secrets=DB_URL=db-url:latest,DB_PASSWORD=db-password:latest,JWT_SECRET=jwt-secret:latest'
+    waitFor: ['push-auth']
+
+  # Build and deploy Notes Service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-notes
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/muse-notes-service:$COMMIT_SHA'
+      - '-f'
+      - 'Dockerfile.prod'
+      - 'services/muse-notes-service'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-notes
+    args: ['push', 'gcr.io/$PROJECT_ID/muse-notes-service:$COMMIT_SHA']
+    waitFor: ['build-notes']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-notes
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'muse-notes-service'
+      - '--image=gcr.io/$PROJECT_ID/muse-notes-service:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--port=8082'
+      - '--set-secrets=DB_URL=db-url:latest,DB_PASSWORD=db-password:latest'
+    waitFor: ['push-notes']
+
+  # Build and deploy AI Service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-ai
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/muse-ai-service:$COMMIT_SHA'
+      - '-f'
+      - 'Dockerfile.prod'
+      - 'services/muse-ai-service'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-ai
+    args: ['push', 'gcr.io/$PROJECT_ID/muse-ai-service:$COMMIT_SHA']
+    waitFor: ['build-ai']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-ai
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'muse-ai-service'
+      - '--image=gcr.io/$PROJECT_ID/muse-ai-service:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=1Gi'
+      - '--cpu=2'
+      - '--port=8088'
+      - '--set-secrets=DB_URL=db-url:latest,GEMINI_API_KEY=gemini-key:latest,GROQ_API_KEY=groq-key:latest,REDIS_HOST=redis-host:latest'
+    waitFor: ['push-ai']
+
+  # Build and deploy Academic Service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-academic
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/muse-academic-service:$COMMIT_SHA'
+      - '-f'
+      - 'Dockerfile.prod'
+      - 'services/muse-academic-service'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-academic
+    args: ['push', 'gcr.io/$PROJECT_ID/muse-academic-service:$COMMIT_SHA']
+    waitFor: ['build-academic']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-academic
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'muse-academic-service'
+      - '--image=gcr.io/$PROJECT_ID/muse-academic-service:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--port=8090'
+      - '--set-secrets=DB_URL=db-url:latest'
+    waitFor: ['push-academic']
+
+  # Build and deploy Social Service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-social
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/muse-social-service:$COMMIT_SHA'
+      - '-f'
+      - 'Dockerfile.prod'
+      - 'services/muse-social-service'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-social
+    args: ['push', 'gcr.io/$PROJECT_ID/muse-social-service:$COMMIT_SHA']
+    waitFor: ['build-social']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-social
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'muse-social-service'
+      - '--image=gcr.io/$PROJECT_ID/muse-social-service:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--port=8086'
+      - '--set-secrets=DB_URL=db-url:latest'
+    waitFor: ['push-social']
+
+  # Build and deploy Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-frontend
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/ilai-frontend:$COMMIT_SHA'
+      - 'frontend/web'
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-frontend
+    args: ['push', 'gcr.io/$PROJECT_ID/ilai-frontend:$COMMIT_SHA']
+    waitFor: ['build-frontend']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-frontend
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'ilai-frontend'
+      - '--image=gcr.io/$PROJECT_ID/ilai-frontend:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=256Mi'
+      - '--port=80'
+    waitFor: ['push-frontend', 'deploy-auth', 'deploy-notes', 'deploy-ai']
+
+images:
+  - 'gcr.io/$PROJECT_ID/muse-auth-service:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/muse-notes-service:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/muse-ai-service:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/muse-academic-service:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/muse-social-service:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/ilai-frontend:$COMMIT_SHA'
+
+timeout: 1800s

@@ -1,6 +1,7 @@
 package com.muse.notes.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -10,27 +11,30 @@ import reactor.core.publisher.Mono;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class EmbeddingService {
 
     private final WebClient webClient;
     private final String geminiApiKey;
 
-    public EmbeddingService(
-            @Value("${gemini.api.url}") String geminiApiUrl,
-            @Value("${gemini.embedding-key}") String geminiApiKey) {
-        this.webClient = WebClient.builder().baseUrl(geminiApiUrl).build();
+    public EmbeddingService(@Value("${gemini.embedding-key:${GEMINI_API_KEY:}}") String geminiApiKey) {
+        this.webClient = WebClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent")
+                .build();
         this.geminiApiKey = geminiApiKey;
     }
 
     public Mono<float[]> getEmbedding(String text) {
-        if (geminiApiKey == null || geminiApiKey.isBlank() || geminiApiKey.contains("YOUR_GOOGLE_AI_API_KEY")) {
+        if (geminiApiKey == null || geminiApiKey.isBlank()) {
             return Mono.error(new IllegalStateException(
-                    "Google AI API Key is not configured. Please set the GOOGLE_AI_API_KEY environment variable."));
+                    "Google AI API Key is not configured. Please set GEMINI_API_KEY environment variable."));
         }
 
-        // Gemini API request body structure
+        if (text == null || text.isBlank()) {
+            return Mono.just(new float[768]);
+        }
+
         Map<String, Object> content = Map.of("parts", new Object[] { Map.of("text", text) });
-        // Remove "model" from body as it is in the URL
         Map<String, Object> req = Map.of("content", content);
 
         return webClient.post()
@@ -41,14 +45,12 @@ public class EmbeddingService {
                 .onStatus(status -> status.isError(), response -> {
                     return response.bodyToMono(String.class)
                             .flatMap(errorBody -> {
-                                System.err.println(
-                                        "Gemini Embedding API Error: " + response.statusCode() + " - " + errorBody);
+                                log.error("Gemini Embedding API Error: {} - {}", response.statusCode(), errorBody);
                                 return Mono.error(new RuntimeException(
                                         "Gemini Embedding API Error: " + response.statusCode() + " - " + errorBody));
                             });
                 })
                 .bodyToMono(JsonNode.class)
-                .doOnError(e -> System.err.println("Gemini Embedding Service Exception: " + e.getMessage()))
                 .map(response -> {
                     JsonNode embeddingNode = response.path("embedding").path("values");
                     if (embeddingNode.isArray()) {

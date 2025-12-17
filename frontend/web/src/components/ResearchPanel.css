@@ -1,0 +1,423 @@
+/* ResearchPanel.css - Phase 3 Deep Research UI */
+
+.research-panel {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    color: #e2e8f0;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.research-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.research-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #94a3b8;
+    font-size: 24px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+/* Search Input Section */
+.research-input-section {
+    margin-bottom: 24px;
+}
+
+.search-container {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.research-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #e2e8f0;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.research-input:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.2);
+}
+
+.research-input::placeholder {
+    color: #64748b;
+}
+
+.depth-select {
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.depth-select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.research-btn {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.research-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+}
+
+.research-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading State */
+.research-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.loading-animation {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.loading-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+
+    40% {
+        transform: scale(1);
+    }
+}
+
+.research-loading p {
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* Error State */
+.research-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 16px;
+    border-radius: 12px;
+    color: #fca5a5;
+    margin-bottom: 16px;
+}
+
+/* Results Section */
+.research-results {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Confidence Bar */
+.confidence-bar {
+    position: relative;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #60a5fa, #a78bfa);
+    border-radius: 4px;
+    transition: width 0.5s ease-out;
+}
+
+.confidence-label {
+    position: absolute;
+    right: 0;
+    top: 12px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* Answer Section */
+.answer-section {
+    margin-bottom: 24px;
+}
+
+.answer-section h3 {
+    margin: 0 0 12px 0;
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.answer-text {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    border-radius: 16px;
+    line-height: 1.7;
+    font-size: 1rem;
+}
+
+/* Citation Badges */
+.citation-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 0 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    vertical-align: super;
+}
+
+.citation-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Citations Section */
+.citations-section {
+    margin-bottom: 24px;
+}
+
+.citations-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.citations-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.citation-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.citation-card:hover {
+    border-color: rgba(96, 165, 250, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.citation-card.expanded {
+    border-color: rgba(96, 165, 250, 0.5);
+    background: rgba(96, 165, 250, 0.05);
+}
+
+.citation-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.citation-icon {
+    font-size: 1.2rem;
+}
+
+.citation-number {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.citation-title {
+    flex: 1;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.citation-details {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+
+    to {
+        opacity: 1;
+        max-height: 200px;
+    }
+}
+
+.citation-snippet {
+    margin: 0 0 12px 0;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.citation-link {
+    display: inline-flex;
+    align-items: center;
+    color: #60a5fa;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+}
+
+.citation-link:hover {
+    color: #93c5fd;
+}
+
+.citation-relevance {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+/* Follow-up Section */
+.followup-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.followup-section h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.followup-questions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.followup-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 16px;
+    border-radius: 20px;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+}
+
+.followup-btn:hover {
+    background: rgba(96, 165, 250, 0.1);
+    border-color: rgba(96, 165, 250, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+    .research-panel {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .search-container {
+        flex-direction: column;
+    }
+
+    .depth-select,
+    .research-btn {
+        width: 100%;
+    }
+
+    .citation-title {
+        max-width: 150px;
+    }
+}

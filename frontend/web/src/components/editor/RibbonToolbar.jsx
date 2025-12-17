@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import {
     FiBold, FiItalic, FiUnderline, FiList, FiCheckSquare, FiImage, FiType,
     FiLink, FiCode, FiMinus, FiRotateCcw, FiRotateCw, FiTrash2,
-    FiMaximize, FiMinimize, FiDroplet, FiEdit3, FiCpu, FiAlignLeft, FiAlignCenter, FiAlignRight
+    FiMaximize, FiMinimize, FiDroplet, FiEdit3, FiCpu, FiAlignLeft, FiAlignCenter, FiAlignRight,
+    FiCopy, FiScissors, FiClipboard, FiZoomIn, FiZoomOut, FiGrid
 } from 'react-icons/fi';
 import AiMenu from '../AiMenu';
 
-const RibbonToolbar = ({ editor }) => {
+const RibbonToolbar = ({ editor, zoom = 100, onZoomChange }) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showAiMenu, setShowAiMenu] = useState(false);
+    const [currentZoom, setCurrentZoom] = useState(zoom);
     const menuRef = React.useRef(null);
 
     if (!editor) return null;
@@ -147,6 +149,22 @@ const RibbonToolbar = ({ editor }) => {
 
                 <Divider />
 
+                {/* Clipboard - Cut, Copy, Paste */}
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <ToolButton onClick={() => document.execCommand('cut')} icon={FiScissors} label="Cut" />
+                    <ToolButton onClick={() => document.execCommand('copy')} icon={FiCopy} label="Copy" />
+                    <ToolButton onClick={async () => {
+                        try {
+                            const text = await navigator.clipboard.readText();
+                            editor.commands.insertContent(text);
+                        } catch (e) {
+                            document.execCommand('paste');
+                        }
+                    }} icon={FiClipboard} label="Paste" />
+                </div>
+
+                <Divider />
+
                 {/* Font Controls */}
                 <div className="flex items-center flex-shrink-0">
                     <FontSelect />
@@ -219,7 +237,33 @@ const RibbonToolbar = ({ editor }) => {
                 <div className="flex items-center gap-0.5 flex-shrink-0">
                     <ToolButton onClick={() => { const url = window.prompt('Enter image URL'); if (url) editor.chain().focus().setImage({ src: url }).run(); }} icon={FiImage} label="Image" />
                     <ToolButton onClick={() => { const url = window.prompt('Enter link URL'); if (url) editor.chain().focus().setLink({ href: url }).run(); }} isActive={editor.isActive('link')} icon={FiLink} label="Link" />
+                    <ToolButton onClick={() => alert('Table feature coming soon! Install @tiptap/extension-table')} icon={FiGrid} label="Table" />
                     <ToolButton onClick={() => editor.chain().focus().setHorizontalRule().run()} icon={FiMinus} label="Divider" />
+                </div>
+
+                <Divider />
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    <ToolButton
+                        onClick={() => {
+                            const newZoom = Math.max(50, currentZoom - 10);
+                            setCurrentZoom(newZoom);
+                            onZoomChange?.(newZoom);
+                        }}
+                        icon={FiZoomOut}
+                        label="Zoom Out"
+                    />
+                    <span className="text-xs text-secondary w-10 text-center tabular-nums">{currentZoom}%</span>
+                    <ToolButton
+                        onClick={() => {
+                            const newZoom = Math.min(200, currentZoom + 10);
+                            setCurrentZoom(newZoom);
+                            onZoomChange?.(newZoom);
+                        }}
+                        icon={FiZoomIn}
+                        label="Zoom In"
+                    />
                 </div>
 
                 <Divider />

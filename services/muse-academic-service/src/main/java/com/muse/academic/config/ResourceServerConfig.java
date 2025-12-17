@@ -1,24 +1,19 @@
 package com.muse.academic.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,41 +22,50 @@ import java.util.List;
 @EnableMethodSecurity
 public class ResourceServerConfig {
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public ResourceServerConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
+    @Order(1)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .securityMatcher("/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Actuator endpoints are public
+                        .requestMatchers("/actuator/**").permitAll()
+                        // Allow CORS preflight requests
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        // GET /api/clubs endpoints are public
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/clubs").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/clubs/**").permitAll()
+                        // POST, PUT, DELETE on /api/clubs require authentication
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/clubs").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/clubs/**").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/clubs/**").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/clubs/**").authenticated()
+                        // All other requests require authentication
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .decoder(jwtDecoder())
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                // Handle authentication errors with detailed logging
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            // Log auth errors for debugging (use proper logging in production)
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"" + authException.getMessage() + "\"}");
+                        }))
+                // Disable anonymous authentication - we handle this ourselves
+                .anonymous(anon -> anon.disable())
+                // Add our custom JWT filter AFTER BasicAuthenticationFilter
+                .addFilterAfter(jwtAuthenticationFilter,
+                        org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        SecretKeySpec secretKey = new SecretKeySpec(keyBytes, "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
-    }
-
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
-        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-        return jwtAuthenticationConverter;
     }
 
     @Bean

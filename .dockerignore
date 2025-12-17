@@ -2,9 +2,11 @@
 .git
 .gitignore
 
-# Node modules
+# Node modules (CRITICAL for speed!)
 node_modules
+**/node_modules
 npm-debug.log*
+yarn-error.log*
 
 # Logs
 *.log
@@ -42,3 +44,10 @@ uploads
 __pycache__
 *.pyc
 venv
+.venv
+
+# Frontend build cache
+frontend/web/dist
+frontend/web/.vite
+frontend/web/coverage
+frontend/web/.cache

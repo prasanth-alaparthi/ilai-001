@@ -1,90 +1,136 @@
-# Deployment Guide for Ilai (Muse)
-
-This guide will help you deploy the Ilai application using Docker Compose.
+# ILAI Cloud Run Deployment Guide
 
 ## Prerequisites
 
-- [Docker](https://www.docker.com/get-started) and Docker Compose installed on your machine or server.
-- Java JDK 21 (for building the backend).
-- Node.js and npm (for building the frontend).
+1. **Google Cloud Account** with billing enabled
+2. **GCP Project** created
+3. **gcloud CLI** installed and authenticated
 
-## Step 1: Build the Backend Services
+## Quick Start
 
-You need to build the JAR file for each microservice. Open a terminal in the project root and run the following commands:
+### 1. Set Up GCP Infrastructure
 
-```bash
-# Auth Service
-cd services/muse-auth-service
-./mvnw clean package -DskipTests
-cd ../..
-
-# Notes Service
-cd services/muse-notes-service
-./mvnw clean package -DskipTests
-cd ../..
-
-# Feed Service
-cd services/muse-feed-service
-./mvnw clean package -DskipTests
-cd ../..
-
-# Parental Service
-cd services/muse-parental-service
-./mvnw clean package -DskipTests
-cd ../..
-
-# Journal Service
-cd services/muse-journal-service
-./mvnw clean package -DskipTests
-cd ../..
+```powershell
+# Run the setup script
+.\setup-gcp.ps1 -ProjectId "your-project-id" -DbPassword "your-secure-password"
 ```
 
-*Note: If you don't have `./mvnw` (Maven Wrapper) in the directories, use `mvn clean package -DskipTests` if you have Maven installed globally.*
+This creates:
+- Cloud SQL (PostgreSQL 15)
+- Memorystore Redis
+- Secret Manager secrets
+- Required API permissions
 
-## Step 2: Build the Frontend
-
-Build the React application for production.
-
-```bash
-cd frontend/web
-npm install
-npm run build
-cd ../..
-```
-
-This will create a `dist` folder in `frontend/web` which Docker will use.
-
-## Step 3: Configure Environment Variables
-
-Ensure you have a `.env` file in the root directory (or set these variables in your deployment environment). You can copy `.env.example` to `.env` and update the values.
-
-Key variables to check:
-- `DB_PASSWORD`: Your database password.
-- `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`: Secure random strings.
-- `GEMINI_API_KEY`: Your Google Gemini AI API key.
-- `SENDGRID_API_KEY`: For email services (if used).
-
-## Step 4: Run with Docker Compose
-
-From the root directory of the project, run:
+### 2. Add API Keys
 
 ```bash
-docker-compose up --build -d
+# Add your secrets
+echo "your-jwt-secret" | gcloud secrets create jwt-secret --data-file=-
+echo "your-gemini-key" | gcloud secrets create gemini-key --data-file=-
+echo "your-groq-key" | gcloud secrets create groq-key --data-file=-
+echo "your-razorpay-key" | gcloud secrets create razorpay-key-id --data-file=-
+echo "your-razorpay-secret" | gcloud secrets create razorpay-key-secret --data-file=-
 ```
 
-This command will:
-1.  Build the Docker images for all services.
-2.  Start the PostgreSQL database.
-3.  Start all backend microservices.
-4.  Start the Nginx frontend server.
+### 3. Build and Deploy
 
-## Step 5: Access the Application
+```bash
+# Deploy all services
+gcloud builds submit --config=cloudbuild.yaml
+```
 
-Once all containers are running (you can check with `docker-compose ps`), access the application at:
+### 4. Configure Custom Domain
 
-**http://localhost** (or your server's IP address)
+1. Go to [Cloud Run Console](https://console.cloud.google.com/run)
+2. Click on `ilai-frontend` service
+3. Go to **Domain Mappings** → **Add Mapping**
+4. Add `ilai.co.in` and `www.ilai.co.in`
+5. Update DNS records as shown
+
+---
+
+## Service URLs
+
+After deployment, your services will be available at:
+
+| Service | URL |
+|---------|-----|
+| Frontend | `https://ilai-frontend-xxxx.run.app` |
+| Auth | `https://muse-auth-service-xxxx.run.app` |
+| Notes | `https://muse-notes-service-xxxx.run.app` |
+| AI | `https://muse-ai-service-xxxx.run.app` |
+
+---
+
+## Environment Variables
+
+Each service uses these environment variables (configured via secrets):
+
+| Variable | Secret | Services |
+|----------|--------|----------|
+| `DB_URL` | db-url | All |
+| `DB_PASSWORD` | db-password | All |
+| `REDIS_HOST` | redis-host | AI |
+| `JWT_SECRET` | jwt-secret | Auth |
+| `GEMINI_API_KEY` | gemini-key | AI |
+| `GROQ_API_KEY` | groq-key | AI |
+
+---
+
+## Cost Estimate
+
+| Resource | Tier | Monthly |
+|----------|------|---------|
+| Cloud Run (5 services) | 512Mi-1Gi | ~$30-50 |
+| Cloud SQL | db-f1-micro | ~$10 |
+| Memorystore Redis | 1GB Basic | ~$35 |
+| Cloud Build | 120 min free | $0 |
+| **Total** | | **~$75-95** |
+
+---
+
+## Monitoring
+
+View logs and metrics:
+
+```bash
+# View logs for a service
+gcloud run services logs read muse-ai-service --region=asia-south1 --limit=50
+
+# Open Cloud Console
+gcloud run services describe muse-ai-service --region=asia-south1 --format="value(status.url)"
+```
+
+---
+
+## Rollback
+
+```bash
+# List revisions
+gcloud run revisions list --service=muse-ai-service --region=asia-south1
+
+# Rollback to previous
+gcloud run services update-traffic muse-ai-service \
+    --to-revisions=muse-ai-service-00001-abc=100 \
+    --region=asia-south1
+```
+
+---
 
 ## Troubleshooting
 
-- **Database Connection**: If services fail to start, check the logs (`docker-compose logs -f`) to see if they are waiting for the database. They are configured to wait, but sometimes timeouts occur.
-- **Ports**: Ensure ports 80, 8081, 8082, 8083, 8084, 8085 are not occupied by other services on your host.
+### Service not starting
+```bash
+gcloud run services logs read muse-auth-service --region=asia-south1 --limit=100
+```
+
+### Database connection issues
+Make sure Cloud SQL connection is configured:
+```bash
+gcloud sql instances describe ilai-db
+```
+
+### Redis connection issues
+```bash
+gcloud redis instances describe ilai-redis --region=asia-south1
+```

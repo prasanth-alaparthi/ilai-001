@@ -5,33 +5,32 @@ import CodeEditor from '../../components/labs/CodeEditor';
 import QuizComponent from '../../components/labs/QuizComponent';
 import AiSolver from '../../components/labs/AiSolver';
 import { BookOpenIcon, BeakerIcon, CpuChipIcon } from '@heroicons/react/24/outline';
+import labsService from '../../services/labsService';
 
 const LabWorkspace = () => {
     const { id } = useParams();
     const [lab, setLab] = useState(null);
     const [activeTab, setActiveTab] = useState('guide'); // guide, quiz, ai
     const [code, setCode] = useState('');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Mock fetch
-        // fetch(`/api/labs/${id}`)
-        const mockLab = {
-            id: id,
-            title: id === '1' ? 'Solar System Simulation' : id === '3' ? 'Intro to Python' : 'Lab Session',
-            description: 'Follow the instructions to complete the lab.',
-            category: id === '3' ? 'CS' : 'PHYSICS',
-            content: id === '1' ? 'SolarSystem' : id === '3' ? "print('Hello World')" : 'Titration',
-            quiz: {
-                title: 'Post-Lab Quiz',
-                questions: [
-                    { id: 1, questionText: 'Test Question?', options: ['A', 'B'], correctAnswer: 'A', explanation: 'Because A.' }
-                ]
+        const fetchLab = async () => {
+            try {
+                setLoading(true);
+                const data = await labsService.getLabById(id);
+                setLab(data);
+                if (data?.category === 'CS') {
+                    setCode(data.content || '');
+                }
+            } catch (error) {
+                console.error('Failed to fetch lab:', error);
+                setLab(null);
+            } finally {
+                setLoading(false);
             }
         };
-        setLab(mockLab);
-        if (mockLab.category === 'CS') {
-            setCode(mockLab.content);
-        }
+        fetchLab();
     }, [id]);
 
     if (!lab) return <div className="p-8 text-center">Loading Lab...</div>;

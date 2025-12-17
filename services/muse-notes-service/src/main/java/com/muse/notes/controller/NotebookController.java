@@ -26,8 +26,6 @@ public class NotebookController extends BaseController {
         this.sectionService = sectionService;
     }
 
-
-
     @GetMapping
     public ResponseEntity<?> list(Authentication auth) {
         String username = currentUsername(auth);
@@ -71,8 +69,8 @@ public class NotebookController extends BaseController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id,
-                                    @RequestBody Map<String, String> payload,
-                                    Authentication auth) {
+            @RequestBody Map<String, String> payload,
+            Authentication auth) {
         String username = currentUsername(auth);
         if (username == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
@@ -109,19 +107,69 @@ public class NotebookController extends BaseController {
     }
 
     @GetMapping("/{notebookId}/sections")
-    public ResponseEntity<?> listSections(@PathVariable Long notebookId, Authentication auth) {
+    public ResponseEntity<?> listSections(@PathVariable Long notebookId,
+            @RequestParam(required = false) Boolean hierarchical,
+            Authentication auth) {
         String username = currentUsername(auth);
         if (username == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<Section> sections = sectionService.listSections(notebookId, username);
+        // If hierarchical=true, return only root sections with children nested
+        if (Boolean.TRUE.equals(hierarchical)) {
+            List<Section> rootSections = sectionService.listRootSections(notebookId, username);
+            List<Map<String, Object>> dto = rootSections.stream()
+                    .map(this::sectionToDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(dto);
+        }
 
+        // Default: flat list for backwards compatibility
+        List<Section> sections = sectionService.listSections(notebookId, username);
         List<Map<String, Object>> dto = sections.stream().map(s -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
             m.put("title", s.getTitle());
             m.put("updatedAt", s.getUpdatedAt());
+            m.put("parentId", s.getParent() != null ? s.getParent().getId() : null);
+            m.put("hasChildren", !s.getChildren().isEmpty());
+            return m;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(dto);
+    }
+
+    // Helper to convert Section to nested DTO
+    private Map<String, Object> sectionToDto(Section s) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", s.getId());
+        m.put("title", s.getTitle());
+        m.put("updatedAt", s.getUpdatedAt());
+        m.put("parentId", s.getParent() != null ? s.getParent().getId() : null);
+        m.put("level", s.getLevel());
+        // Recursively include children
+        List<Map<String, Object>> childDtos = s.getChildren().stream()
+                .map(this::sectionToDto)
+                .collect(Collectors.toList());
+        m.put("children", childDtos);
+        return m;
+    }
+
+    // Get children of a specific section
+    @GetMapping("/sections/{sectionId}/children")
+    public ResponseEntity<?> getChildren(@PathVariable Long sectionId, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        List<Section> children = sectionService.getChildren(sectionId);
+        List<Map<String, Object>> dto = children.stream().map(s -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", s.getId());
+            m.put("title", s.getTitle());
+            m.put("updatedAt", s.getUpdatedAt());
+            m.put("hasChildren", !s.getChildren().isEmpty());
             return m;
         }).collect(Collectors.toList());
 
@@ -129,7 +177,8 @@ public class NotebookController extends BaseController {
     }
 
     @PostMapping("/{notebookId}/sections")
-    public ResponseEntity<?> createSection(@PathVariable Long notebookId, @RequestBody Map<String, String> payload, Authentication auth) {
+    public ResponseEntity<?> createSection(@PathVariable Long notebookId, @RequestBody Map<String, String> payload,
+            Authentication auth) {
         String username = currentUsername(auth);
         if (username == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
@@ -147,8 +196,70 @@ public class NotebookController extends BaseController {
         m.put("id", section.getId());
         m.put("title", section.getTitle());
         m.put("updatedAt", section.getUpdatedAt());
+        m.put("parentId", null);
 
         return ResponseEntity.ok(m);
+    }
+
+    // Create a sub-section (nested under a parent)
+    @PostMapping("/sections/{parentId}/children")
+    public ResponseEntity<?> createSubSection(@PathVariable Long parentId, @RequestBody Map<String, String> payload,
+            Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        String title = payload.get("title");
+        Optional<Section> created = sectionService.createSubSection(parentId, username, title);
+
+        if (created.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("message", "Parent section not found"));
+        }
+
+        Section section = created.get();
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", section.getId());
+        m.put("title", section.getTitle());
+        m.put("updatedAt", section.getUpdatedAt());
+        m.put("parentId", parentId);
+
+        return ResponseEntity.ok(m);
+    }
+
+    // Move a section to a new parent (or to root)
+    @PostMapping("/sections/{sectionId}/move")
+    public ResponseEntity<?> moveSection(@PathVariable Long sectionId, @RequestBody Map<String, Long> payload,
+            Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        Long newParentId = payload.get("parentId"); // null = move to root
+        try {
+            Optional<Section> moved = sectionService.moveSection(sectionId, newParentId, username);
+            if (moved.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("message", "Section not found"));
+            }
+            return ResponseEntity.ok(Map.of("message", "Section moved successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // Delete a section and all its children
+    @DeleteMapping("/sections/{sectionId}")
+    public ResponseEntity<?> deleteSection(@PathVariable Long sectionId, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        boolean deleted = sectionService.deleteSection(sectionId, username);
+        if (deleted) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.status(404).body(Map.of("message", "Section not found"));
     }
 
     @PostMapping("/reorder")
@@ -162,7 +273,8 @@ public class NotebookController extends BaseController {
     }
 
     @PostMapping("/{notebookId}/sections/reorder")
-    public ResponseEntity<?> reorderSections(@PathVariable Long notebookId, @RequestBody List<Long> sectionIds, Authentication auth) {
+    public ResponseEntity<?> reorderSections(@PathVariable Long notebookId, @RequestBody List<Long> sectionIds,
+            Authentication auth) {
         String username = currentUsername(auth);
         if (username == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));

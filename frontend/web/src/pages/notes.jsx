@@ -16,28 +16,28 @@ export const NotesPage = () => {
   const [notes, setNotes] = useState([]);
   const [selectedNoteId, setSelectedNoteId] = useState(null);
 
-const [titleInput, setTitleInput] = useState("");
+  const [titleInput, setTitleInput] = useState("");
   const [contentInput, setContentInput] = useState("");
 
-const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false); // manual save button state
   const [status, setStatus] = useState("idle"); // idle | loading | autosaving | saved | error | listening
   const [error, setError] = useState("");
 
-// autosave debounce
+  // autosave debounce
   const autoSaveTimerRef = useRef(null);
   const isDirtyRef = useRef(false);
   const initialLoadRef = useRef(true);
 
-// dictation
+  // dictation
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
 
-useEffect(() => {
+  useEffect(() => {
     loadNotebooks();
   }, []);
 
-const loadNotebooks = async () => {
+  const loadNotebooks = async () => {
     setLoading(true);
     setError("");
     try {
@@ -53,7 +53,7 @@ const loadNotebooks = async () => {
     }
   };
 
-const loadSections = async (notebookId) => {
+  const loadSections = async (notebookId) => {
     try {
       const resp = await apiClient.get(`/notebooks/${notebookId}/sections`);
       const data = resp.data;
@@ -65,7 +65,7 @@ const loadSections = async (notebookId) => {
     }
   };
 
-const loadNotes = async (sectionId) => {
+  const loadNotes = async (sectionId) => {
     try {
       const resp = await apiClient.get(`/sections/${sectionId}/notes`);
       const data = resp.data;
@@ -77,7 +77,7 @@ const loadNotes = async (sectionId) => {
     }
   };
 
-const handleSelectNotebook = async (notebookId) => {
+  const handleSelectNotebook = async (notebookId) => {
     setSelectedNotebookId(notebookId);
     setSelectedSectionId(null);
     setSections([]);
@@ -88,7 +88,7 @@ const handleSelectNotebook = async (notebookId) => {
     await loadSections(notebookId);
   };
 
-const handleSelectSection = async (sectionId) => {
+  const handleSelectSection = async (sectionId) => {
     setSelectedSectionId(sectionId);
     setNotes([]);
     setSelectedNoteId(null);
@@ -97,14 +97,14 @@ const handleSelectSection = async (sectionId) => {
     await loadNotes(sectionId);
   };
 
-const handleSelectNote = (note) => {
+  const handleSelectNote = (note) => {
     setSelectedNoteId(note.id);
     setTitleInput(note.title || "");
     setContentInput(note.content || "");
     initialLoadRef.current = true; // avoid autosave immediately on load
   };
 
-const handleCreateNotebook = async () => {
+  const handleCreateNotebook = async () => {
     const title = prompt("Notebook name?");
     if (!title) return;
     try {
@@ -118,7 +118,7 @@ const handleCreateNotebook = async () => {
     }
   };
 
-const handleCreateSection = async () => {
+  const handleCreateSection = async () => {
     if (!selectedNotebookId) {
       alert("Select a notebook first.");
       return;
@@ -138,29 +138,29 @@ const handleCreateSection = async () => {
     }
   };
 
-const handleNewNote = () => {
+  const handleNewNote = () => {
     setSelectedNoteId(null);
     setTitleInput("");
     setContentInput("");
     initialLoadRef.current = true;
   };
 
-const ensureSectionId = async () => {
+  const ensureSectionId = async () => {
     if (!selectedNotebookId) {
       throw new Error("Select a notebook first");
     }
 
-if (selectedSectionId) {
+    if (selectedSectionId) {
       return selectedSectionId;
     }
 
-if (sections.length > 0) {
+    if (sections.length > 0) {
       const first = sections[0];
       setSelectedSectionId(first.id);
       return first.id;
     }
 
-try {
+    try {
       const resp = await apiClient.post(
         `/notebooks/${selectedNotebookId}/sections`,
         { title: "General" }
@@ -175,23 +175,23 @@ try {
     }
   };
 
-// Manual save (button)
+  // Manual save (button)
   const handleSaveNote = async () => {
     setError("");
 
-if (!titleInput.trim() && !contentInput.trim()) {
+    if (!titleInput.trim() && !contentInput.trim()) {
       setError("Note cannot be empty.");
       return;
     }
 
-setSaving(true);
+    setSaving(true);
     try {
       let sectionId = selectedSectionId;
       if (selectedNoteId == null) {
         sectionId = await ensureSectionId();
       }
 
-if (selectedNoteId == null) {
+      if (selectedNoteId == null) {
         const resp = await apiClient.post(`/sections/${sectionId}/notes`, {
           title: titleInput,
           content: contentInput,
@@ -220,36 +220,36 @@ if (selectedNoteId == null) {
     }
   };
 
-// ---- Autosave (debounced) ----
+  // ---- Autosave (debounced) ----
   const scheduleAutoSave = () => {
     if (!selectedNotebookId) return;
     if (!titleInput.trim() && !contentInput.trim()) return; // don't autosave empty note
 
-isDirtyRef.current = true;
+    isDirtyRef.current = true;
 
-if (autoSaveTimerRef.current) {
+    if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
 
-autoSaveTimerRef.current = setTimeout(() => {
+    autoSaveTimerRef.current = setTimeout(() => {
       if (isDirtyRef.current) {
         autoSaveNote();
       }
     }, 1200); // 1.2s after last change
   };
 
-const autoSaveNote = async () => {
+  const autoSaveNote = async () => {
     try {
       if (!selectedNotebookId) return;
       setStatus("autosaving");
       isDirtyRef.current = false;
 
-let sectionId = selectedSectionId;
+      let sectionId = selectedSectionId;
       if (selectedNoteId == null) {
         sectionId = await ensureSectionId();
       }
 
-if (selectedNoteId == null) {
+      if (selectedNoteId == null) {
         const resp = await apiClient.post(`/sections/${sectionId}/notes`, {
           title: titleInput || "Untitled",
           content: contentInput ?? "",
@@ -268,7 +268,7 @@ if (selectedNoteId == null) {
         );
       }
 
-setStatus("saved");
+      setStatus("saved");
       setTimeout(() => {
         if (status !== "error" && !isListening) {
           setStatus("idle");
@@ -281,7 +281,7 @@ setStatus("saved");
     }
   };
 
-// Trigger autosave when content changes (but not immediately after selecting a note)
+  // Trigger autosave when content changes (but not immediately after selecting a note)
   useEffect(() => {
     if (initialLoadRef.current) {
       initialLoadRef.current = false;
@@ -291,51 +291,51 @@ setStatus("saved");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleInput, contentInput, selectedNotebookId, selectedSectionId, selectedNoteId]);
 
-useEffect(() => {
+  useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, []);
 
-// ---- Dictation (speech to text) ----
+  // ---- Dictation (speech to text) ----
   const toggleDictation = () => {
     if (!SpeechRecognition) {
       setError("Speech recognition is not supported in this browser.");
       return;
     }
 
-if (isListening) {
+    if (isListening) {
       recognitionRef.current?.stop();
       return;
     }
 
-const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
 
-recognition.continuous = true;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-recognition.onstart = () => {
+    recognition.onstart = () => {
       setIsListening(true);
       setStatus("listening");
       setError("");
     };
 
-recognition.onerror = (event) => {
+    recognition.onerror = (event) => {
       console.error("Speech recognition error", event.error);
       setError("Dictation error: " + event.error);
       setIsListening(false);
       setStatus("error");
     };
 
-recognition.onend = () => {
+    recognition.onend = () => {
       setIsListening(false);
       if (status === "listening") setStatus("idle");
     };
 
-recognition.onresult = (event) => {
+    recognition.onresult = (event) => {
       let finalText = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
@@ -348,10 +348,10 @@ recognition.onresult = (event) => {
       }
     };
 
-recognition.start();
+    recognition.start();
   };
 
-const handleOnDragEnd = (result) => {
+  const handleOnDragEnd = (result) => {
     if (!result.destination) return;
 
     if (result.source.droppableId === 'notes') {
@@ -362,7 +362,7 @@ const handleOnDragEnd = (result) => {
       setNotes(items);
 
       const noteIds = items.map((item) => item.id);
-      apiClient.post('/api/notes/reorder', { noteIds });
+      apiClient.post('/notes/reorder', { noteIds });
     } else if (result.source.droppableId === 'sections') {
       const items = Array.from(sections);
       const [reorderedItem] = items.splice(result.source.index, 1);
@@ -371,7 +371,7 @@ const handleOnDragEnd = (result) => {
       setSections(items);
 
       const sectionIds = items.map((item) => item.id);
-      apiClient.post(`/api/notebooks/${selectedNotebookId}/sections/reorder`, { sectionIds });
+      apiClient.post(`/notebooks/${selectedNotebookId}/sections/reorder`, { sectionIds });
     }
   };
 
@@ -384,7 +384,7 @@ const handleOnDragEnd = (result) => {
     return "All changes saved";
   };
 
-return (
+  return (
     <div className="min-h-[calc(100vh-4rem)] w-full flex rounded-2xl border border-slate-300/70 dark:border-slate-800/70 overflow-hidden bg-slate-50 dark:bg-slate-950 shadow-2xl shadow-black/30 dark:shadow-black/60">
       {/* Left notebooks column */}
       <aside className="w-56 bg-slate-100 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col">
@@ -405,14 +405,14 @@ return (
           </button>
         </div>
 
-<div className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
+        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
           {notebooks.length === 0 && !loading && (
             <div className="text-xs text-slate-500 dark:text-slate-500 px-1 py-2">
               No notebooks yet. Click + to create one.
             </div>
           )}
 
-{notebooks.map((nb) => (
+          {notebooks.map((nb) => (
             <button
               key={nb.id}
               onClick={() => handleSelectNotebook(nb.id)}
@@ -437,60 +437,60 @@ return (
         </div>
       </aside>
 
-{/* Right side */}
+      {/* Right side */}
       <section className="flex-1 flex flex-col bg-gradient-to-br from-slate-100 via-slate-200 to-slate-100 dark:from-slate-900/90 dark:via-slate-950 dark:to-slate-950">
         {/* Sections bar */}
         <header className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur">
           <Droppable droppableId="sections" direction="horizontal">
-              {(provided) => (
-                <div
-                  className="flex items-center gap-3 overflow-x-auto"
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide border-r border-slate-300 dark:border-slate-700 pr-3">
-                    Sections
+            {(provided) => (
+              <div
+                className="flex items-center gap-3 overflow-x-auto"
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+              >
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide border-r border-slate-300 dark:border-slate-700 pr-3">
+                  Sections
+                </span>
+
+                {!selectedNotebookId && (
+                  <span className="text-xs text-slate-500 dark:text-slate-500">
+                    Select a notebook to see sections.
                   </span>
+                )}
 
-                  {!selectedNotebookId && (
-                    <span className="text-xs text-slate-500 dark:text-slate-500">
-                      Select a notebook to see sections.
-                    </span>
-                  )}
+                {selectedNotebookId && sections.length === 0 && (
+                  <span className="text-xs text-slate-500 dark:text-slate-500">
+                    No sections yet. We&apos;ll create &quot;General&quot; when
+                    you save your first note.
+                  </span>
+                )}
 
-                  {selectedNotebookId && sections.length === 0 && (
-                    <span className="text-xs text-slate-500 dark:text-slate-500">
-                      No sections yet. We&apos;ll create &quot;General&quot; when
-                      you save your first note.
-                    </span>
-                  )}
+                {sections.map((sec, index) => (
+                  <Draggable key={sec.id} draggableId={`section-${sec.id}`} index={index}>
+                    {(provided) => (
+                      <button
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        onClick={() => handleSelectSection(sec.id)}
+                        className={[
+                          "px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap",
+                          selectedSectionId === sec.id
+                            ? "bg-fuchsia-500 text-slate-50 border-fuchsia-300 shadow-md shadow-fuchsia-500/40"
+                            : "bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800",
+                        ].join(" ")}
+                      >
+                        {sec.title}
+                      </button>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
 
-                  {sections.map((sec, index) => (
-                    <Draggable key={sec.id} draggableId={`section-${sec.id}`} index={index}>
-                      {(provided) => (
-                        <button
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          onClick={() => handleSelectSection(sec.id)}
-                          className={[
-                            "px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap",
-                            selectedSectionId === sec.id
-                              ? "bg-fuchsia-500 text-slate-50 border-fuchsia-300 shadow-md shadow-fuchsia-500/40"
-                              : "bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800",
-                          ].join(" ")}
-                        >
-                          {sec.title}
-                        </button>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-
-<div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             {/* Status pill */}
             <span
               className={[
@@ -498,17 +498,17 @@ return (
                 status === "autosaving"
                   ? "border-amber-400/70 text-amber-700 dark:text-amber-300"
                   : status === "error"
-                  ? "border-red-400/70 text-red-700 dark:text-red-300"
-                  : status === "listening"
-                  ? "border-emerald-400/70 text-emerald-600 dark:text-emerald-300"
-                  : "border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400",
+                    ? "border-red-400/70 text-red-700 dark:text-red-300"
+                    : status === "listening"
+                      ? "border-emerald-400/70 text-emerald-600 dark:text-emerald-300"
+                      : "border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400",
               ].join(" ")}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-current" />
               {renderStatusLabel()}
             </span>
 
-{/* Dictation button */}
+            {/* Dictation button */}
             <button
               onClick={toggleDictation}
               className={[
@@ -522,7 +522,7 @@ return (
               {isListening ? "Stop dictation" : "Dictation"}
             </button>
 
-<button
+            <button
               onClick={handleCreateSection}
               disabled={!selectedNotebookId}
               className="px-3 py-1 rounded-full text-xs font-medium border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -532,7 +532,7 @@ return (
           </div>
         </header>
 
-{/* Content: pages + editor */}
+        {/* Content: pages + editor */}
         <div className="flex flex-1 overflow-hidden">
           {/* Pages list */}
           <aside className="w-72 border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/90 flex flex-col">
@@ -558,63 +558,63 @@ return (
               </button>
             </div>
 
-<DragDropContext onDragEnd={handleOnDragEnd}>
-  <Droppable droppableId="notes">
-    {(provided) => (
-      <div
-        className="flex-1 overflow-y-auto px-2 py-1 space-y-1"
-        {...provided.droppableProps}
-        ref={provided.innerRef}
-      >
-        {(!selectedNotebookId || notes.length === 0) && (
-          <div className="text-xs text-slate-500 dark:text-slate-500 px-1 py-2">
-            {!selectedNotebookId
-              ? "Select or create a notebook to start writing."
-              : "No notes in this section yet. Click New to create one."}
-          </div>
-        )}
+            <DragDropContext onDragEnd={handleOnDragEnd}>
+              <Droppable droppableId="notes">
+                {(provided) => (
+                  <div
+                    className="flex-1 overflow-y-auto px-2 py-1 space-y-1"
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {(!selectedNotebookId || notes.length === 0) && (
+                      <div className="text-xs text-slate-500 dark:text-slate-500 px-1 py-2">
+                        {!selectedNotebookId
+                          ? "Select or create a notebook to start writing."
+                          : "No notes in this section yet. Click New to create one."}
+                      </div>
+                    )}
 
-        {notes.map((n, index) => (
-          <Draggable key={n.id} draggableId={n.id.toString()} index={index}>
-            {(provided) => (
-              <button
-                ref={provided.innerRef}
-                {...provided.draggableProps}
-                {...provided.dragHandleProps}
-                onClick={() => handleSelectNote(n)}
-                className={[
-                  "w-full text-left px-2.5 py-1.5 rounded-lg border transition",
-                  selectedNoteId === n.id
-                    ? "bg-indigo-500/80 border-indigo-300 text-slate-50 shadow-sm shadow-indigo-500/40"
-                    : "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800",
-                ].join(" ")}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="text-xs font-semibold truncate">
-                    {n.title || "Untitled"}
+                    {notes.map((n, index) => (
+                      <Draggable key={n.id} draggableId={n.id.toString()} index={index}>
+                        {(provided) => (
+                          <button
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            onClick={() => handleSelectNote(n)}
+                            className={[
+                              "w-full text-left px-2.5 py-1.5 rounded-lg border transition",
+                              selectedNoteId === n.id
+                                ? "bg-indigo-500/80 border-indigo-300 text-slate-50 shadow-sm shadow-indigo-500/40"
+                                : "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800",
+                            ].join(" ")}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="text-xs font-semibold truncate">
+                                {n.title || "Untitled"}
+                              </div>
+                              {n.is_pinned && (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {n.content?.substring(0, 100) || "No content"}
+                            </div>
+                          </button>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                  {n.is_pinned && (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-                    </svg>
-                  )}
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {n.content?.substring(0, 100) || "No content"}
-                </div>
-              </button>
-            )}
-          </Draggable>
-        ))}
-        {provided.placeholder}
-      </div>
-    )}
-  </Droppable>
-</DragDropContext>
+                )}
+              </Droppable>
+            </DragDropContext>
           </aside>
 
-{/* Editor */}
+          {/* Editor */}
           <main className="flex-1 flex flex-col bg-transparent">
             {error && (
               <div className="m-3 rounded-md border border-red-400/70 bg-red-500/10 px-3 py-2 text-xs text-red-800 dark:text-red-200">
@@ -622,7 +622,7 @@ return (
               </div>
             )}
 
-<div className="flex-1 flex flex-col m-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-950/95 shadow-xl shadow-slate-300/40 dark:shadow-slate-900/70">
+            <div className="flex-1 flex flex-col m-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-950/95 shadow-xl shadow-slate-300/40 dark:shadow-slate-900/70">
               <input
                 className="w-full border-b border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2 text-base font-semibold text-slate-900 dark:text-slate-50 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 value={titleInput}
@@ -647,7 +647,7 @@ return (
               />
             </div>
 
-<div className="flex items-center justify-between px-4 pb-3 gap-3">
+            <div className="flex items-center justify-between px-4 pb-3 gap-3">
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-[11px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-950/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Notes are private to your account. Teachers and universities
@@ -670,4 +670,3 @@ return (
 
 export default NotesPage;
 
- 

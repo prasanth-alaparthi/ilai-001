@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import LabCard from '../../components/labs/LabCard';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import labsService from '../../services/labsService';
 
 const SubjectLabs = () => {
     const { subject } = useParams();
@@ -10,45 +11,23 @@ const SubjectLabs = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        // Mock fetch - replace with API call
-        // fetch(`/api/labs?subject=${subject}`)
-        const mockLabs = [
-            {
-                id: 1,
-                title: 'Solar System Simulation',
-                description: 'Explore the solar system and understand planetary orbits.',
-                subject: 'Astronomy',
-                difficulty: 'Easy',
-                imageUrl: 'https://images.unsplash.com/photo-1614730341194-75c6074065db?auto=format&fit=crop&w=500&q=60'
-            },
-            {
-                id: 2,
-                title: 'Acid-Base Titration',
-                description: 'Simulate a titration experiment to determine concentration.',
-                subject: 'Chemistry',
-                difficulty: 'Medium',
-                imageUrl: 'https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?auto=format&fit=crop&w=500&q=60'
-            },
-            {
-                id: 3,
-                title: 'Intro to Python: Variables',
-                description: 'Learn how to declare and use variables in Python.',
-                subject: 'Python',
-                difficulty: 'Easy',
-                imageUrl: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=500&q=60'
+        const fetchLabs = async () => {
+            try {
+                setLoading(true);
+                const subjectParam = subject === 'all' ? null : subject?.toUpperCase();
+                const data = await labsService.getLabsBySubject(subjectParam);
+                setLabs(data || []);
+            } catch (error) {
+                console.error('Failed to fetch labs:', error);
+                // Fallback to empty array
+                setLabs([]);
+            } finally {
+                setLoading(false);
             }
-        ];
-
-        // Filter mock labs based on subject param (very rough mock)
-        const filtered = subject === 'all' ? mockLabs : mockLabs.filter(l =>
-            subject === 'cs' ? l.subject === 'Python' :
-                subject === 'physics' ? l.subject === 'Astronomy' :
-                    subject === 'chemistry' ? l.subject === 'Chemistry' : true
-        );
-
-        setLabs(filtered);
-        setLoading(false);
+        };
+        fetchLabs();
     }, [subject]);
+
 
     const displayLabs = labs.filter(lab =>
         lab.title.toLowerCase().includes(searchQuery.toLowerCase())

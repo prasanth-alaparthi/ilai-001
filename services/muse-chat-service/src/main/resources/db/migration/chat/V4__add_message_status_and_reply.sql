@@ -1,2 +1,0 @@
-ALTER TABLE messages ADD COLUMN reply_to_id UUID;
-ALTER TABLE messages ADD COLUMN status VARCHAR(50) DEFAULT 'SENT';

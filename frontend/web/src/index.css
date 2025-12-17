@@ -1,8 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import './styles/mobile.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 
 @layer base {
     :root {
@@ -11,36 +13,45 @@
         /* #fafafa */
         --color-surface: 255 255 255;
         /* #ffffff */
-        --color-primary: 24 24 27;
-        /* #18181b (zinc-900) */
-        --color-secondary: 113 113 122;
-        /* #71717a (zinc-500) */
+        --color-primary: 9 9 11;
+        /* #09090b (zinc-950) - Darker for better contrast */
+        --color-secondary: 82 82 91;
+        /* #52525b (zinc-600) - Darker for better readability */
         --color-border: 0 0 0;
         /* #000000 (Applied as border/10 in config) */
 
-        --color-accent-blue: 74 144 226;
-        --color-accent-green: 45 80 54;
-        --color-accent-glow: 74 144 226;
+        --color-accent-blue: 37 99 235;
+        /* blue-600 - Darker blue for light mode contrast */
+        --color-accent-green: 21 128 61;
+        /* green-700 */
+        --color-accent-glow: 59 130 246;
+        /* blue-500 */
     }
 
     .dark {
         /* Dark Mode Overrides */
-        --color-background: 10 10 10;
-        /* #0a0a0a */
-        --color-surface: 18 18 18;
-        /* #121212 */
+        --color-background: 9 9 11;
+        /* #09090b (zinc-950) - Deeper black for OLED/LCD contrast */
+        --color-surface: 24 24 27;
+        /* #18181b (zinc-900) - Distinct surface */
         --color-primary: 250 250 250;
         /* #fafafa */
-        --color-secondary: 161 161 170;
-        /* #a1a1aa */
+        --color-secondary: 212 212 216;
+        /* #d4d4d8 (zinc-300) - Lighter for better dark mode contrast */
         --color-border: 255 255 255;
 
-        --color-accent-blue: 74 144 226;
-        /* Brighter blue for dark mode visibility */
+        --color-accent-blue: 96 165 250;
+        /* blue-400 */
         --color-accent-green: 74 222 128;
-        /* Brighter green for dark mode */
-        --color-accent-glow: 99 179 237;
-        /* Light blue glow for dark mode - wcag AA compliant */
+        /* green-400 */
+        --color-accent-glow: 96 165 250;
+        /* blue-400 */
+    }
+
+    html {
+        font-size: 16px;
+        /* Prevent separate scaling on mobile */
+        -webkit-text-size-adjust: 100%;
     }
 
     body {
@@ -59,13 +70,22 @@
 
 @layer components {
 
-    /* Glassmorphism Utilities */
+    /* Standard Card & Popup Utilities - Consolidating styles */
+    .card {
+        @apply bg-surface border border-border/10 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+    }
+
+    .popup {
+        @apply bg-surface/95 backdrop-blur-xl border border-border/20 shadow-xl rounded-xl z-50;
+    }
+
+    /* Glassmorphism Utilities - Refined for better contrast */
     .glass-card {
-        @apply bg-glass backdrop-blur-md border border-border rounded-xl shadow-lg transition-all duration-300 hover:border-white/20 hover:bg-glass-hover;
+        @apply bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg transition-all duration-300 hover:border-accent-glow/30;
     }
 
     .glass-panel {
-        @apply bg-white/70 dark:bg-surface/50 backdrop-blur-xl border border-black/5 dark:border-white/10;
+        @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-black/5 dark:border-white/5;
     }
 
     /* Form Elements */
@@ -75,11 +95,11 @@
 
     /* Buttons */
     .btn-primary {
-        @apply bg-primary text-background px-6 py-2.5 rounded-full font-medium tracking-wide hover:bg-white hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-95;
+        @apply bg-primary text-background px-6 py-2.5 rounded-full font-medium tracking-wide hover:opacity-90 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 active:scale-95;
     }
 
     .btn-ghost {
-        @apply text-secondary hover:text-primary transition-colors duration-200;
+        @apply text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 px-4 py-2 rounded-lg transition-colors duration-200;
     }
 
     /* Scrollbar */

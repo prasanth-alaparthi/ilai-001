@@ -1,0 +1,150 @@
+# Docker Compose for AWS Initial Deployment
+# Core services only: Frontend, Auth, Notes
+# Add Social and AI services later by uncommenting
+
+services:
+  # ========== Frontend + Nginx ==========
+  muse-frontend:
+    build:
+      context: ./frontend/web
+      dockerfile: Dockerfile
+    container_name: muse-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      muse-auth-service:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========== Auth Service ==========
+  muse-auth-service:
+    build:
+      context: ./services/muse-auth-service
+      dockerfile: Dockerfile
+    container_name: muse-auth-service
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-}
+      KEYCLOAK_JWKS_URI: ${KEYCLOAK_JWKS_URI:-}
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: always
+
+  # ========== Notes Service ==========
+  muse-notes-service:
+    build:
+      context: ./services/muse-notes-service
+      dockerfile: Dockerfile
+    container_name: muse-notes-service
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      # Redis disabled for initial deployment
+      # SPRING_REDIS_HOST: redis
+      # SPRING_REDIS_PORT: 6379
+    ports:
+      - "8082:8082"
+    depends_on:
+      muse-auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: always
+
+  # ========== PHASE 2: Uncomment when ready ==========
+  
+  # # Redis (needed for AI and Social services)
+  # redis:
+  #   image: redis:7-alpine
+  #   command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: always
+
+  # # AI Service
+  # muse-ai-service:
+  #   build:
+  #     context: ./services/muse-ai-service
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
+  #     SERVER_PORT: 8088
+  #     SPRING_DATASOURCE_URL: ${DB_URL}
+  #     SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+  #     SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+  #     JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+  #     GEMINI_API_KEY: ${GEMINI_API_KEY}
+  #     GROQ_API_KEY: ${GROQ_API_KEY:-}
+  #     LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+  #     SPRING_REDIS_HOST: redis
+  #     SPRING_REDIS_PORT: 6379
+  #   ports:
+  #     - "8088:8088"
+  #   depends_on:
+  #     - redis
+  #   restart: always
+
+  # # Social Service (Chat + Feed)
+  # muse-social-service:
+  #   build:
+  #     context: ./services/muse-social-service
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
+  #     SERVER_PORT: 8083
+  #     SPRING_DATASOURCE_URL: ${DB_URL}
+  #     SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+  #     SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+  #     JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+  #     SPRING_REDIS_HOST: redis
+  #     SPRING_REDIS_PORT: 6379
+  #   ports:
+  #     - "8083:8083"
+  #   depends_on:
+  #     - redis
+  #   restart: always
+
+networks:
+  default:
+    name: ilai-network
+
+# volumes:
+#   redis_data:

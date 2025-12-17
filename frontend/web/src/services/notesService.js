@@ -23,8 +23,28 @@ export const notesService = {
         const res = await apiClient.get(`/notebooks/${notebookId}/sections`);
         return res.data;
     },
+    // Get sections as nested tree structure
+    async listSectionsHierarchical(notebookId) {
+        const res = await apiClient.get(`/notebooks/${notebookId}/sections`, { params: { hierarchical: true } });
+        return res.data;
+    },
     async createSection(notebookId, title) {
         const res = await apiClient.post(`/notebooks/${notebookId}/sections`, { title });
+        return res.data;
+    },
+    // Create a sub-section (nested under parent)
+    async createSubSection(parentId, title) {
+        const res = await apiClient.post(`/notebooks/sections/${parentId}/children`, { title });
+        return res.data;
+    },
+    // Get children of a section
+    async getSectionChildren(sectionId) {
+        const res = await apiClient.get(`/notebooks/sections/${sectionId}/children`);
+        return res.data;
+    },
+    // Move section to new parent (null = root)
+    async moveSection(sectionId, parentId) {
+        const res = await apiClient.post(`/notebooks/sections/${sectionId}/move`, { parentId });
         return res.data;
     },
     async updateSection(id, title) {
@@ -32,11 +52,13 @@ export const notesService = {
         return res.data;
     },
     async deleteSection(id) {
-        await apiClient.delete(`/sections/${id}`);
+        await apiClient.delete(`/notebooks/sections/${id}`);
     },
     // Aliases for "Chapter" terminology
     async listChapters(notebookId) { return this.listSections(notebookId); },
+    async listChaptersHierarchical(notebookId) { return this.listSectionsHierarchical(notebookId); },
     async createChapter(notebookId, title) { return this.createSection(notebookId, title); },
+    async createSubChapter(parentId, title) { return this.createSubSection(parentId, title); },
     async updateChapter(id, title) { return this.updateSection(id, title); },
     async deleteChapter(id) { return this.deleteSection(id); },
 
@@ -89,9 +111,54 @@ export const notesService = {
         return res.data;
     },
 
-    // Sharing
-    async shareNote(id, username, permissionLevel) {
-        const res = await apiClient.post(`/notes/${id}/share`, { username, permissionLevel });
+    // Sharing - share any resource (notebook, section, note)
+    async shareResource(resourceType, resourceId, targetUsername, permissionLevel, message = "") {
+        const res = await apiClient.post("/share", {
+            resourceType,
+            resourceId,
+            targetUsername,
+            permissionLevel,
+            message
+        });
+        return res.data;
+    },
+    // Convenience methods
+    async shareNotebook(notebookId, targetUsername, permissionLevel, message) {
+        return this.shareResource("NOTEBOOK", notebookId, targetUsername, permissionLevel, message);
+    },
+    async shareSection(sectionId, targetUsername, permissionLevel, message) {
+        return this.shareResource("SECTION", sectionId, targetUsername, permissionLevel, message);
+    },
+    async shareNote(noteId, targetUsername, permissionLevel, message) {
+        return this.shareResource("NOTE", noteId, targetUsername, permissionLevel, message);
+    },
+    // Get resources shared with me
+    async getSharedWithMe() {
+        const res = await apiClient.get("/share/with-me");
+        return res.data;
+    },
+    // Get pending share invitations
+    async getPendingInvitations() {
+        const res = await apiClient.get("/share/pending");
+        return res.data;
+    },
+    // Get shares I've created
+    async getMyShares() {
+        const res = await apiClient.get("/share/my-shares");
+        return res.data;
+    },
+    // Accept a share invitation
+    async acceptShare(shareId) {
+        const res = await apiClient.post(`/share/${shareId}/accept`);
+        return res.data;
+    },
+    // Remove/decline a share
+    async removeShare(shareId) {
+        await apiClient.delete(`/share/${shareId}`);
+    },
+    // Legacy link-based sharing (generates public URL)
+    async generateShareLink(noteId) {
+        const res = await apiClient.post(`/notes/share/${noteId}`);
         return res.data;
     },
 

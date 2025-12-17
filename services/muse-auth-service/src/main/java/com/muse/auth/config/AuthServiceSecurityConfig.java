@@ -58,10 +58,14 @@ public class AuthServiceSecurityConfig {
                 .exceptionHandling(eh -> eh.authenticationEntryPoint(jwtAuthEntryPoint))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Public auth endpoints
                         .requestMatchers("/api/auth/login", "/api/auth/authenticate", "/api/auth/register",
                                 "/api/auth/refresh", "/api/auth/forgot-password", "/api/auth/reset-password",
-                                "/api/auth/verify-email", "/api/users/**")
+                                "/api/auth/verify-email")
                         .permitAll()
+                        // Actuator health check for Docker
+                        .requestMatchers("/actuator/**").permitAll()
+                        // All other API endpoints require authentication
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .oauth2Login(oauth2 -> oauth2

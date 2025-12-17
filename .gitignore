@@ -10,7 +10,7 @@ frontend/dist/
 frontend/build/
 frontend/.vite/
 
-# Environment variables
+# Environment variables (IMPORTANT: Keep secrets out of git!)
 .env
 .env.local
 .env.development.local
@@ -50,6 +50,7 @@ logs/
 *.txt
 !README.txt
 !LICENSE.txt
+!requirements.txt
 
 # OS files
 .DS_Store

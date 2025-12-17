@@ -33,6 +33,7 @@ public class NoteService {
     private final NoteCalendarLinkRepository calendarLinkRepo;
     private final NoteSocketHandler noteSocketHandler;
     private final ObjectMapper objectMapper;
+    private final NoteAnalysisService noteAnalysisService;
     private final GeminiService geminiService;
 
     public NoteService(NoteRepository repo,
@@ -46,7 +47,8 @@ public class NoteService {
             NoteCalendarLinkRepository calendarLinkRepo,
             NoteSocketHandler noteSocketHandler,
             ObjectMapper objectMapper,
-            GeminiService geminiService) {
+            GeminiService geminiService,
+            NoteAnalysisService noteAnalysisService) {
         this.repo = repo;
         this.sectionRepo = sectionRepo;
         this.notebookRepo = notebookRepo;
@@ -59,6 +61,7 @@ public class NoteService {
         this.noteSocketHandler = noteSocketHandler;
         this.objectMapper = objectMapper;
         this.geminiService = geminiService;
+        this.noteAnalysisService = noteAnalysisService;
     }
 
     private Section getOrCreateDefaultSection(String username) {
@@ -118,8 +121,8 @@ public class NoteService {
         n.setOrderIndex(nextOrderIndex);
 
         Note savedNote = repo.save(n);
-        updateNoteLinks(savedNote);
-        analyzeNoteContentAsync(savedNote);
+        updateNoteLinksAsync(savedNote);
+        noteAnalysisService.analyzeNoteContentAsync(savedNote.getId());
         return savedNote;
     }
 
@@ -138,102 +141,116 @@ public class NoteService {
                     n.setOrderIndex(nextOrderIndex);
 
                     Note savedNote = repo.save(n);
-                    updateNoteLinks(savedNote);
-                    analyzeNoteContentAsync(savedNote);
+                    updateNoteLinksAsync(savedNote);
+                    noteAnalysisService.analyzeNoteContentAsync(savedNote.getId());
                     return savedNote;
                 });
     }
 
-    public Optional<Note> updateNote(Long id, String username, String title, JsonNode content) {
-        return repo.findByIdAndOwnerUsername(id, username).map(n -> {
-            NoteVersion version = NoteVersion.builder()
-                    .note(n)
-                    .title(n.getTitle())
-                    .content(n.getContent())
-                    .build();
-            versionRepo.save(version);
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(NoteService.class);
 
+    /**
+     * Update a note - SIMPLIFIED for reliable persistence
+     * Async operations (embeddings, analysis) run AFTER save completes
+     */
+    public Optional<Note> updateNote(Long id, String username, String title, JsonNode content) {
+        log.info("updateNote called: id={}, username={}, title={}, contentLength={}",
+                id, username, title, content != null ? content.toString().length() : "null");
+
+        Optional<Note> result = repo.findByIdAndOwnerUsername(id, username).map(n -> {
+            log.info("Found note to update: id={}, currentTitle={}", n.getId(), n.getTitle());
+
+            // Save version history
+            try {
+                NoteVersion version = NoteVersion.builder()
+                        .note(n)
+                        .title(n.getTitle())
+                        .content(n.getContent())
+                        .build();
+                versionRepo.save(version);
+            } catch (Exception e) {
+                log.warn("Failed to save note version, continuing with update", e);
+            }
+
+            // Update note fields
             if (title != null && !title.isBlank()) {
                 n.setTitle(title);
             }
             if (content != null) {
+                log.info("Setting new content, length={}", content.toString().length());
                 n.setContent(content);
             }
             n.setUpdatedAt(Instant.now());
-            Note updatedNote = repo.save(n);
 
-            updateNoteLinks(updatedNote);
-            analyzeNoteContentAsync(updatedNote);
+            // CRITICAL: Use saveAndFlush to ensure immediate persistence
+            Note savedNote = repo.saveAndFlush(n);
+            log.info("Note FLUSHED to DB: id={}, updatedAt={}", savedNote.getId(), savedNote.getUpdatedAt());
 
+            return savedNote;
+        });
+
+        // Run async operations AFTER the main save completes
+        result.ifPresent(note -> {
             try {
-                String message = objectMapper.writeValueAsString(updatedNote);
-                noteSocketHandler.broadcast(updatedNote.getId().toString(), message, null);
-            } catch (IOException e) {
-                // Log error, but don't fail the transaction
-            }
-
-            return updatedNote;
-        });
-    }
-
-    private void updateNoteLinks(Note note) {
-        embeddingService.getEmbedding(extractTextFromNode(note.getContent())).subscribe(embedding -> {
-            String embeddingString = Arrays.toString(embedding);
-            List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
-            linkRepo.deleteBySourceNoteId(note.getId());
-            for (Note related : relatedNotes) {
-                if (!related.getId().equals(note.getId())) {
-                    NoteLink link = NoteLink.builder()
-                            .sourceNoteId(note.getId())
-                            .linkedNoteId(related.getId())
-                            .relevanceScore(0.0f) // Placeholder, a real implementation would calculate this
-                            .build();
-                    linkRepo.save(link);
-                }
+                // These run async and won't block/affect the save
+                runPostSaveOperationsAsync(note.getId());
+            } catch (Exception e) {
+                log.warn("Failed to trigger post-save operations", e);
             }
         });
+
+        return result;
     }
 
+    /**
+     * Post-save async operations - runs after transaction commits
+     * Failures here won't affect the save
+     */
     @Async
-    public void analyzeNoteContentAsync(Note note) {
-        // Clear previous suggestions for this note
-        suggestionRepo.deleteByNoteId(note.getId());
+    public void runPostSaveOperationsAsync(Long noteId) {
+        try {
+            repo.findById(noteId).ifPresent(note -> {
+                // Update embeddings and links (async, non-blocking)
+                updateNoteLinksAsync(note);
 
-        // Example 1: Suggest linking to a semantically similar note if not already
-        // linked
-        embeddingService.getEmbedding(extractTextFromNode(note.getContent())).subscribe(embedding -> {
-            // Save embedding to note
-            // Need to re-fetch note to ensure we are updating the latest state and avoiding
-            // detached entity issues
-            repo.findById(note.getId()).ifPresent(n -> {
-                n.setEmbedding(embedding);
-                repo.save(n);
-            });
+                // Run AI analysis
+                noteAnalysisService.analyzeNoteContentAsync(noteId);
 
-            String embeddingString = Arrays.toString(embedding);
-            List<Note> similarNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 3);
-            for (Note similar : similarNotes) {
-                if (!similar.getId().equals(note.getId())
-                        && linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(note.getId()).stream()
-                                .noneMatch(nl -> nl.getLinkedNoteId().equals(similar.getId()))) {
-                    suggestionRepo.save(NoteSuggestion.builder()
-                            .note(note)
-                            .type("RELATED_NOTE")
-                            .suggestionContent("Consider linking to note: " + similar.getTitle() + " (ID: "
-                                    + similar.getId() + ")")
-                            .build());
+                // Broadcast via WebSocket
+                try {
+                    String message = objectMapper.writeValueAsString(note);
+                    noteSocketHandler.broadcast(note.getId().toString(), message, null);
+                } catch (IOException e) {
+                    log.warn("Failed to broadcast note update", e);
                 }
-            }
-        });
-
-        // Example 2: Simple keyword-based suggestion (e.g., for tasks)
-        if (note.getContent() != null && note.getContent().asText().contains("TODO")) {
-            suggestionRepo.save(NoteSuggestion.builder()
-                    .note(note)
-                    .type("TASK_REMINDER")
-                    .suggestionContent("Found 'TODO' in your note. Consider adding a task.")
-                    .build());
+            });
+        } catch (Exception e) {
+            log.error("Post-save operations failed for note {}", noteId, e);
         }
+    }
+
+    private void updateNoteLinksAsync(Note note) {
+        embeddingService.getEmbedding(extractTextFromNode(note.getContent())).subscribe(
+                embedding -> {
+                    try {
+                        String embeddingString = Arrays.toString(embedding);
+                        List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
+                        linkRepo.deleteBySourceNoteId(note.getId());
+                        for (Note related : relatedNotes) {
+                            if (!related.getId().equals(note.getId())) {
+                                NoteLink link = NoteLink.builder()
+                                        .sourceNoteId(note.getId())
+                                        .linkedNoteId(related.getId())
+                                        .relevanceScore(0.0f)
+                                        .build();
+                                linkRepo.save(link);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to update note links for note {}", note.getId(), e);
+                    }
+                },
+                error -> log.warn("Failed to get embedding for note {}", note.getId(), error));
     }
 
     public boolean deleteNote(Long id, String username) {

@@ -116,6 +116,19 @@ export default function HomePage() {
     </motion.button>
   );
 
+  // Helper to extract display name
+  const getDisplayName = () => {
+    if (profile?.displayName) return profile.displayName;
+    const name = user?.username || "Scholar";
+    // If username looks like an email, extract local part
+    if (name.includes('@')) {
+      const localPart = name.split('@')[0];
+      // Capitalize first letter and remove numbers/special chars if simple
+      return localPart.charAt(0).toUpperCase() + localPart.slice(1).replace(/[0-9._]/g, ' ');
+    }
+    return name;
+  };
+
   return (
     <motion.div
       variants={containerVariants}
@@ -124,21 +137,21 @@ export default function HomePage() {
       className="space-y-12 pb-12"
     >
       {/* Hero Section */}
-      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl glass-card p-8 md:p-12 border-none">
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl glass-card p-8 md:p-10 border-none">
         <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/20 to-accent-green/10 z-0" />
         <div className="relative z-10 max-w-3xl">
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-4xl md:text-5xl font-serif font-medium leading-tight mb-4"
+            className="text-3xl md:text-4xl font-serif font-medium leading-tight mb-3"
           >
             Good Morning, <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent-glow">
-              {profile?.displayName || user?.username || "Scholar"}
+              {getDisplayName()}
             </span>
           </motion.h1>
-          <p className="text-lg text-secondary font-light mb-8 max-w-xl">
+          <p className="text-base text-secondary font-light mb-6 max-w-xl">
             You have <span className="text-primary font-medium">{assignments.length} assignments</span> due soon and <span className="text-primary font-medium">{xp ?? 0} XP</span> to earn today.
           </p>
 

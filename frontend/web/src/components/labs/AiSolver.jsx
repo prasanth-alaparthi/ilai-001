@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import labsService from '../../services/labsService';
 
 const AiSolver = ({ type = 'math' }) => {
     const [query, setQuery] = useState('');
@@ -9,14 +10,24 @@ const AiSolver = ({ type = 'math' }) => {
     const handleAsk = async () => {
         if (!query.trim()) return;
         setLoading(true);
+        setResponse('');
 
-        // Mock API call - replace with actual endpoint
-        // const res = await fetch('/api/labs/ai/solve', ...);
-
-        setTimeout(() => {
-            setResponse(`Here is the step-by-step solution for: "${query}"...\n\n1. Identify the variables.\n2. Apply the formula.\n3. Calculate the result.\n\nFinal Answer: [Mock Answer]`);
+        try {
+            let result;
+            if (type === 'code' || type === 'math') {
+                result = await labsService.solveEquation(query);
+            } else if (type === 'chemistry') {
+                result = await labsService.balanceReaction(query);
+            } else {
+                result = await labsService.explainConcept(query);
+            }
+            setResponse(result.answer || result.explanation || result);
+        } catch (error) {
+            console.error('AI solver error:', error);
+            setResponse('Sorry, I could not process your request. Please try again.');
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
     };
 
     return (

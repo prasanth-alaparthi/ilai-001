@@ -1,0 +1,39 @@
+# Production-optimized Dockerfile for Spring Boot services
+# Multi-stage build for smaller image and faster startup
+
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS builder
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+
+# Install Maven and build
+RUN apk add --no-cache maven && \
+    mvn package -DskipTests -Dmaven.javadoc.skip=true
+
+# Stage 2: Runtime
+FROM eclipse-temurin:21-jre-alpine
+
+# Security: Run as non-root user
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+WORKDIR /app
+
+# Copy JAR from builder
+COPY --from=builder /app/target/*.jar app.jar
+
+# JVM optimization for containers
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:InitialRAMPercentage=50.0 \
+    -Djava.security.egd=file:/dev/./urandom \
+    -Dspring.profiles.active=prod"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s \
+    CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

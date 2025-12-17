@@ -116,4 +116,27 @@ public class UserController {
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
+
+    /**
+     * Internal endpoint for service-to-service calls to check institution status.
+     * Used by FeatureAccessService in muse-ai-service.
+     */
+    @GetMapping("/{userId}/institution-status")
+    public ResponseEntity<?> getInstitutionStatus(@PathVariable Long userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("hasActiveInstitution", false, "error", "User not found"));
+        }
+
+        User user = userOptional.get();
+        boolean hasActiveInstitution = user.getInstitution() != null
+                && user.getInstitution().isHasActiveSubscription();
+
+        return ResponseEntity.ok(Map.of(
+                "hasActiveInstitution", hasActiveInstitution,
+                "institutionId", user.getInstitution() != null ? user.getInstitution().getId() : null,
+                "institutionName", user.getInstitution() != null ? user.getInstitution().getName() : null,
+                "subscriptionPlan", user.getSubscriptionPlan() != null ? user.getSubscriptionPlan().name() : "FREE"));
+    }
 }

@@ -89,10 +89,13 @@ apiClient.interceptors.response.use(
           })
           .catch((e) => {
             processQueue(e, null);
-            try {
-              window.dispatchEvent(new Event("auth-error"));
-            } catch (eventError) {
-              console.error("Failed to dispatch auth-error event", eventError);
+            // Only dispatch auth-error if not explicitly skipped
+            if (!originalRequest.skipAuthErrorEvent) {
+              try {
+                window.dispatchEvent(new Event("auth-error"));
+              } catch (eventError) {
+                console.error("Failed to dispatch auth-error event", eventError);
+              }
             }
             reject(e);
           })

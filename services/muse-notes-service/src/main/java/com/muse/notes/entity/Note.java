@@ -33,7 +33,7 @@ public class Note {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("section-notes")
     private Section section;
 
     @Column(name = "author_name", length = 255)

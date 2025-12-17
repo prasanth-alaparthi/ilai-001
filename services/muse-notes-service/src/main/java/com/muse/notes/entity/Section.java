@@ -1,6 +1,7 @@
 package com.muse.notes.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -20,7 +21,7 @@ public class Section {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "notebook_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("notebook-sections")
     private Notebook notebook;
 
     @Column(nullable = false)
@@ -35,7 +36,36 @@ public class Section {
     @Column(name = "order_index")
     private Integer orderIndex;
 
+    // Self-referencing for nested sections/folders
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    @JsonBackReference("section-parent")
+    private Section parent;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("section-parent")
+    @OrderBy("orderIndex ASC")
+    private List<Section> children = new ArrayList<>();
+
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("section-notes")
     private List<Note> notes = new ArrayList<>();
+
+    // Helper to get the nesting level (0 = root, 1 = first level, etc.)
+    @Transient
+    public int getLevel() {
+        int level = 0;
+        Section current = this.parent;
+        while (current != null) {
+            level++;
+            current = current.getParent();
+        }
+        return level;
+    }
+
+    // Helper to check if this is a root section
+    @Transient
+    public boolean isRoot() {
+        return this.parent == null;
+    }
 }

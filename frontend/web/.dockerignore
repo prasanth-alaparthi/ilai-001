@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+
+# Development files
+.git
+.gitignore
+.env
+.env.*
+*.md
+!README.md
+.vscode
+.idea
+
+# Test files
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+coverage
+__tests__
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (we don't need them in context)
+Dockerfile*
+docker-compose*
+.dockerignore

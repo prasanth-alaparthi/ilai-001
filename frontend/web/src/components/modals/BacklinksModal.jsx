@@ -8,7 +8,7 @@ const BacklinksModal = ({ noteId, onSelectNote, onClose }) => {
   useEffect(() => {
     if (!noteId) return;
     setIsLoading(true);
-    apiClient.get(`/api/notes/${noteId}/backlinks`)
+    apiClient.get(`/notes/${noteId}/backlinks`)
       .then(response => {
         setBacklinks(response.data);
       })

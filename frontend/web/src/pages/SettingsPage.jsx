@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../state/UserContext';
 import apiClient from '../services/apiClient';
-import { FiLock, FiBell, FiEye, FiShield, FiHelpCircle } from 'react-icons/fi';
+import { FiLock, FiBell, FiEye, FiShield, FiHelpCircle, FiCpu } from 'react-icons/fi';
 
 export default function SettingsPage() {
     const { user } = useUser();
@@ -10,6 +10,7 @@ export default function SettingsPage() {
     const tabs = [
         { id: 'privacy', label: 'Privacy', icon: <FiLock /> },
         { id: 'notifications', label: 'Notifications', icon: <FiBell /> },
+        { id: 'automations', label: 'AI Automations', icon: <FiCpu /> },
         { id: 'security', label: 'Security', icon: <FiShield /> },
         { id: 'help', label: 'Help', icon: <FiHelpCircle /> },
     ];
@@ -25,8 +26,8 @@ export default function SettingsPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
-                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
+                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
                                 }`}
                         >
                             <span className="text-lg">{tab.icon}</span>
@@ -97,6 +98,88 @@ export default function SettingsPage() {
                                     </select>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'automations' && (
+                    <div className="space-y-6">
+                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 mb-6">
+                            <p className="text-sm text-purple-700 dark:text-purple-300">
+                                AI Automations run in the background to enhance your content automatically. Toggle them on/off based on your preferences.
+                            </p>
+                        </div>
+
+                        <h3 className="font-semibold text-lg mb-4">Notes Automations</h3>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">Auto-Generate Tags</h3>
+                                <p className="text-sm text-slate-500">Automatically extract and add relevant tags when you create a note.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" defaultChecked className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">Auto-Summarize Long Notes</h3>
+                                <p className="text-sm text-slate-500">Generate summaries for notes over 500 words.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" defaultChecked className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">Suggest Note Links</h3>
+                                <p className="text-sm text-slate-500">Find and suggest related notes to link together.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" defaultChecked className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">Auto-Format Notes</h3>
+                                <p className="text-sm text-slate-500">Clean up and organize note structure automatically.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <hr className="my-6 border-slate-200 dark:border-slate-700" />
+
+                        <h3 className="font-semibold text-lg mb-4">Journal Automations</h3>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">Mood Analysis</h3>
+                                <p className="text-sm text-slate-500">Analyze journal entries to track emotional patterns.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" defaultChecked className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">Gratitude Extraction</h3>
+                                <p className="text-sm text-slate-500">Automatically detect and highlight gratitude moments.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" defaultChecked className="sr-only peer" />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
                         </div>
                     </div>
                 )}

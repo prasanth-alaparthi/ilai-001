@@ -8,7 +8,7 @@ const NoteVersions = ({ noteId, onRestore }) => {
   useEffect(() => {
     if (!noteId) return;
     setIsLoading(true);
-    apiClient.get(`/api/notes/${noteId}/versions`)
+    apiClient.get(`/notes/${noteId}/versions`)
       .then(response => {
         setVersions(response.data);
       })
@@ -22,7 +22,7 @@ const NoteVersions = ({ noteId, onRestore }) => {
 
   const handleRestore = async (versionId) => {
     try {
-      await apiClient.post(`/api/notes/versions/${versionId}/restore`);
+      await apiClient.post(`/notes/versions/${versionId}/restore`);
       onRestore();
     } catch (error) {
       console.error('Error restoring note version:', error);

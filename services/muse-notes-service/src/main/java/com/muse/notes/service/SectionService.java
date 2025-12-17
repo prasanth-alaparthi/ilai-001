@@ -25,10 +25,22 @@ public class SectionService {
         this.notebookRepo = notebookRepo;
     }
 
+    // List all sections (flat, for backwards compatibility)
     public List<Section> listSections(Long notebookId, String username) {
         return repo.findByNotebookIdAndNotebookOwnerUsernameOrderByOrderIndexAsc(notebookId, username);
     }
 
+    // List only root sections (parent = null)
+    public List<Section> listRootSections(Long notebookId, String username) {
+        return repo.findRootSectionsByNotebookId(notebookId, username);
+    }
+
+    // Get children of a section
+    public List<Section> getChildren(Long parentId) {
+        return repo.findByParentId(parentId);
+    }
+
+    // Create a root section
     public Optional<Section> createSection(Long notebookId, String username, String title) {
         return notebookRepo.findByIdAndOwnerUsername(notebookId, username).map(notebook -> {
             Instant now = Instant.now();
@@ -40,8 +52,61 @@ public class SectionService {
             section.setCreatedAt(now);
             section.setUpdatedAt(now);
             section.setOrderIndex(nextOrderIndex);
+            section.setParent(null); // Root section
             return repo.save(section);
         });
+    }
+
+    // Create a sub-section (nested under a parent)
+    public Optional<Section> createSubSection(Long parentId, String username, String title) {
+        return repo.findByIdAndNotebookOwnerUsername(parentId, username).map(parent -> {
+            Instant now = Instant.now();
+            int nextOrderIndex = repo.findMaxOrderIndexByParentId(parentId) + 1;
+
+            Section section = new Section();
+            section.setNotebook(parent.getNotebook()); // Same notebook as parent
+            section.setTitle((title == null || title.isBlank()) ? "Untitled" : title);
+            section.setCreatedAt(now);
+            section.setUpdatedAt(now);
+            section.setOrderIndex(nextOrderIndex);
+            section.setParent(parent); // Nested under parent
+            return repo.save(section);
+        });
+    }
+
+    // Move a section to a new parent (or to root if parentId is null)
+    public Optional<Section> moveSection(Long sectionId, Long newParentId, String username) {
+        return repo.findByIdAndNotebookOwnerUsername(sectionId, username).map(section -> {
+            if (newParentId == null) {
+                // Move to root
+                section.setParent(null);
+                section.setOrderIndex(repo.findMaxOrderIndexByNotebookId(section.getNotebook().getId()) + 1);
+            } else {
+                // Move under new parent
+                return repo.findByIdAndNotebookOwnerUsername(newParentId, username).map(newParent -> {
+                    // Prevent circular reference
+                    if (isDescendantOf(newParent, section)) {
+                        throw new IllegalArgumentException("Cannot move a section into its own descendant");
+                    }
+                    section.setParent(newParent);
+                    section.setOrderIndex(repo.findMaxOrderIndexByParentId(newParentId) + 1);
+                    return repo.save(section);
+                }).orElse(section);
+            }
+            return repo.save(section);
+        });
+    }
+
+    // Check if potentialDescendant is a descendant of potentialAncestor
+    private boolean isDescendantOf(Section potentialDescendant, Section potentialAncestor) {
+        Section current = potentialDescendant;
+        while (current != null) {
+            if (current.getId().equals(potentialAncestor.getId())) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 
     @Transactional
@@ -58,5 +123,13 @@ public class SectionService {
             }
         }
         repo.saveAll(sections);
+    }
+
+    // Delete a section and all its children
+    public boolean deleteSection(Long sectionId, String username) {
+        return repo.findByIdAndNotebookOwnerUsername(sectionId, username).map(section -> {
+            repo.delete(section); // Cascade will delete children
+            return true;
+        }).orElse(false);
     }
 }

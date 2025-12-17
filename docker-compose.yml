@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # --- Database ---
   postgres:
-    image: pgvector/pgvector:pg18
+    image: pgvector/pgvector:pg16
     container_name: muse-postgres
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
@@ -14,14 +14,74 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
-      - ./init-scripts:/docker-entrypoint-initdb.d # Optional: for init scripts
+      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - muse-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # --- Redis (Event Bus & Cache) ---
+  redis:
+    image: redis:7-alpine
+    container_name: muse-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - muse-network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  # --- AI Service (Central AI Orchestration) ---
+  muse-ai-service:
+    build:
+      context: ./services/muse-ai-service
+      dockerfile: Dockerfile
+    container_name: muse-ai-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+      SERVER_PORT: 8088
+      DB_URL: jdbc:postgresql://postgres:5432/muse_ai
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      DB_MAX_POOL_SIZE: 5
+      DB_MIN_IDLE: 2
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      NOTES_SERVICE_URL: http://muse-notes-service:8082
+      FEED_SERVICE_URL: http://muse-feed-service:8083
+      CLASSROOM_SERVICE_URL: http://muse-classroom-service:8090
+      CHAT_SERVICE_URL: http://muse-chat-service:8086
+    ports:
+      - "8088:8088"
+    networks:
+      - muse-network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8088/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   # --- Auth Service ---
   muse-auth-service:
@@ -47,8 +107,10 @@ services:
       SENDER_EMAIL_ADDRESS: ${SENDER_EMAIL_ADDRESS}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
       APP_EMAIL_VERIFICATION_ENABLED: "false"
-      GOOGLE_CLIENT_ID: "617964628206-o7rbt4hev51jcg0er1i93364okrkfs5c.apps.googleusercontent.com"
-      GOOGLE_CLIENT_SECRET: "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"
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       MICROSOFT_CLIENT_ID: "placeholder_id"
       MICROSOFT_CLIENT_SECRET: "placeholder_secret"
     ports:
@@ -56,6 +118,12 @@ services:
     networks:
       - muse-network
     restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # --- Notes Service ---
   muse-notes-service:
@@ -66,8 +134,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      muse-auth-service:
-        condition: service_started
+      redis:
+        condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
       SERVER_PORT: 8082
@@ -80,12 +148,23 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       AUTH_SERVICE_URL: http://muse-auth-service:8081
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_EMBEDDING_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8082:8082"
     networks:
       - muse-network
     restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # --- Academic Service ---
   muse-academic-service:
@@ -96,8 +175,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      muse-auth-service:
-        condition: service_started
     environment:
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
       SERVER_PORT: 8087
@@ -108,28 +185,33 @@ services:
       DB_MIN_IDLE: 2
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       AUTH_SERVICE_URL: http://muse-auth-service:8081
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
     ports:
       - "8087:8087"
     networks:
       - muse-network
     restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8087/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # --- Feed Service ---
-  muse-feed-service:
+  # --- Social Service (Chat + Feed merged) ---
+  muse-social-service:
     build:
-      context: ./services/muse-feed-service
+      context: ./services/muse-social-service
       dockerfile: Dockerfile
-    container_name: muse-feed-service
+    container_name: muse-social-service
     depends_on:
       postgres:
         condition: service_healthy
-      muse-auth-service:
-        condition: service_started
     environment:
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m -Djava.net.preferIPv4Stack=true"
       SERVER_PORT: 8083
-      DB_URL: jdbc:postgresql://postgres:5432/muse_feed
+      DB_URL: jdbc:postgresql://postgres:5432/muse_social
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
       DB_MAX_POOL_SIZE: 5
@@ -145,121 +227,54 @@ services:
     networks:
       - muse-network
     restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  # --- Parental Service ---
-  muse-parental-service:
+  # --- Parental Service (MERGED into muse-academic-service) ---
+  # Parental control functionality is now handled by muse-academic-service at port 8087
+  # API endpoints: /api/parental/*
+
+
+
+  # --- Chat Service (MERGED into muse-social-service) ---
+  # Chat functionality is now handled by muse-social-service at port 8083
+  # API endpoints: /api/chat/*, /api/conversations/*
+
+
+  # --- Classroom Service (MERGED into muse-academic-service) ---
+  # Classroom and assignment functionality is now handled by muse-academic-service at port 8087
+  # API endpoints: /api/classrooms/*, /api/clubs/*, /api/assignments/*
+
+
+
+  # --- Labs Service (MERGED into muse-notes-service) ---
+  # Labs functionality is now handled by muse-notes-service at port 8083
+  # API endpoints: /api/labs/*
+
+
+  # --- Quantum Computing Service (Python/Qiskit) ---
+  muse-quantum-service:
     build:
-      context: ./services/muse-parental-service
+      context: ./services/muse-quantum-service
       dockerfile: Dockerfile
-    container_name: muse-parental-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      muse-auth-service:
-        condition: service_started
+    container_name: muse-quantum-service
     environment:
-      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
-      SERVER_PORT: 8084
-      DB_URL: jdbc:postgresql://postgres:5432/muse_parental
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
-      DB_MAX_POOL_SIZE: 5
-      DB_MIN_IDLE: 2
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      AUTH_SERVICE_URL: http://muse-auth-service:8081
+      - PYTHONUNBUFFERED=1
     ports:
-      - "8084:8084"
+      - "8092:8092"
     networks:
       - muse-network
     restart: always
-
-  # --- Chat Service ---
-  muse-chat-service:
-    build:
-      context: ./services/muse-chat-service
-      dockerfile: Dockerfile
-    container_name: muse-chat-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      muse-auth-service:
-        condition: service_started
-    environment:
-      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
-      SERVER_PORT: 8086
-      DB_URL: jdbc:postgresql://postgres:5432/muse_chat
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
-      DB_MAX_POOL_SIZE: 5
-      DB_MIN_IDLE: 2
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      AUTH_SERVICE_URL: http://muse-auth-service:8081
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-    ports:
-      - "8086:8086"
-    networks:
-      - muse-network
-    restart: always
-
-  # --- Classroom Service ---
-  # --- Classroom Service ---
-  muse-classroom-service:
-    build:
-      context: ./services/muse-classroom-service
-      dockerfile: Dockerfile
-    container_name: muse-classroom-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      muse-auth-service:
-        condition: service_started
-    environment:
-      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
-      SERVER_PORT: 8090
-      DB_URL: jdbc:postgresql://postgres:5432/muse_classroom
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
-      DB_MAX_POOL_SIZE: 5
-      DB_MIN_IDLE: 2
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      AUTH_SERVICE_URL: http://muse-auth-service:8081
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
-    ports:
-      - "8090:8090"
-    networks:
-      - muse-network
-    restart: always
-
-  # --- Labs Service ---
-  # --- Labs Service ---
-  muse-labs-service:
-    build:
-      context: ./services/muse-labs-service
-      dockerfile: Dockerfile
-    container_name: muse-labs-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      muse-auth-service:
-        condition: service_started
-    environment:
-      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
-      SERVER_PORT: 8091
-      DB_URL: jdbc:postgresql://postgres:5432/muse_labs
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
-      DB_MAX_POOL_SIZE: 5
-      DB_MIN_IDLE: 2
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      AUTH_SERVICE_URL: http://muse-auth-service:8081
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost}
-    ports:
-      - "8091:8091"
-    networks:
-      - muse-network
-    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8092/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # --- Frontend ---
   muse-frontend:
@@ -268,19 +283,84 @@ services:
       dockerfile: Dockerfile
     container_name: muse-frontend
     depends_on:
-      - muse-auth-service
-      - muse-notes-service
-      - muse-feed-service
-      - muse-parental-service
-      - muse-chat-service
-      - muse-academic-service
-      - muse-classroom-service
-      - muse-labs-service
+      muse-auth-service:
+        condition: service_started
     ports:
       - "80:80"
     networks:
       - muse-network
     restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:80" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # --- Keycloak (Identity Provider / SSO) ---
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: muse-keycloak
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${DB_USERNAME:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-Prasanth}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      # Google OAuth2 Configuration
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - muse-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ready" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # --- Kong API Gateway ---
+  kong:
+    image: kong:3.5
+    container_name: muse-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_LOG_LEVEL: info
+      KONG_PLUGINS: bundled,rate-limiting,jwt,cors,request-transformer
+    ports:
+      - "8000:8000" # Proxy HTTP
+      - "8443:8443" # Proxy HTTPS
+      - "8001:8001" # Admin API
+    volumes:
+      - ./kong:/kong
+    networks:
+      - muse-network
+    depends_on:
+      - muse-auth-service
+      - muse-notes-service
+    restart: always
+    healthcheck:
+      test: [ "CMD", "kong", "health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 networks:
   muse-network:
@@ -288,3 +368,7 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
+  keycloak_data:
+
+

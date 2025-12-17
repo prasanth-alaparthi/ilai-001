@@ -24,10 +24,17 @@ import RibbonToolbar from "./editor/RibbonToolbar";
 
 export default function RichNoteEditor({ value, onChange, noteId, onRestore, onEditorReady }) {
 	const onChangeRef = React.useRef(onChange);
+	const valueRef = React.useRef(value); // Track latest value prop
+	const prevNoteIdRef = React.useRef(noteId); // Track previous noteId to detect changes
 
 	useEffect(() => {
 		onChangeRef.current = onChange;
 	}, [onChange]);
+
+	// Keep valueRef updated
+	useEffect(() => {
+		valueRef.current = value;
+	}, [value]);
 
 	const editor = useEditor({
 		extensions: [
@@ -76,6 +83,7 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 		],
 		content: value || "",
 		onUpdate: ({ editor }) => {
+			console.log("[DEBUG] RichNoteEditor onUpdate fired, onChangeRef.current:", !!onChangeRef.current);
 			if (onChangeRef.current) {
 				onChangeRef.current(editor.getJSON());
 			}
@@ -98,7 +106,7 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 						formData.append("file", file);
 						try {
 							const response = await apiClient.post(
-								"/api/notes/attachments/upload",
+								"/notes/attachments/upload",
 								formData,
 								{
 									headers: {
@@ -140,19 +148,26 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 		}
 	}, [editor, onEditorReady]);
 
+	// Set initial content when noteId changes (loading a new note)
+	// Don't re-sync on every value change - that would interrupt user typing
 	useEffect(() => {
 		if (!editor) return;
-		// Compare JSON to avoid unnecessary updates
-		const current = editor.getJSON();
-		const isSame = JSON.stringify(value) === JSON.stringify(current);
 
-		if (value && !isSame) {
-			editor.commands.setContent(value, false);
+		// Check if noteId actually changed
+		if (prevNoteIdRef.current !== noteId) {
+			console.log("[DEBUG] Note changed from", prevNoteIdRef.current, "to", noteId);
+			prevNoteIdRef.current = noteId;
+
+			// Use the current value prop (not valueRef, since we want the fresh prop)
+			if (value) {
+				console.log("[DEBUG] Setting editor content for new note:", noteId);
+				editor.commands.setContent(value, false);
+			} else {
+				console.log("[DEBUG] Clearing editor - no content for note:", noteId);
+				editor.commands.clearContent();
+			}
 		}
-		if (!value && !isSame && !editor.isEmpty) {
-			editor.commands.clearContent();
-		}
-	}, [value, editor]);
+	}, [noteId, value, editor]);
 
 	if (!editor) {
 		return (

@@ -1,0 +1,307 @@
+/* MindMap.css - Phase 5 Mind Map Styling */
+
+.mind-map-container {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 24px;
+    color: #e2e8f0;
+}
+
+.map-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.map-header h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.map-header .subtitle {
+    color: #94a3b8;
+    margin-top: 8px;
+}
+
+/* Controls */
+.map-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.map-controls .topic-input,
+.map-controls .content-input {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.map-controls .topic-input:focus,
+.map-controls .content-input:focus {
+    outline: none;
+    border-color: #a78bfa;
+}
+
+.control-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.map-controls .generate-btn {
+    flex: 1;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.map-controls .generate-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+}
+
+.map-controls .generate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.zoom-controls button {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.zoom-controls button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.zoom-controls span {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Loading */
+.map-loading {
+    text-align: center;
+    padding: 60px;
+}
+
+.loading-pulse {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+}
+
+/* SVG Canvas */
+.map-canvas-container {
+    position: relative;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 500px;
+}
+
+.mind-map-svg {
+    width: 100%;
+    height: 500px;
+    transition: transform 0.2s;
+}
+
+/* Node Styles */
+.node-connection {
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 2;
+}
+
+.node-group {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.node-group:hover {
+    transform: scale(1.1);
+}
+
+.node-group.selected .node-circle {
+    stroke: #f59e0b;
+    stroke-width: 3;
+}
+
+.node-central .node-circle {
+    fill: url(#centralGradient);
+    filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.5));
+}
+
+.node-branch .node-circle {
+    fill: url(#branchGradient);
+    filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.4));
+}
+
+.node-item .node-circle {
+    fill: rgba(34, 197, 94, 0.8);
+}
+
+.node-subitem .node-circle {
+    fill: rgba(251, 191, 36, 0.8);
+}
+
+.node-label {
+    fill: white;
+    font-size: 10px;
+    font-weight: 500;
+    pointer-events: none;
+}
+
+.node-central .node-label {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Node Details Panel */
+.node-details {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    min-width: 180px;
+}
+
+.node-details h4 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    color: #e2e8f0;
+}
+
+.node-type {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(139, 92, 246, 0.2);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #a78bfa;
+    margin-bottom: 8px;
+}
+
+.node-details p {
+    margin: 8px 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.expand-btn {
+    width: 100%;
+    padding: 8px;
+    background: rgba(96, 165, 250, 0.2);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-radius: 8px;
+    color: #60a5fa;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.expand-btn:hover {
+    background: rgba(96, 165, 250, 0.3);
+}
+
+/* Connections Panel */
+.connections-panel {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    max-width: 250px;
+}
+
+.connections-panel h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+.connection-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    padding: 4px 0;
+}
+
+.connection-arrow {
+    color: #60a5fa;
+}
+
+.connection-type {
+    color: #64748b;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .control-buttons {
+        flex-direction: column;
+    }
+
+    .node-details,
+    .connections-panel {
+        position: static;
+        margin-top: 16px;
+    }
+}

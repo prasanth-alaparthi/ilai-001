@@ -31,6 +31,20 @@ public class ResourceServerConfig {
     private String frontendBaseUrl;
 
     @Bean
+    @Order(0)
+    public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
+        // This filter chain is specifically for actuator endpoints (health checks) and
+        // error pages.
+        http
+                .securityMatchers(matchers -> matchers
+                        .requestMatchers(new AntPathRequestMatcher("/actuator/**"))
+                        .requestMatchers(new AntPathRequestMatcher("/error")))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .csrf(csrf -> csrf.disable());
+        return http.build();
+    }
+
+    @Bean
     @Order(1)
     public SecurityFilterChain staticResourcesFilterChain(HttpSecurity http) throws Exception {
         // This filter chain is specifically for static resources that should be public.
@@ -42,7 +56,7 @@ public class ResourceServerConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         // This is the main security filter chain for our API and WebSocket endpoints.
         http
@@ -51,6 +65,7 @@ public class ResourceServerConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/ws/notes/**").permitAll() // Allow WebSocket handshake
+                        .requestMatchers("/actuator/**").permitAll() // Allow health checks
                         .anyRequest().authenticated() // All other API requests require authentication
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // Enable JWT validation

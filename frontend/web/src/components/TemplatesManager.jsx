@@ -11,7 +11,7 @@ export default function TemplatesManager({ onInsert }) {
   async function load() {
     try {
       setLoading(true);
-      const res = await apiClient.get("/api/templates");
+      const res = await apiClient.get("/templates");
       setTemplates(res.data || []);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }
@@ -21,7 +21,7 @@ export default function TemplatesManager({ onInsert }) {
   async function saveTemplate() {
     if (!title || !content) return alert("Title and content required");
     try {
-      await apiClient.post("/api/templates", { title, content });
+      await apiClient.post("/templates", { title, content });
       setTitle(""); setContent("");
       load();
     } catch (e) { console.error(e); alert("Failed to save template"); }
@@ -29,7 +29,7 @@ export default function TemplatesManager({ onInsert }) {
 
   async function removeTemplate(id) {
     if (!confirm("Delete template?")) return;
-    try { await apiClient.delete(`/api/templates/${id}`); load(); } catch (e) { console.error(e); alert("Failed"); }
+    try { await apiClient.delete(`/templates/${id}`); load(); } catch (e) { console.error(e); alert("Failed"); }
   }
 
   return (
@@ -44,7 +44,7 @@ export default function TemplatesManager({ onInsert }) {
           <div key={t.id} className="flex items-start justify-between p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
             <div className="min-w-0">
               <div className="font-medium truncate">{t.title}</div>
-              <div className="text-xs text-gray-500 truncate">{(t.content || "").slice(0,100)}</div>
+              <div className="text-xs text-gray-500 truncate">{(t.content || "").slice(0, 100)}</div>
             </div>
             <div className="ml-3 flex flex-col gap-1">
               <button className="px-2 py-1 rounded border text-sm" onClick={() => onInsert(t.content)}>Insert</button>
@@ -56,8 +56,8 @@ export default function TemplatesManager({ onInsert }) {
       </div>
 
       <div className="pt-2 border-t">
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Template title" className="w-full px-2 py-1 rounded border mb-2"/>
-        <textarea value={content} onChange={e=>setContent(e.target.value)} placeholder="Template content (Markdown allowed)" rows={4} className="w-full px-2 py-1 rounded border mb-2"/>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Template title" className="w-full px-2 py-1 rounded border mb-2" />
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Template content (Markdown allowed)" rows={4} className="w-full px-2 py-1 rounded border mb-2" />
         <div className="flex justify-end">
           <button className="px-3 py-1 rounded bg-indigo-600 text-white" onClick={saveTemplate} disabled={loading}>Save template</button>
         </div>
