@@ -130,7 +130,7 @@ jobs:
             docker pull nagagopisai/ilai-auth:latest
             docker pull nagagopisai/ilai-notes:latest
             
-            # Restart services with new images
+            # Stop and remove old containers
             docker stop muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
             docker rm muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
             
