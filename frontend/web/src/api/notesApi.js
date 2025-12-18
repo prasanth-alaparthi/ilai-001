@@ -4,6 +4,15 @@
  */
 import apiClient from '../services/apiClient';
 
+// Helper to normalize paginated responses to arrays
+const normalizeArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    if (data?.items && Array.isArray(data.items)) return data.items;
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 export const notesApi = {
     // ====================
     // Notebooks
@@ -11,7 +20,7 @@ export const notesApi = {
 
     getNotebooks: async () => {
         const response = await apiClient.get('/notebooks');
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     createNotebook: async (title, color = '#6366f1') => {
@@ -34,7 +43,7 @@ export const notesApi = {
 
     getSections: async (notebookId) => {
         const response = await apiClient.get(`/notebooks/${notebookId}/sections`);
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Get sections as a hierarchical tree
@@ -42,7 +51,7 @@ export const notesApi = {
         const response = await apiClient.get(`/notebooks/${notebookId}/sections`, {
             params: { hierarchical: true }
         });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     createSection: async (notebookId, title) => {
@@ -59,7 +68,7 @@ export const notesApi = {
     // Get children of a section
     getChildren: async (sectionId) => {
         const response = await apiClient.get(`/notebooks/sections/${sectionId}/children`);
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Move a section to a new parent (or to root if parentId is null)
@@ -83,7 +92,7 @@ export const notesApi = {
 
     getNotes: async (sectionId) => {
         const response = await apiClient.get(`/sections/${sectionId}/notes`);
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     getNote: async (noteId) => {
@@ -113,12 +122,12 @@ export const notesApi = {
 
     searchNotes: async (query) => {
         const response = await apiClient.get('/notes/search', { params: { q: query } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     semanticSearch: async (query, limit = 5) => {
         const response = await apiClient.get('/notes/semantic-search', { params: { q: query, limit } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // ====================
@@ -132,7 +141,7 @@ export const notesApi = {
 
     getPinnedNotes: async () => {
         const response = await apiClient.get('/notes/pinned');
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // ====================
