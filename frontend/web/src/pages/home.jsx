@@ -69,8 +69,9 @@ export default function HomePage() {
           } catch { }
           try {
             const assignRes = await assignmentService.getAssignmentsByCourse(1);
-            setAssignments(assignRes || []);
-          } catch { }
+            const assignList = Array.isArray(assignRes) ? assignRes : (assignRes?.content || assignRes?.items || []);
+            setAssignments(assignList);
+          } catch { setAssignments([]); }
         }
       } finally {
         if (mounted) setLoading(false);
