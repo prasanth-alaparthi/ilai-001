@@ -1,0 +1,171 @@
+name: Deploy ILAI to AWS EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  DOCKER_REGISTRY: docker.io
+  DOCKER_USERNAME: nagagopisai
+
+jobs:
+  # ========================================
+  # Build and Push Frontend
+  # ========================================
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/web/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: frontend/web
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: frontend/web
+        run: npm run build
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend/web
+          push: true
+          tags: ${{ env.DOCKER_USERNAME }}/ilai-frontend:latest
+
+  # ========================================
+  # Build Auth Service
+  # ========================================
+  build-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Build auth service
+        working-directory: services/muse-auth-service
+        run: mvn clean package -DskipTests
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push auth image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/muse-auth-service
+          push: true
+          tags: ${{ env.DOCKER_USERNAME }}/ilai-auth:latest
+
+  # ========================================
+  # Build Notes Service
+  # ========================================
+  build-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Build notes service
+        working-directory: services/muse-notes-service
+        run: mvn clean package -DskipTests
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push notes image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/muse-notes-service
+          push: true
+          tags: ${{ env.DOCKER_USERNAME }}/ilai-notes:latest
+
+  # ========================================
+  # Deploy to EC2
+  # ========================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-auth, build-notes]
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/ilai-001
+            
+            # Pull latest images
+            docker pull nagagopisai/ilai-frontend:latest
+            docker pull nagagopisai/ilai-auth:latest
+            docker pull nagagopisai/ilai-notes:latest
+            
+            # Restart services with new images
+            docker stop muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
+            docker rm muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
+            
+            # Start auth service
+            docker run -d \
+              --name muse-auth-service \
+              --network ilai-001_muse-network \
+              --env-file .env \
+              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse-auth \
+              -e FRONTEND_BASE_URL=https://ilai.co.in \
+              -p 8081:8081 \
+              --restart always \
+              nagagopisai/ilai-auth:latest
+            
+            # Start notes service
+            docker run -d \
+              --name muse-notes-service \
+              --network ilai-001_muse-network \
+              --env-file .env \
+              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse_notes \
+              -p 8082:8082 \
+              --restart always \
+              nagagopisai/ilai-notes:latest
+            
+            # Start frontend
+            docker run -d \
+              --name muse-frontend \
+              --network ilai-001_muse-network \
+              -p 80:80 \
+              --restart always \
+              nagagopisai/ilai-frontend:latest
+            
+            # Verify
+            sleep 10
+            docker ps
+            
+            echo "Deployment complete!"
