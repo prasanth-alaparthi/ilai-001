@@ -139,19 +139,19 @@ jobs:
             cd ~/ilai-001
             
             # Login to GHCR
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u prasanth-alaparthi --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | sudo docker login ghcr.io -u prasanth-alaparthi --password-stdin
             
             # Pull latest images from GHCR
-            docker pull ghcr.io/prasanth-alaparthi/ilai-frontend:latest
-            docker pull ghcr.io/prasanth-alaparthi/ilai-auth:latest
-            docker pull ghcr.io/prasanth-alaparthi/ilai-notes:latest
+            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-frontend:latest
+            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-auth:latest
+            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-notes:latest
             
             # Stop and remove old containers
-            docker stop muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
-            docker rm muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
+            sudo docker stop muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
+            sudo docker rm muse-frontend muse-auth-service muse-notes-service 2>/dev/null || true
             
             # Start auth service
-            docker run -d \
+            sudo docker run -d \
               --name muse-auth-service \
               --network ilai-001_muse-network \
               --env-file .env \
@@ -162,7 +162,7 @@ jobs:
               ghcr.io/prasanth-alaparthi/ilai-auth:latest
             
             # Start notes service
-            docker run -d \
+            sudo docker run -d \
               --name muse-notes-service \
               --network ilai-001_muse-network \
               --env-file .env \
@@ -172,7 +172,7 @@ jobs:
               ghcr.io/prasanth-alaparthi/ilai-notes:latest
             
             # Start frontend
-            docker run -d \
+            sudo docker run -d \
               --name muse-frontend \
               --network ilai-001_muse-network \
               -p 80:80 \
@@ -181,6 +181,6 @@ jobs:
             
             # Verify
             sleep 10
-            docker ps
+            sudo docker ps
             
             echo "Deployment complete!"
