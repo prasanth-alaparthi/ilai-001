@@ -27,6 +27,7 @@ import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
+@org.springframework.context.annotation.Profile("!keycloak")
 public class AuthServiceSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
