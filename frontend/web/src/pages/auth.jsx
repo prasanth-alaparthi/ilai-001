@@ -159,14 +159,14 @@ export default function AuthPage() {
 
                 <div className="space-y-3 mb-6">
                   <a
-                    href="http://localhost:8081/oauth2/authorization/google"
+                    href="/api/auth/oauth2/authorization/google"
                     className="flex items-center justify-center w-full py-3 px-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors text-surface-700 dark:text-surface-200 font-medium"
                   >
                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 mr-3" />
                     Sign in with Google
                   </a>
                   <a
-                    href="http://localhost:8081/oauth2/authorization/microsoft-entra-id"
+                    href="/api/auth/oauth2/authorization/microsoft-entra-id"
                     className="flex items-center justify-center w-full py-3 px-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors text-surface-700 dark:text-surface-200 font-medium"
                   >
                     <img src="https://www.svgrepo.com/show/452062/microsoft.svg" alt="Microsoft" className="w-5 h-5 mr-3" />
