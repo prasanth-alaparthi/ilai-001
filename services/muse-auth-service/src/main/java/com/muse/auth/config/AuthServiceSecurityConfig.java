@@ -32,20 +32,19 @@ public class AuthServiceSecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
     private final CustomUserDetailsService userDetailsService;
-
-    // Make OAuth2 services optional
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.muse.auth.security.oauth2.CustomOAuth2UserService customOAuth2UserService;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.muse.auth.security.oauth2.OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
+    private final com.muse.auth.security.oauth2.CustomOAuth2UserService customOAuth2UserService;
+    private final com.muse.auth.security.oauth2.OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
 
     public AuthServiceSecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthEntryPoint jwtAuthEntryPoint,
-            CustomUserDetailsService userDetailsService) {
+            CustomUserDetailsService userDetailsService,
+            com.muse.auth.security.oauth2.CustomOAuth2UserService customOAuth2UserService,
+            com.muse.auth.security.oauth2.OAuth2LoginSuccessHandler oauth2LoginSuccessHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.jwtAuthEntryPoint = jwtAuthEntryPoint;
         this.userDetailsService = userDetailsService;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oauth2LoginSuccessHandler = oauth2LoginSuccessHandler;
     }
 
     @Value("${app.frontend-base-url:http://localhost:5173}")
@@ -70,20 +69,15 @@ public class AuthServiceSecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         // All other API endpoints require authentication
                         .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll());
-
-        // Only configure OAuth2 if the services are available
-        if (customOAuth2UserService != null && oauth2LoginSuccessHandler != null) {
-            http.oauth2Login(oauth2 -> oauth2
-                    .userInfoEndpoint(userInfo -> userInfo
-                            .userService(customOAuth2UserService))
-                    .successHandler(oauth2LoginSuccessHandler)
-                    .failureHandler(
-                            new org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler(
-                                    frontendBaseUrl + "/login?error=true")));
-        }
-
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().permitAll())
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService))
+                        .successHandler(oauth2LoginSuccessHandler)
+                        .failureHandler(
+                                new org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler(
+                                        frontendBaseUrl + "/login?error=true")))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
