@@ -63,7 +63,9 @@ export default function HomePage() {
           } catch { }
           try {
             const notesRes = await apiClient.get("/notes");
-            setRecentNotes(Array.isArray(notesRes.data) ? notesRes.data : notesRes.data?.items || []);
+            const data = notesRes.data;
+            const notesList = Array.isArray(data) ? data : (data?.content || data?.items || []);
+            setRecentNotes(notesList);
           } catch { }
           try {
             const assignRes = await assignmentService.getAssignmentsByCourse(1);
