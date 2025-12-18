@@ -1,0 +1,30 @@
+{
+    "name": "ilai-edge-api",
+    "version": "1.0.0",
+    "description": "ILAI Hyper Platform - Edge API Layer using Cloudflare Workers",
+    "type": "module",
+    "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy",
+        "deploy:staging": "wrangler deploy --env staging",
+        "deploy:production": "wrangler deploy --env production",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:e2e": "vitest run --config vitest.e2e.config.ts",
+        "lint": "eslint src/",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "hono": "^4.6.0",
+        "jose": "^5.9.0"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
+        "@types/node": "^22.0.0",
+        "typescript": "^5.6.0",
+        "vitest": "^2.1.0",
+        "wrangler": "^3.91.0",
+        "eslint": "^9.15.0",
+        "miniflare": "^3.20241106.0"
+    }
+}

@@ -1,0 +1,74 @@
+[
+    {
+        "name": "com.muse.social.chat.model.Conversation",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.chat.model.Message",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.chat.model.ConversationParticipant",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.chat.model.ConversationDTO",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.Post",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.Comment",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.Reaction",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.StudyGroup",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.FeedUserProfile",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.RssFeedSource",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.UserInterest",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.social.feed.entity.FriendRequest",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    }
+]

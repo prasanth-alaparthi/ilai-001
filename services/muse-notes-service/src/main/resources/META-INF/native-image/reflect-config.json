@@ -1,0 +1,62 @@
+[
+    {
+        "name": "com.muse.notes.entity.Note",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.Notebook",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.Section",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.Attachment",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.NoteVersion",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.NoteLink",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.SharePermission",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.entity.Template",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.dto.NoteDto",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.notes.dto.NotebookDto",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    }
+]

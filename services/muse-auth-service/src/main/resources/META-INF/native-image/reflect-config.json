@@ -1,0 +1,68 @@
+[
+    {
+        "name": "com.muse.auth.auth.entity.User",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.entity.RefreshToken",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.entity.Institution",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.entity.VerificationToken",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.entity.Profile",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.entity.Follow",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.dto.LoginRequest",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.dto.LoginResponse",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.dto.RegistrationRequest",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.dto.UserDto",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.auth.auth.dto.MeResponse",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    }
+]

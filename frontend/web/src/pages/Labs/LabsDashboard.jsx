@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     Terminal, Cpu, Beaker, Calculator, ChevronRight,
-    Code, Activity, Play, Lock, Radio, Atom, Leaf
+    Code, Activity, Play, Lock, Radio, Atom, Leaf,
+    // Arts Labs icons
+    MessageSquare, BookOpen, Palette, Globe2,
+    // Social Labs icons
+    MapPin, Landmark, TrendingUp, Clock
 } from 'lucide-react';
 
 const LabsDashboard = () => {
@@ -86,6 +90,112 @@ const LabsDashboard = () => {
             path: '/labs/biology',
             progress: 20,
             isNew: true
+        },
+        // Arts Labs
+        {
+            id: 'languages',
+            name: 'LANG_LAB',
+            description: 'Language Learning, Grammar, Vocabulary Builder.',
+            icon: MessageSquare,
+            color: 'text-rose-400',
+            borderColor: 'border-rose-400/30',
+            bgHover: 'hover:bg-rose-400/10',
+            path: '/labs/languages',
+            progress: 0,
+            isNew: true,
+            category: 'arts'
+        },
+        {
+            id: 'literature',
+            name: 'LIT_LAB',
+            description: 'Poetry Analysis, Story Writing, Literary Devices.',
+            icon: BookOpen,
+            color: 'text-pink-400',
+            borderColor: 'border-pink-400/30',
+            bgHover: 'hover:bg-pink-400/10',
+            path: '/labs/literature',
+            progress: 0,
+            isNew: true,
+            category: 'arts'
+        },
+        {
+            id: 'fashion',
+            name: 'FASHION_LAB',
+            description: 'Design Principles, Color Theory, Textile Arts.',
+            icon: Palette,
+            color: 'text-fuchsia-400',
+            borderColor: 'border-fuchsia-400/30',
+            bgHover: 'hover:bg-fuchsia-400/10',
+            path: '/labs/fashion',
+            progress: 0,
+            isNew: true,
+            category: 'arts'
+        },
+        {
+            id: 'culture',
+            name: 'CULTURE_LAB',
+            description: 'World Cultures, Traditions, Art History.',
+            icon: Globe2,
+            color: 'text-orange-400',
+            borderColor: 'border-orange-400/30',
+            bgHover: 'hover:bg-orange-400/10',
+            path: '/labs/culture',
+            progress: 0,
+            isNew: true,
+            category: 'arts'
+        },
+        // Social Labs
+        {
+            id: 'geography',
+            name: 'GEO_LAB',
+            description: 'Maps, Continents, Climate, Physical Geography.',
+            icon: MapPin,
+            color: 'text-teal-400',
+            borderColor: 'border-teal-400/30',
+            bgHover: 'hover:bg-teal-400/10',
+            path: '/labs/geography',
+            progress: 0,
+            isNew: true,
+            category: 'social'
+        },
+        {
+            id: 'political-science',
+            name: 'POLI_SCI_LAB',
+            description: 'Governance, Constitutions, Political Systems.',
+            icon: Landmark,
+            color: 'text-blue-400',
+            borderColor: 'border-blue-400/30',
+            bgHover: 'hover:bg-blue-400/10',
+            path: '/labs/political-science',
+            progress: 0,
+            isNew: true,
+            category: 'social'
+        },
+        {
+            id: 'economics',
+            name: 'ECON_LAB',
+            description: 'Markets, Supply & Demand, Economic Models.',
+            icon: TrendingUp,
+            color: 'text-lime-400',
+            borderColor: 'border-lime-400/30',
+            bgHover: 'hover:bg-lime-400/10',
+            path: '/labs/economics',
+            progress: 0,
+            isNew: true,
+            category: 'social'
+        },
+        {
+            id: 'history',
+            name: 'HISTORY_LAB',
+            description: 'Timeline Explorer, Civilizations, Historical Events.',
+            icon: Clock,
+            color: 'text-yellow-400',
+            borderColor: 'border-yellow-400/30',
+            bgHover: 'hover:bg-yellow-400/10',
+            path: '/labs/history',
+            progress: 0,
+            isNew: true,
+            category: 'social'
         }
     ];
 

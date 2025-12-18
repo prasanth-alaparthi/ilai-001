@@ -1,0 +1,86 @@
+[
+    {
+        "name": "com.muse.academic.academic.entity.Club",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.ClubMember",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.ClubPost",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.ClubEvent",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Classroom",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.ClassMember",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Assignment",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Submission",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Exam",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.ExamResult",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Subject",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Project",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Attendance",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "com.muse.academic.academic.entity.Complaint",
+        "allDeclaredFields": true,
+        "allDeclaredConstructors": true,
+        "allPublicMethods": true
+    }
+]

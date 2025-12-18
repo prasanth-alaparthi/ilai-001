@@ -3,17 +3,18 @@ version: '3.8'
 services:
   # --- Database ---
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     container_name: muse-postgres
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-Prasanth}
       POSTGRES_DB: muse_db
-    command: "postgres -c 'max_connections=200'"
+    command: >
+      postgres -c max_connections=200 -c shared_buffers=256MB -c wal_level=replica -c max_wal_senders=0 -c archive_mode=off
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - muse-network
@@ -22,7 +23,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 10
-      start_period: 5s
+      start_period: 10s
 
   # --- Redis (Event Bus & Cache) ---
   redis:

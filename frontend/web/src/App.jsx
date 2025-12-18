@@ -64,7 +64,19 @@ const QuantumLab = lazy(() => import('./pages/Labs/QuantumLab'));
 const PhysicsLab = lazy(() => import('./pages/Labs/PhysicsLab'));
 const ChemistryLab = lazy(() => import('./pages/Labs/ChemistryLab'));
 const BiologyLab = lazy(() => import('./pages/Labs/BiologyLab'));
-
+// New PhD-level Labs
+const CodeEditorLab = lazy(() => import('./pages/Labs/CodeEditorLab'));
+const MathGraphingLab = lazy(() => import('./pages/Labs/MathGraphingLab'));
+const MolecularViewerLab = lazy(() => import('./pages/Labs/MolecularViewerLab'));
+const DSAVisualizerLab = lazy(() => import('./pages/Labs/DSAVisualizerLab'));
+const GeographyLab = lazy(() => import('./pages/Labs/GeographyLab'));
+const HistoryTimelineLab = lazy(() => import('./pages/Labs/HistoryTimelineLab'));
+const EconomicsLab = lazy(() => import('./pages/Labs/EconomicsLab'));
+const LiteratureLab = lazy(() => import('./pages/Labs/LiteratureLab'));
+const LanguagesLab = lazy(() => import('./pages/Labs/LanguagesLab'));
+const PoliticalScienceLab = lazy(() => import('./pages/Labs/PoliticalScienceLab'));
+const FashionLab = lazy(() => import('./pages/Labs/FashionLab'));
+const CultureLab = lazy(() => import('./pages/Labs/CultureLab'));
 // Classroom & Clubs
 const ClassroomDashboard = lazy(() => import('./pages/Classroom/ClassroomDashboard'));
 const OnlineClassRoom = lazy(() => import('./pages/Classroom/OnlineClassRoom'));
@@ -178,6 +190,21 @@ export default function App() {
                           <Route path="physics" element={<PhysicsLab />} />
                           <Route path="chemistry" element={<ChemistryLab />} />
                           <Route path="biology" element={<BiologyLab />} />
+                          {/* New PhD-level Labs */}
+                          <Route path="cs" element={<CodeEditorLab />} />
+                          <Route path="code-editor" element={<CodeEditorLab />} />
+                          <Route path="math" element={<MathGraphingLab />} />
+                          <Route path="molecular" element={<MolecularViewerLab />} />
+                          <Route path="dsa" element={<DSAVisualizerLab />} />
+                          <Route path="geography" element={<GeographyLab />} />
+                          <Route path="history" element={<HistoryTimelineLab />} />
+                          <Route path="economics" element={<EconomicsLab />} />
+                          <Route path="literature" element={<LiteratureLab />} />
+                          <Route path="languages" element={<LanguagesLab />} />
+                          <Route path="political-science" element={<PoliticalScienceLab />} />
+                          <Route path="fashion" element={<FashionLab />} />
+                          <Route path="culture" element={<CultureLab />} />
+                          {/* Dynamic subject route */}
                           <Route path=":subject" element={<SubjectLabs />} />
                           <Route path="view/:id" element={<LabWorkspace />} />
                         </Route>

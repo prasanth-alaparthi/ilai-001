@@ -133,7 +133,67 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+            <!-- GraalVM Native Image Plugin for 20ms startup & 4x less memory -->
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <version>0.10.3</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <buildArgs>
+                        <arg>--no-fallback</arg>
+                        <arg>--enable-http</arg>
+                        <arg>--enable-https</arg>
+                        <arg>-H:+ReportExceptionStackTraces</arg>
+                    </buildArgs>
+                    <imageName>muse-auth-service</imageName>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <!-- Native Profile for GraalVM compilation -->
+    <profiles>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>build-native</id>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <image>
+                                <builder>paketobuildpacks/builder-jammy-tiny:latest</builder>
+                                <env>
+                                    <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
+                                </env>
+                            </image>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>process-aot</id>
+                                <goals>
+                                    <goal>process-aot</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

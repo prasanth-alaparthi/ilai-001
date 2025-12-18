@@ -1,0 +1,53 @@
+name = "ilai-edge-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Development environment
+[env.staging]
+name = "ilai-edge-api-staging"
+vars = { ENVIRONMENT = "staging" }
+
+# Production environment
+[env.production]
+name = "ilai-edge-api"
+vars = { ENVIRONMENT = "production" }
+routes = [
+  { pattern = "api.ilai.co.in/*", zone_name = "ilai.co.in" }
+]
+
+# Durable Objects for stateful edge compute
+[[durable_objects.bindings]]
+name = "NOTES_SYNC"
+class_name = "NotesSyncDO"
+
+[[durable_objects.bindings]]
+name = "CLASSROOM_SIGNALING"
+class_name = "ClassroomSignalingDO"
+
+[[durable_objects.bindings]]
+name = "USER_SESSION"
+class_name = "UserSessionDO"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_classes = ["NotesSyncDO", "ClassroomSignalingDO", "UserSessionDO"]
+
+# KV Namespace for caching
+[[kv_namespaces]]
+binding = "AI_CACHE"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# Environment variables (secrets set via wrangler secret put)
+[vars]
+ORIGIN_API_URL = "https://ilai.co.in"
+AI_GATEWAY_URL = "https://gateway.ai.cloudflare.com/v1"
+
+# Rate limiting configuration
+# [unsafe.bindings]
+# [[unsafe.bindings]]
+# name = "RATE_LIMITER"
+# type = "ratelimit"
+# namespace_id = "1"
+# simple = { limit = 100, period = 60 }
