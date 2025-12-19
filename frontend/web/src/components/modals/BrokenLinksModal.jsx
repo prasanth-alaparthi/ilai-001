@@ -4,7 +4,7 @@ import {
     AlertTriangle, X, RefreshCw, ExternalLink,
     Trash2, Edit3, Link as LinkIcon, Search
 } from 'lucide-react';
-import notesService from '../../services/notesService';
+import { notesService } from '../../services/notesService';
 
 export default function BrokenLinksModal({ isOpen, onClose, onSelectNote }) {
     const [brokenLinks, setBrokenLinks] = useState([]);
