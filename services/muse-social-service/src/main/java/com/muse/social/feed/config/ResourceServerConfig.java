@@ -27,8 +27,12 @@ public class ResourceServerConfig {
     @Order(1)
     public SecurityFilterChain staticResourcesFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher(new AntPathRequestMatcher("/ws/feed/**")) // Match WebSocket endpoint
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll()) // Allow all traffic
+                .securityMatcher(
+                        new AntPathRequestMatcher("/ws/feed/**"),
+                        new AntPathRequestMatcher("/ws-chat/**"),
+                        new AntPathRequestMatcher("/ws/video/**"),
+                        new AntPathRequestMatcher("/actuator/**"))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .csrf(csrf -> csrf.disable());
         return http.build();
     }
@@ -57,8 +61,11 @@ public class ResourceServerConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:5173", "http://localhost:80")); // Frontend
-                                                                                                            // URLs
+        configuration.setAllowedOrigins(java.util.List.of(
+                "http://localhost:5173",
+                "http://localhost:80",
+                "https://ilai.co.in",
+                "https://www.ilai.co.in"));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("*"));
         configuration.setAllowCredentials(true);
