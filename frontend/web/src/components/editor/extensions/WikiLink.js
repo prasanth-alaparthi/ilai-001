@@ -1,5 +1,8 @@
 import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
+import { PluginKey } from '@tiptap/pm/state';
+
+const wikiLinkPluginKey = new PluginKey('wikiLink');
 
 export const WikiLinkExtension = Extension.create({
     name: 'wikiLink',
@@ -30,7 +33,7 @@ export const WikiLinkExtension = Extension.create({
     addProseMirrorPlugins() {
         return [
             Suggestion({
-                pluginKey: 'wikiLinkSuggestion',
+                pluginKey: wikiLinkPluginKey,
                 editor: this.editor,
                 ...this.options.suggestion,
             }),
