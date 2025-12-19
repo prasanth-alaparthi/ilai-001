@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.notes.entity.*;
 import com.muse.notes.repository.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -153,6 +155,7 @@ public class NoteService {
      * Update a note - SIMPLIFIED for reliable persistence
      * Async operations (embeddings, analysis) run AFTER save completes
      */
+    @CacheEvict(value = "notes", key = "#id + '_' + #username")
     public Optional<Note> updateNote(Long id, String username, String title, JsonNode content) {
         log.info("updateNote called: id={}, username={}, title={}, contentLength={}",
                 id, username, title, content != null ? content.toString().length() : "null");
@@ -253,6 +256,7 @@ public class NoteService {
                 error -> log.warn("Failed to get embedding for note {}", note.getId(), error));
     }
 
+    @CacheEvict(value = "notes", key = "#id + '_' + #username")
     public boolean deleteNote(Long id, String username) {
         return repo.findByIdAndOwnerUsername(id, username).map(n -> {
             repo.delete(n);
@@ -260,6 +264,7 @@ public class NoteService {
         }).orElse(false);
     }
 
+    @Cacheable(value = "notes", key = "#id + '_' + #username")
     public Optional<Note> getNote(Long id, String username) {
         return repo.findByIdAndOwnerUsername(id, username);
     }
