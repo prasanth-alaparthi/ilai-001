@@ -9,12 +9,12 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 
 @Configuration
 @EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer {
+public class FeedWebSocketConfig implements WebSocketConfigurer {
 
     private final FeedWebSocketHandler feedWebSocketHandler;
     private final JwtDecoder jwtDecoder;
 
-    public WebSocketConfig(FeedWebSocketHandler feedWebSocketHandler, JwtDecoder jwtDecoder) {
+    public FeedWebSocketConfig(FeedWebSocketHandler feedWebSocketHandler, JwtDecoder jwtDecoder) {
         this.feedWebSocketHandler = feedWebSocketHandler;
         this.jwtDecoder = jwtDecoder;
     }
