@@ -30,6 +30,7 @@ export const WikiLinkExtension = Extension.create({
     addProseMirrorPlugins() {
         return [
             Suggestion({
+                pluginKey: 'wikiLinkSuggestion',
                 editor: this.editor,
                 ...this.options.suggestion,
             }),

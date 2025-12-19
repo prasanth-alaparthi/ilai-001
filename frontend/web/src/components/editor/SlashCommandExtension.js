@@ -18,6 +18,7 @@ export const SlashCommandExtension = Extension.create({
     addProseMirrorPlugins() {
         return [
             Suggestion({
+                pluginKey: 'slashCommandSuggestion',
                 editor: this.editor,
                 ...this.options.suggestion,
             }),
