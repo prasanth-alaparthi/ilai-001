@@ -90,12 +90,12 @@ const feedService = {
 
     async getTrendingHashtags(limit = 20) {
         const response = await apiClient.get(`/hashtags/trending`, { params: { limit } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     async suggestHashtags(query, limit = 10) {
         const response = await apiClient.get(`/hashtags/suggest`, { params: { q: query, limit } });
-        return response.data;
+        return normalizeArray(response.data);
     }
 };
 
