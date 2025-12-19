@@ -4,6 +4,7 @@ import {
     Beaker, Play, RotateCcw, Droplets, Flame, Thermometer,
     FlaskConical, Atom, Settings, AlertTriangle, CheckCircle
 } from 'lucide-react';
+import labsService from '../../services/labsService';
 
 const Chemistry_Experiments = {
     TITRATION: 'titration',
@@ -15,6 +16,24 @@ const Chemistry_Experiments = {
 const ChemistryLab = () => {
     const [experiment, setExperiment] = useState(Chemistry_Experiments.TITRATION);
     const [isRunning, setIsRunning] = useState(false);
+
+    // AI Balancer state
+    const [unbalancedReaction, setUnbalancedReaction] = useState('H2 + O2 = H2O');
+    const [balancedResult, setBalancedResult] = useState('');
+    const [isBalancing, setIsBalancing] = useState(false);
+
+    const balanceReaction = async () => {
+        if (!unbalancedReaction) return;
+        setIsBalancing(true);
+        try {
+            const data = await labsService.balanceReaction(unbalancedReaction);
+            setBalancedResult(data.balanced);
+        } catch (error) {
+            setBalancedResult('Failed to balance reaction. Please try again.');
+        } finally {
+            setIsBalancing(false);
+        }
+    };
 
     // Titration state
     const [acidVolume, setAcidVolume] = useState(50);
@@ -253,8 +272,8 @@ const ChemistryLab = () => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             className={`p-3 rounded-xl border-2 transition-all ${selectedSubstance?.name === sub.name
-                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
-                                    : 'border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800'
+                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                                : 'border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800'
                                 }`}
                         >
                             <div
@@ -320,8 +339,8 @@ const ChemistryLab = () => {
                         key={exp.id}
                         onClick={() => setExperiment(exp.id)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${experiment === exp.id
-                                ? 'bg-purple-500 text-white'
-                                : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
                             }`}
                     >
                         <exp.icon className="w-4 h-4" />
@@ -380,28 +399,57 @@ const ChemistryLab = () => {
 
                 {experiment === Chemistry_Experiments.REACTIONS && (
                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                                Select Reaction
-                            </label>
-                            <select
-                                value={selectedReaction}
-                                onChange={(e) => { setSelectedReaction(Number(e.target.value)); setReactionProgress(0); }}
-                                className="w-full px-4 py-2 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700"
-                            >
-                                {reactions.map((r, i) => (
-                                    <option key={i} value={i}>{r.name}</option>
-                                ))}
-                            </select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                    Select Reaction
+                                </label>
+                                <select
+                                    value={selectedReaction}
+                                    onChange={(e) => { setSelectedReaction(Number(e.target.value)); setReactionProgress(0); }}
+                                    className="w-full px-4 py-2 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-700"
+                                >
+                                    {reactions.map((r, i) => (
+                                        <option key={i} value={i}>{r.name}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={runReaction}
+                                    disabled={isRunning}
+                                    className="mt-4 w-full px-6 py-3 rounded-xl bg-orange-600 text-white font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Play className="w-5 h-5" />
+                                    {isRunning ? 'Reacting...' : 'Start Animation'}
+                                </button>
+                            </div>
+
+                            <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4">
+                                <label className="block text-xs font-bold uppercase tracking-widest text-orange-500 mb-2">
+                                    AI Reaction Balancer
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={unbalancedReaction}
+                                        onChange={(e) => setUnbalancedReaction(e.target.value)}
+                                        placeholder="e.g. H2 + O2 = H2O"
+                                        className="flex-1 bg-white dark:bg-black/20 border border-orange-500/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
+                                    />
+                                    <button
+                                        onClick={balanceReaction}
+                                        disabled={isBalancing}
+                                        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                                    >
+                                        {isBalancing ? '...' : 'Balance'}
+                                    </button>
+                                </div>
+                                {balancedResult && (
+                                    <div className="mt-3 text-xs font-mono text-orange-700 dark:text-orange-300 bg-orange-500/10 p-2 rounded border border-orange-500/20 max-h-32 overflow-y-auto">
+                                        {balancedResult}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <button
-                            onClick={runReaction}
-                            disabled={isRunning}
-                            className="px-6 py-3 rounded-xl bg-orange-600 text-white font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                        >
-                            <Play className="w-5 h-5" />
-                            {isRunning ? 'Reacting...' : 'Start Reaction'}
-                        </button>
                     </div>
                 )}
             </div>

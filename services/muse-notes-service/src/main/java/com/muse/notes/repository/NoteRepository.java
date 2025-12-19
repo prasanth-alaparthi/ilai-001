@@ -42,4 +42,18 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
        @Query("SELECT n FROM Note n JOIN NotePermission p ON n.id = p.note.id WHERE p.username = :username")
        List<Note> findSharedWithUser(@Param("username") String username);
+
+       // Trash queries
+       List<Note> findByOwnerUsernameAndDeletedAtIsNotNullOrderByDeletedAtDesc(String ownerUsername);
+
+       List<Note> findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(String ownerUsername);
+
+       List<Note> findBySectionIdAndOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(Long sectionId,
+                     String ownerUsername);
+
+       // Tag queries
+       @Query(value = "SELECT * FROM notes WHERE owner_username = :username AND deleted_at IS NULL AND :tag = ANY(tags)", nativeQuery = true)
+       List<Note> findByOwnerUsernameAndTag(@Param("username") String username, @Param("tag") String tag);
+
+       Optional<Note> findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(String ownerUsername, String title);
 }

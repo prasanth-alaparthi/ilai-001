@@ -10,4 +10,6 @@ import java.util.Optional;
 @Repository
 public interface MoodRepository extends JpaRepository<Mood, Long> {
     Optional<Mood> findByUserIdAndEntryDate(Long userId, LocalDate entryDate);
+
+    void deleteByUserIdAndEntryDate(Long userId, LocalDate entryDate);
 }

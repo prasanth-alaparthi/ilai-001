@@ -10,5 +10,9 @@ import java.util.Optional;
 @Repository
 public interface NoteCalendarLinkRepository extends JpaRepository<NoteCalendarLink, Long> {
     List<NoteCalendarLink> findByNoteId(Long noteId);
-    Optional<NoteCalendarLink> findByNoteIdAndCalendarEventIdAndCalendarProvider(Long noteId, String calendarEventId, String calendarProvider);
+
+    Optional<NoteCalendarLink> findByNoteIdAndCalendarEventIdAndCalendarProvider(Long noteId, String calendarEventId,
+            String calendarProvider);
+
+    void deleteByNoteId(Long noteId);
 }

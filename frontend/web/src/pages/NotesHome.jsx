@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Folder, ChevronRight, ChevronDown, ChevronLeft,
   Star, Sidebar, Share2, Clock, Mic, Link as LinkIcon,
   Trash2, Search, Grid, List, Cpu, AlertCircle, Database,
-  Edit2, Trash, FileText, MoreHorizontal, Sparkles, FolderPlus
+  Edit2, Trash, FileText, MoreHorizontal, Sparkles, FolderPlus,
+  Copy, Download, LayoutGrid, AlertTriangle
 } from "lucide-react";
 import { notesService } from "../services/notesService";
 import RichNoteEditor from "../components/RichNoteEditor";
@@ -15,12 +16,16 @@ import CreateChapterModal from "../components/modals/CreateChapterModal";
 import ShareNoteModal from "../components/modals/ShareNoteModal";
 import NoteVersionsModal from "../components/modals/NoteVersionsModal";
 import BacklinksModal from "../components/modals/BacklinksModal";
+import NoteGraphModal from "../components/modals/NoteGraphModal";
+import BrokenLinksModal from "../components/modals/BrokenLinksModal";
 import TranscribeModal from "../components/modals/TranscribeModal";
+import ExportNoteModal from "../components/modals/ExportNoteModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import AiChat from "../components/AiChat";
 import AIToolsPanel from "../components/AIToolsPanel";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import SectionTree from "../components/notes/SectionTree";
+import TagsInput from "../components/notes/TagsInput";
 
 const getDisplayTitle = (note, isPlaceholder = false) => {
   if (note.title && note.title.trim() !== "" && note.title !== "Untitled Note") {
@@ -109,8 +114,12 @@ export default function NotesHome() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [showBacklinksModal, setShowBacklinksModal] = useState(false);
+  const [showGraphModal, setShowGraphModal] = useState(false);
+  const [showBrokenLinksModal, setShowBrokenLinksModal] = useState(false);
   const [showTranscribeModal, setShowTranscribeModal] = useState(false);
   const [showAITools, setShowAITools] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const navigate = useNavigate();
 
   const [confirmationModal, setConfirmationModal] = useState({
     isOpen: false, title: "", message: "", onConfirm: () => { }, isDanger: false, showCancel: true, confirmText: "Confirm"
@@ -459,14 +468,14 @@ export default function NotesHome() {
     if (!selectedNote) return;
     setConfirmationModal({
       isOpen: true,
-      title: "Delete Note",
-      message: "Are you sure you want to delete this note?",
+      title: "Move to Trash",
+      message: "This note will be moved to trash. You can restore it later from the Trash page.",
       isDanger: true,
       showCancel: true,
-      confirmText: "Delete",
+      confirmText: "Move to Trash",
       onConfirm: async () => {
         try {
-          await notesService.deleteNote(selectedNote.id);
+          await notesService.moveToTrash(selectedNote.id);
           setNotes(prev => prev.filter(n => n.id !== selectedNote.id));
           setSelectedNote(null);
           setViewMode("list");
@@ -476,6 +485,18 @@ export default function NotesHome() {
         } catch (err) { console.error(err); }
       }
     });
+  };
+
+  const handleDuplicateNote = async () => {
+    if (!selectedNote) return;
+    try {
+      const duplicate = await notesService.duplicateNote(selectedNote.id);
+      setNotes(prev => [...prev, duplicate]);
+      setSelectedNote(duplicate);
+      showAlert("Success", "Note duplicated successfully!");
+    } catch (err) {
+      showAlert("Error", "Failed to duplicate note.");
+    }
   };
 
   const handleTogglePin = async (e, note) => {
@@ -635,6 +656,17 @@ export default function NotesHome() {
             </div>
           ))}
         </div>
+
+        {/* Trash Link */}
+        <div className="mt-4 pt-4 border-t border-white/5">
+          <button
+            onClick={() => navigate('/notes/trash')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-secondary/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+          >
+            <Trash2 size={16} />
+            <span>Trash</span>
+          </button>
+        </div>
       </motion.div>
 
 
@@ -676,10 +708,15 @@ export default function NotesHome() {
                 <div className="h-4 w-px bg-border mx-1 sm:mx-2 hidden sm:block" />
                 <button onClick={handleSuggestOrganization} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="AI Organize"><Cpu size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowAITools(!showAITools)} className={`p-1.5 sm:p-2 rounded-full transition-colors ${showAITools ? 'text-accent-glow bg-accent-glow/10' : 'text-secondary hover:text-primary hover:bg-white/5'}`} title="AI Study Tools"><Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowBacklinksModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="View Links"><LinkIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowGraphModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="Knowledge Graph"><LayoutGrid size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowBrokenLinksModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-amber-500 hover:bg-amber-500/10 rounded-full transition-colors" title="Broken Links"><AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowVersionsModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="History"><Clock size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowTranscribeModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Transcribe"><Mic size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowShareModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="Share"><Share2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={handleDeleteNote} className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 rounded-full transition-colors" title="Delete"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={handleDuplicateNote} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Duplicate"><Copy size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={() => setShowExportModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Export"><Download size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <button onClick={handleDeleteNote} className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 rounded-full transition-colors" title="Move to Trash"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 {/* Mobile overflow menu for hidden actions */}
                 <button className="p-1.5 sm:hidden text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="More"><MoreHorizontal size={16} /></button>
               </>
@@ -801,8 +838,15 @@ export default function NotesHome() {
                     value={selectedNote?.title || ""}
                     onChange={handleTitleChange}
                     placeholder="Untitled Note"
-                    className="w-full text-2xl sm:text-4xl font-serif font-medium bg-transparent border-none outline-none placeholder:text-secondary/30 text-primary mb-4 sm:mb-8"
+                    className="w-full text-2xl sm:text-4xl font-serif font-medium bg-transparent border-none outline-none placeholder:text-secondary/30 text-primary mb-4"
                   />
+                  <div className="mb-4 sm:mb-6">
+                    <TagsInput
+                      noteId={selectedNote?.id}
+                      initialTags={selectedNote?.tags || []}
+                      onTagsChange={(newTags) => setSelectedNote(prev => ({ ...prev, tags: newTags }))}
+                    />
+                  </div>
                   <div className="prose prose-sm sm:prose-lg dark:prose-invert max-w-none prose-headings:font-serif prose-headings:text-primary prose-p:font-light prose-p:leading-relaxed prose-p:text-secondary prose-strong:text-primary prose-a:text-accent-glow prose-code:text-accent-glow prose-code:bg-white/5 prose-pre:bg-surface prose-pre:border prose-pre:border-white/10">
                     <RichNoteEditor
                       key={selectedNote?.id}
@@ -855,13 +899,34 @@ export default function NotesHome() {
           isOpen={showBacklinksModal}
           onClose={() => setShowBacklinksModal(false)}
           noteId={selectedNote.id}
+          onSelectNote={selectNote}
         />
       )}
+      {showGraphModal && selectedNote && (
+        <NoteGraphModal
+          isOpen={showGraphModal}
+          onClose={() => setShowGraphModal(false)}
+          noteId={selectedNote.id}
+          onSelectNote={selectNote}
+        />
+      )}
+
+      <BrokenLinksModal
+        isOpen={showBrokenLinksModal}
+        onClose={() => setShowBrokenLinksModal(false)}
+        onSelectNote={selectNote}
+      />
       {showTranscribeModal && (
         <TranscribeModal
           isOpen={showTranscribeModal}
           onClose={() => setShowTranscribeModal(false)}
           onTranscribe={handleTranscriptionComplete}
+        />
+      )}
+      {showExportModal && selectedNote && (
+        <ExportNoteModal
+          note={selectedNote}
+          onClose={() => setShowExportModal(false)}
         />
       )}
 

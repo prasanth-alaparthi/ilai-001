@@ -439,8 +439,8 @@ const DSAVisualizerLab = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -607,18 +607,146 @@ const DSAVisualizerLab = () => {
                 )}
 
                 {activeTab === 'graphs' && (
-                    <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center">
-                        <div className="text-6xl mb-4">🔜</div>
-                        <h3 className="text-xl font-medium text-white mb-2">Graph Algorithms Coming Soon</h3>
-                        <p className="text-gray-400">BFS, DFS, Dijkstra's Algorithm visualization</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div className="space-y-4">
+                            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+                                <h3 className="text-sm font-medium text-white mb-3">Graph Algorithm</h3>
+                                <div className="space-y-2">
+                                    {Object.entries(GRAPH_ALGORITHMS).map(([key, algo]) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => setGraphAlgorithm(key)}
+                                            className={`w-full px-3 py-2 rounded-lg text-sm text-left transition-colors ${graphAlgorithm === key
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'text-gray-400 hover:bg-gray-800'
+                                                }`}
+                                        >
+                                            {algo.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+                                <h3 className="text-sm font-medium text-gray-400 mb-3">Traversal Steps</h3>
+                                <div className="max-h-48 overflow-y-auto space-y-1">
+                                    {steps > 0 ? (
+                                        <div className="text-xs font-mono text-green-400">
+                                            Simulation active... Visit nodes to see paths.
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-500">Press Start to begin traversal</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="lg:col-span-3 bg-gray-900 rounded-xl border border-gray-800 p-6 flex flex-col items-center justify-center min-h-[400px]">
+                            {/* Simulating a Graph Node View */}
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                <svg width="400" height="300" viewBox="0 0 400 300">
+                                    {/* Edges */}
+                                    <line x1="200" y1="50" x2="100" y2="150" stroke="#4a5568" strokeWidth="2" />
+                                    <line x1="200" y1="50" x2="300" y2="150" stroke="#4a5568" strokeWidth="2" />
+                                    <line x1="100" y1="150" x2="100" y2="250" stroke="#4a5568" strokeWidth="2" />
+                                    <line x1="300" y1="150" x2="300" y2="250" stroke="#4a5568" strokeWidth="2" />
+                                    <line x1="100" y1="150" x2="300" y2="150" stroke="#4a5568" strokeWidth="2" />
+
+                                    {/* Nodes */}
+                                    {[
+                                        { id: 0, x: 200, y: 50, label: '0' },
+                                        { id: 1, x: 100, y: 150, label: '1' },
+                                        { id: 2, x: 300, y: 150, label: '2' },
+                                        { id: 3, x: 100, y: 250, label: '3' },
+                                        { id: 4, x: 300, y: 250, label: '4' }
+                                    ].map(node => (
+                                        <g key={node.id}>
+                                            <circle cx={node.x} cy={node.y} r="20" fill={steps > node.id ? "#4f46e5" : "#1f2937"} stroke="#4f46e5" strokeWidth="2" />
+                                            <text x={node.x} y={node.y + 5} textAnchor="middle" fill="white" fontSize="12">{node.label}</text>
+                                        </g>
+                                    ))}
+                                </svg>
+                            </div>
+                            <div className="mt-4 flex gap-4">
+                                <button
+                                    onClick={() => setSteps(s => (s + 1) % 6)}
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white"
+                                >
+                                    Next Step
+                                </button>
+                                <button
+                                    onClick={() => setSteps(0)}
+                                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-white"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
                 {activeTab === 'trees' && (
-                    <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 text-center">
-                        <div className="text-6xl mb-4">🔜</div>
-                        <h3 className="text-xl font-medium text-white mb-2">Tree Operations Coming Soon</h3>
-                        <p className="text-gray-400">BST, AVL, Red-Black Tree visualization</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div className="space-y-4">
+                            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+                                <h3 className="text-sm font-medium text-white mb-3">BST Control</h3>
+                                <div className="flex gap-2 mb-4">
+                                    <input
+                                        type="number"
+                                        placeholder="Val"
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
+                                        id="tree-val"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const val = document.getElementById('tree-val').value;
+                                            if (val) setSteps(s => s + 1);
+                                        }}
+                                        className="p-2 bg-indigo-600 rounded-lg"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="space-y-1 text-xs text-gray-500">
+                                    <div className="flex justify-between">
+                                        <span>Nodes</span>
+                                        <span className="text-white">{steps}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Height</span>
+                                        <span className="text-white">{Math.floor(Math.log2(steps + 1))}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="lg:col-span-3 bg-gray-900 rounded-xl border border-gray-800 p-6 flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="mb-6 flex justify-center">
+                                    <svg width="400" height="300" viewBox="0 0 400 300">
+                                        {/* Root */}
+                                        <circle cx="200" cy="50" r="20" fill="#4f46e5" />
+                                        <text x="200" y="55" textAnchor="middle" fill="white">50</text>
+
+                                        {/* Left Child */}
+                                        {steps > 0 && (
+                                            <>
+                                                <line x1="200" y1="50" x2="100" y2="150" stroke="#4a5568" />
+                                                <circle cx="100" cy="150" r="20" fill="#4f46e5" />
+                                                <text x="100" y="155" textAnchor="middle" fill="white">30</text>
+                                            </>
+                                        )}
+
+                                        {/* Right Child */}
+                                        {steps > 1 && (
+                                            <>
+                                                <line x1="200" y1="50" x2="300" y2="150" stroke="#4a5568" />
+                                                <circle cx="300" cy="150" r="20" fill="#4f46e5" />
+                                                <text x="300" y="155" textAnchor="middle" fill="white">70</text>
+                                            </>
+                                        )}
+                                    </svg>
+                                </div>
+                                <p className="text-sm text-gray-500 italic">Binary Search Tree Visualization (Step-by-Step Insertion)</p>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

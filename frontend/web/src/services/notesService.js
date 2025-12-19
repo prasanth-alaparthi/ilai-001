@@ -172,9 +172,25 @@ export const notesService = {
         return res.data;
     },
 
-    // Backlinks
+    // Links
     async getBacklinks(id) {
         const res = await apiClient.get(`/notes/${id}/backlinks`);
+        return res.data;
+    },
+    async getAllLinks(id) {
+        const res = await apiClient.get(`/notes/${id}/links`);
+        return res.data;
+    },
+    async getUserGraph() {
+        const res = await apiClient.get("/notes/graph");
+        return res.data;
+    },
+    async getBrokenLinks() {
+        const res = await apiClient.get("/notes/broken-links");
+        return res.data;
+    },
+    async getNotePreview(title) {
+        const res = await apiClient.get(`/notes/preview?title=${encodeURIComponent(title)}`);
         return res.data;
     },
 
@@ -241,5 +257,89 @@ export const notesService = {
     async getWritingSuggestions(text) {
         const res = await apiClient.post("/ai/writing/suggestions", { text });
         return res.data;
+    },
+
+    // ==================== Trash / Soft Delete ====================
+    async moveToTrash(noteId) {
+        const res = await apiClient.post(`/notes/${noteId}/trash`);
+        return res.data;
+    },
+    async restoreFromTrash(noteId) {
+        const res = await apiClient.post(`/notes/${noteId}/restore`);
+        return res.data;
+    },
+    async getTrash() {
+        const res = await apiClient.get("/notes/trash");
+        return res.data;
+    },
+    async emptyTrash() {
+        const res = await apiClient.delete("/notes/trash");
+        return res.data;
+    },
+
+    // ==================== Tags ====================
+    async updateTags(noteId, tags) {
+        const res = await apiClient.put(`/notes/${noteId}/tags`, { tags });
+        return res.data;
+    },
+    async getNotesByTag(tag) {
+        const res = await apiClient.get(`/notes/by-tag/${encodeURIComponent(tag)}`);
+        return res.data;
+    },
+
+    // ==================== Duplicate ====================
+    async duplicateNote(noteId) {
+        const res = await apiClient.post(`/notes/${noteId}/duplicate`);
+        return res.data;
+    },
+
+    // ==================== Summary ====================
+    async getSummary(noteId) {
+        const res = await apiClient.get(`/notes/${noteId}/summary`);
+        return res.data;
+    },
+    async regenerateSummary(noteId) {
+        const res = await apiClient.post(`/notes/${noteId}/summary/regenerate`);
+        return res.data;
+    },
+
+    // ==================== Export ====================
+    async exportNoteAsMarkdown(note) {
+        // Client-side markdown generation
+        const content = note.content;
+        let markdown = `# ${note.title}\n\n`;
+
+        const extractMd = (node) => {
+            if (!node) return '';
+            if (node.type === 'paragraph') {
+                return (node.content?.map(extractMd).join('') || '') + '\n\n';
+            }
+            if (node.type === 'heading') {
+                const level = node.attrs?.level || 1;
+                return '#'.repeat(level) + ' ' + (node.content?.map(extractMd).join('') || '') + '\n\n';
+            }
+            if (node.type === 'text') {
+                let text = node.text || '';
+                if (node.marks?.some(m => m.type === 'bold')) text = `**${text}**`;
+                if (node.marks?.some(m => m.type === 'italic')) text = `*${text}*`;
+                return text;
+            }
+            if (node.type === 'bulletList') {
+                return node.content?.map(li => '- ' + extractMd(li)).join('') || '';
+            }
+            if (node.type === 'orderedList') {
+                return node.content?.map((li, i) => `${i + 1}. ` + extractMd(li)).join('') || '';
+            }
+            if (node.type === 'listItem') {
+                return (node.content?.map(extractMd).join('').trim() || '') + '\n';
+            }
+            if (node.content) {
+                return node.content.map(extractMd).join('');
+            }
+            return '';
+        };
+
+        markdown += extractMd(content);
+        return markdown;
     }
 };

@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByCourseCodeAndStatusOrderBySubmittedAtAsc(String courseCode, ReviewStatus status);
+
+    void deleteByEntryId(Long entryId);
 }

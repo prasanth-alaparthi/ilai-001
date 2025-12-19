@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface SharedJournalRepository extends JpaRepository<SharedJournal, String> {
     Optional<SharedJournal> findByToken(String token); // Added this method
+
+    void deleteByJournalId(Long journalId);
 }

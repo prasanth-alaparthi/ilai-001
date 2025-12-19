@@ -21,8 +21,13 @@ import { SlashCommandExtension } from './editor/SlashCommandExtension';
 import { getSuggestionItems } from './editor/suggestion-items';
 import slashCommand from './editor/slash-command.js';
 import RibbonToolbar from "./editor/RibbonToolbar";
+import { WikiLinkExtension } from './editor/extensions/WikiLink';
+import wikiLink, { getWikiLinkSuggestions } from './editor/wiki-link';
+import NotePreviewTooltip from "./editor/NotePreviewTooltip";
 
 export default function RichNoteEditor({ value, onChange, noteId, onRestore, onEditorReady }) {
+	const [hoveredLink, setHoveredLink] = useState(null);
+	const hoverTimeoutRef = useRef(null);
 	const onChangeRef = React.useRef(onChange);
 	const valueRef = React.useRef(value); // Track latest value prop
 	const prevNoteIdRef = React.useRef(noteId); // Track previous noteId to detect changes
@@ -80,6 +85,12 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 			Highlight.configure({
 				multicolor: true,
 			}),
+			WikiLinkExtension.configure({
+				suggestion: {
+					items: getWikiLinkSuggestions,
+					render: wikiLink,
+				},
+			}),
 		],
 		content: value || "",
 		onUpdate: ({ editor }) => {
@@ -91,6 +102,22 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 		editorProps: {
 			attributes: {
 				class: 'prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[50vh]',
+			},
+			handleDOMEvents: {
+				mouseover: (view, event) => {
+					const target = event.target;
+					if (target && target.classList.contains('wiki-link')) {
+						if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+						setHoveredLink(target);
+					}
+					return false;
+				},
+				mouseout: (view, event) => {
+					hoverTimeoutRef.current = setTimeout(() => {
+						setHoveredLink(null);
+					}, 300);
+					return false;
+				}
 			},
 			handleDrop: (view, event, slice, moved) => {
 				if (moved) {
@@ -185,6 +212,10 @@ export default function RichNoteEditor({ value, onChange, noteId, onRestore, onE
 			<FloatingMenuComponent editor={editor} />
 
 			<EditorContent editor={editor} className="flex-1 overflow-y-auto p-8 sm:p-12" />
+			<NotePreviewTooltip
+				targetEl={hoveredLink}
+				onClose={() => setHoveredLink(null)}
+			/>
 		</div>
 	);
 }

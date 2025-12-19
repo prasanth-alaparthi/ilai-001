@@ -2,6 +2,7 @@ package com.muse.notes.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.muse.notes.dto.NoteLinkDto;
 import com.muse.notes.entity.*;
 import com.muse.notes.repository.*;
 import org.springframework.cache.annotation.CacheEvict;
@@ -12,11 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -163,6 +162,9 @@ public class NoteService {
         Optional<Note> result = repo.findByIdAndOwnerUsername(id, username).map(n -> {
             log.info("Found note to update: id={}, currentTitle={}", n.getId(), n.getTitle());
 
+            String oldTitle = n.getTitle();
+            boolean titleChanged = title != null && !title.isBlank() && !title.equals(oldTitle);
+
             // Save version history
             try {
                 NoteVersion version = NoteVersion.builder()
@@ -189,6 +191,10 @@ public class NoteService {
             Note savedNote = repo.saveAndFlush(n);
             log.info("Note FLUSHED to DB: id={}, updatedAt={}", savedNote.getId(), savedNote.getUpdatedAt());
 
+            if (titleChanged) {
+                propagateTitleChangeAsync(username, oldTitle, title);
+            }
+
             return savedNote;
         });
 
@@ -203,6 +209,45 @@ public class NoteService {
         });
 
         return result;
+    }
+
+    private void propagateTitleChangeAsync(String username, String oldTitle, String newTitle) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Regex to find [[oldTitle]] or [[oldTitle|Alias]]
+                // Pattern matches [[, then exactly oldTitle, then optionally | followed by
+                // anything until ]], then ]]
+                String escapedOldTitle = java.util.regex.Pattern.quote(oldTitle);
+                String patternString = "\\[\\[" + escapedOldTitle + "(\\|.*?)?\\]\\]";
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(patternString);
+
+                List<Note> allNotes = repo.findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(username);
+                for (Note note : allNotes) {
+                    if (note.getContent() == null)
+                        continue;
+                    String contentString = note.getContent().toString();
+                    java.util.regex.Matcher matcher = pattern.matcher(contentString);
+
+                    if (matcher.find()) {
+                        // Use appendReplacement logic to handle multiple occurrences
+                        StringBuilder sb = new StringBuilder();
+                        matcher.reset();
+                        while (matcher.find()) {
+                            String aliasPart = matcher.group(1);
+                            String replacement = "[[" + newTitle + (aliasPart != null ? aliasPart : "") + "]]";
+                            matcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(replacement));
+                        }
+                        matcher.appendTail(sb);
+
+                        note.setContent(objectMapper.readTree(sb.toString()));
+                        repo.save(note);
+                        log.info("Propagated title change with ALIAS support to note {}", note.getId());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to propagate title change for user {}", username, e);
+            }
+        });
     }
 
     /**
@@ -233,20 +278,46 @@ public class NoteService {
     }
 
     private void updateNoteLinksAsync(Note note) {
-        embeddingService.getEmbedding(extractTextFromNode(note.getContent())).subscribe(
+        String noteText = extractTextFromNode(note.getContent());
+        embeddingService.getEmbedding(noteText).subscribe(
                 embedding -> {
                     try {
                         String embeddingString = Arrays.toString(embedding);
-                        List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
+                        List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 10);
+
+                        // Extract manual links from JSON content (TipTap structured links)
+                        Set<Long> manualLinkIds = extractManualLinkIds(note.getContent());
+
+                        // Extract Wiki Links [[Title]] from content
+                        Set<Long> wikiLinkIds = extractWikiLinkIds(note.getOwnerUsername(), noteText);
+                        manualLinkIds.addAll(wikiLinkIds);
+
                         linkRepo.deleteBySourceNoteId(note.getId());
-                        for (Note related : relatedNotes) {
-                            if (!related.getId().equals(note.getId())) {
-                                NoteLink link = NoteLink.builder()
+
+                        // Add manual/wiki links first (high relevance)
+                        for (Long targetId : manualLinkIds) {
+                            if (!targetId.equals(note.getId())) {
+                                linkRepo.save(NoteLink.builder()
                                         .sourceNoteId(note.getId())
-                                        .linkedNoteId(related.getId())
-                                        .relevanceScore(0.0f)
-                                        .build();
-                                linkRepo.save(link);
+                                        .linkedNoteId(targetId)
+                                        .relevanceScore(1.0f)
+                                        .build());
+                            }
+                        }
+
+                        // Add semantic links (calculate actual relevance using cosine similarity)
+                        for (Note related : relatedNotes) {
+                            if (!related.getId().equals(note.getId()) && !manualLinkIds.contains(related.getId())) {
+                                float similarity = EmbeddingService.cosineSimilarity(embedding, related.getEmbedding());
+                                // Only add if similarity is above a threshold
+                                if (similarity > 0.6) {
+                                    NoteLink link = NoteLink.builder()
+                                            .sourceNoteId(note.getId())
+                                            .linkedNoteId(related.getId())
+                                            .relevanceScore(similarity)
+                                            .build();
+                                    linkRepo.save(link);
+                                }
                             }
                         }
                     } catch (Exception e) {
@@ -256,18 +327,69 @@ public class NoteService {
                 error -> log.warn("Failed to get embedding for note {}", note.getId(), error));
     }
 
+    private Set<Long> extractWikiLinkIds(String username, String text) {
+        Set<Long> ids = new HashSet<>();
+        if (text == null || text.isBlank())
+            return ids;
+
+        // Match [[Title]] or [[Title|Alias]]
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\[\\[(.*?)(?:\\|(.*?))?\\]\\]");
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            String title = matcher.group(1).trim();
+            repo.findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(username, title)
+                    .ifPresent(n -> ids.add(n.getId()));
+        }
+        return ids;
+    }
+
+    private Set<Long> extractManualLinkIds(JsonNode node) {
+        Set<Long> ids = new HashSet<>();
+        if (node == null || node.isNull())
+            return ids;
+
+        if (node.isObject()) {
+            // Check for TipTap-style links: { type: "text", marks: [{ type: "link", attrs:
+            // {
+            // "data-note-id": ... } }] }
+            if (node.has("marks") && node.get("marks").isArray()) {
+                for (JsonNode mark : node.get("marks")) {
+                    if (mark.has("type") && mark.get("type").asText().equals("link") && mark.has("attrs")) {
+                        JsonNode attrs = mark.get("attrs");
+                        if (attrs.has("data-note-id")) {
+                            ids.add(attrs.get("data-note-id").asLong());
+                        }
+                    }
+                }
+            }
+            // Recurse into content
+            if (node.has("content") && node.get("content").isArray()) {
+                for (JsonNode child : node.get("content")) {
+                    ids.addAll(extractManualLinkIds(child));
+                }
+            }
+        } else if (node.isArray()) {
+            for (JsonNode child : node) {
+                ids.addAll(extractManualLinkIds(child));
+            }
+        }
+        return ids;
+    }
+
     @CacheEvict(value = "notes", key = "#id + '_' + #username")
     public boolean deleteNote(Long id, String username) {
         return repo.findByIdAndOwnerUsername(id, username).map(n -> {
-            // Clean up all links before deleting to prevent orphaned rows
+            // Clean up all related entities before deleting to prevent orphaned data
             linkRepo.deleteBySourceNoteId(id); // Links FROM this note
-            linkRepo.deleteByLinkedNoteId(id); // Links TO this note
-
-            // Clean up other related entities
-            suggestionRepo.deleteByNoteId(id);
+            linkRepo.deleteByLinkedNoteId(id); // Links TO this note (backlinks)
+            suggestionRepo.deleteByNoteId(id); // AI suggestions
+            versionRepo.deleteByNoteId(id); // Version history
+            calendarLinkRepo.deleteByNoteId(id); // Calendar associations
+            permissionRepo.deleteByNoteId(id); // Share permissions
 
             repo.delete(n);
-            log.info("Deleted note {} and cleaned up related links", id);
+            log.info("Deleted note {} and cleaned up all related data (links, versions, permissions, calendar)", id);
             return true;
         }).orElse(false);
     }
@@ -364,10 +486,71 @@ public class NoteService {
         repo.saveAll(notes);
     }
 
+    @Cacheable(value = "note_backlinks", key = "#noteId + '_' + #username")
     public List<NoteLink> getBacklinks(Long noteId, String username) {
         return repo.findByIdAndOwnerUsername(noteId, username)
                 .map(note -> linkRepo.findByLinkedNoteIdOrderByRelevanceScoreDesc(noteId))
                 .orElse(List.of());
+    }
+
+    @Cacheable(value = "note_links_all", key = "#noteId + '_' + #username")
+    public Map<String, List<NoteLinkDto>> getAllLinks(Long noteId, String username) {
+        return repo.findByIdAndOwnerUsername(noteId, username)
+                .map(note -> {
+                    Map<String, List<NoteLinkDto>> links = new HashMap<>();
+                    List<NoteLink> outgoing = linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(noteId);
+                    List<NoteLink> incoming = linkRepo.findByLinkedNoteIdOrderByRelevanceScoreDesc(noteId);
+
+                    links.put("outgoing", convertToDto(outgoing));
+                    links.put("incoming", convertToDto(incoming));
+                    return links;
+                })
+                .orElse(Map.of("outgoing", List.of(), "incoming", List.of()));
+    }
+
+    private List<NoteLinkDto> convertToDto(List<NoteLink> links) {
+        if (links.isEmpty())
+            return List.of();
+
+        Set<Long> ids = new HashSet<>();
+        for (NoteLink l : links) {
+            ids.add(l.getSourceNoteId());
+            ids.add(l.getLinkedNoteId());
+        }
+
+        Map<Long, String> titles = repo.findAllById(ids).stream()
+                .collect(Collectors.toMap(Note::getId, Note::getTitle));
+
+        return links.stream().map(link -> NoteLinkDto.builder()
+                .sourceNoteId(link.getSourceNoteId())
+                .sourceNoteTitle(titles.getOrDefault(link.getSourceNoteId(), "Deleted Note"))
+                .targetNoteId(link.getLinkedNoteId())
+                .targetNoteTitle(titles.getOrDefault(link.getLinkedNoteId(), "Deleted Note"))
+                .relevanceScore(link.getRelevanceScore())
+                .manual(link.getRelevanceScore() >= 1.0f)
+                .build()).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Optional<NoteLink> createManualLink(Long sourceId, Long targetId, String username) {
+        return repo.findByIdAndOwnerUsername(sourceId, username)
+                .flatMap(source -> repo.findById(targetId)
+                        .map(target -> {
+                            NoteLink link = NoteLink.builder()
+                                    .sourceNoteId(sourceId)
+                                    .linkedNoteId(targetId)
+                                    .relevanceScore(1.0f)
+                                    .build();
+                            return linkRepo.save(link);
+                        }));
+    }
+
+    @Transactional
+    public boolean removeManualLink(Long sourceId, Long targetId, String username) {
+        return repo.findByIdAndOwnerUsername(sourceId, username).map(n -> {
+            linkRepo.deleteBySourceNoteIdAndLinkedNoteId(sourceId, targetId);
+            return true;
+        }).orElse(false);
     }
 
     public long countNotesForUser(String username) {
@@ -434,7 +617,7 @@ public class NoteService {
                 });
     }
 
-    private String extractTextFromNode(JsonNode node) {
+    public String extractTextFromNode(JsonNode node) {
         if (node == null) {
             return "";
         }
@@ -469,7 +652,141 @@ public class NoteService {
                 .orElse(false);
     }
 
+    public List<Map<String, Object>> getBrokenLinks(String username) {
+        List<Note> notes = repo.findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(username);
+        List<Map<String, Object>> broken = new ArrayList<>();
+
+        for (Note note : notes) {
+            String text = extractTextFromNode(note.getContent());
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\[\\[(.*?)(?:\\|(.*?))?\\]\\]");
+            java.util.regex.Matcher matcher = pattern.matcher(text);
+
+            while (matcher.find()) {
+                String title = matcher.group(1).trim();
+                if (repo.findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(username, title).isEmpty()) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("sourceNoteId", note.getId());
+                    item.put("sourceNoteTitle", note.getTitle());
+                    item.put("targetTitle", title);
+                    broken.add(item);
+                }
+            }
+        }
+        return broken;
+    }
+
     public boolean exists(Long id) {
         return repo.existsById(id);
+    }
+
+    public Map<String, Object> getUserGraph(String username) {
+        List<Note> notes = repo.findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(username);
+        List<NoteLink> links = linkRepo.findAllBySourceUser(username);
+
+        Set<Long> validNoteIds = notes.stream().map(Note::getId).collect(Collectors.toSet());
+
+        List<Map<String, Object>> nodes = notes.stream().map(n -> {
+            Map<String, Object> node = new HashMap<>();
+            node.put("id", n.getId());
+            node.put("title", n.getTitle());
+            node.put("section", n.getSection() != null ? n.getSection().getTitle() : "Default");
+            node.put("isPinned", n.isPinned());
+            return node;
+        }).collect(Collectors.toList());
+
+        List<Map<String, Object>> edges = links.stream()
+                .filter(l -> validNoteIds.contains(l.getSourceNoteId()) && validNoteIds.contains(l.getLinkedNoteId()))
+                .map(l -> {
+                    Map<String, Object> edge = new HashMap<>();
+                    edge.put("source", l.getSourceNoteId());
+                    edge.put("target", l.getLinkedNoteId());
+                    edge.put("relevance", l.getRelevanceScore());
+                    return edge;
+                }).collect(Collectors.toList());
+
+        Map<String, Object> graph = new HashMap<>();
+        graph.put("nodes", nodes);
+        graph.put("links", edges);
+        return graph;
+    }
+
+    // ==================== Trash / Soft Delete ====================
+
+    @CacheEvict(value = "notes", key = "#id + '_' + #username")
+    public boolean moveToTrash(Long id, String username) {
+        return repo.findByIdAndOwnerUsername(id, username).map(note -> {
+            note.setDeletedAt(Instant.now());
+            repo.save(note);
+            log.info("Moved note {} to trash", id);
+            return true;
+        }).orElse(false);
+    }
+
+    @CacheEvict(value = "notes", key = "#id + '_' + #username")
+    public boolean restoreFromTrash(Long id, String username) {
+        return repo.findByIdAndOwnerUsername(id, username).map(note -> {
+            if (note.getDeletedAt() == null)
+                return false;
+            note.setDeletedAt(null);
+            repo.save(note);
+            log.info("Restored note {} from trash", id);
+            return true;
+        }).orElse(false);
+    }
+
+    public List<Note> getTrash(String username) {
+        return repo.findByOwnerUsernameAndDeletedAtIsNotNullOrderByDeletedAtDesc(username);
+    }
+
+    @Transactional
+    public int emptyTrash(String username) {
+        List<Note> trashed = repo.findByOwnerUsernameAndDeletedAtIsNotNullOrderByDeletedAtDesc(username);
+        int count = 0;
+        for (Note note : trashed) {
+            deleteNote(note.getId(), username); // Properly cleans up all related data
+            count++;
+        }
+        log.info("Emptied trash for user {}: {} notes permanently deleted", username, count);
+        return count;
+    }
+
+    // ==================== Tags ====================
+
+    public Optional<Note> updateTags(Long id, String username, String[] tags) {
+        return repo.findByIdAndOwnerUsername(id, username).map(note -> {
+            note.setTags(tags);
+            note.setUpdatedAt(Instant.now());
+            return repo.save(note);
+        });
+    }
+
+    public List<Note> getNotesByTag(String username, String tag) {
+        return repo.findByOwnerUsernameAndTag(username, tag);
+    }
+
+    // ==================== Duplicate ====================
+
+    public Optional<Note> duplicateNote(Long id, String username) {
+        return repo.findByIdAndOwnerUsername(id, username).map(original -> {
+            Instant now = Instant.now();
+            Note copy = new Note();
+            copy.setTitle(original.getTitle() + " (Copy)");
+            copy.setContent(original.getContent());
+            copy.setOwnerUsername(username);
+            copy.setSection(original.getSection());
+            copy.setExcerpt(original.getExcerpt());
+            copy.setTags(original.getTags() != null ? original.getTags().clone() : null);
+            copy.setCreatedAt(now);
+            copy.setUpdatedAt(now);
+            copy.setOrderIndex(repo.findMaxOrderIndexBySectionId(original.getSection().getId()) + 1);
+            copy.setPinned(false);
+            Note saved = repo.save(copy);
+            log.info("Duplicated note {} -> new note {}", id, saved.getId());
+            return saved;
+        });
+    }
+
+    public Optional<Note> findByTitle(String username, String title) {
+        return repo.findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(username, title);
     }
 }

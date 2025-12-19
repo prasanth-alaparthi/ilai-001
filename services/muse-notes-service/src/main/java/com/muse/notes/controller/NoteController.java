@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.notes.entity.Note;
 import com.muse.notes.entity.NoteLink;
+import com.muse.notes.dto.NoteLinkDto;
 import com.muse.notes.entity.NotePermission;
 import com.muse.notes.entity.NoteVersion;
 import com.muse.notes.entity.NoteCalendarLink;
@@ -15,7 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +28,7 @@ public class NoteController extends BaseController {
 
     private final NoteService service;
     private final ObjectMapper objectMapper;
+    private static final int PREVIEW_LENGTH = 300;
 
     public NoteController(NoteService service, ObjectMapper objectMapper) {
         this.service = service;
@@ -101,9 +102,9 @@ public class NoteController extends BaseController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", "Invalid content format", "error", e.getMessage()));
         } catch (Exception e) {
-             logger.error("Unexpected error parsing content", e);
-             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                     .body(Map.of("message", "Error processing content", "error", e.getMessage()));
+            logger.error("Unexpected error parsing content", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error processing content", "error", e.getMessage()));
         }
 
         try {
@@ -137,12 +138,12 @@ public class NoteController extends BaseController {
         JsonNode contentNode;
         try {
             Object contentObj = payload.get("content");
-             if (contentObj == null) {
-                 logger.warn("Content object is null for note creation in section");
-                 contentNode = objectMapper.createObjectNode();
-             } else {
-                 contentNode = objectMapper.valueToTree(contentObj);
-             }
+            if (contentObj == null) {
+                logger.warn("Content object is null for note creation in section");
+                contentNode = objectMapper.createObjectNode();
+            } else {
+                contentNode = objectMapper.valueToTree(contentObj);
+            }
         } catch (IllegalArgumentException e) {
             logger.error("Error parsing content for note creation in section", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -190,14 +191,16 @@ public class NoteController extends BaseController {
         try {
             Object contentObj = payload.get("content");
             if (contentObj == null) {
-                // If content is missing in payload, it might mean we shouldn't update it, or set it to empty
+                // If content is missing in payload, it might mean we shouldn't update it, or
+                // set it to empty
                 // Assuming null content in update payload means "keep existing" or "empty"?
                 // Standard behavior for map puts often implies replacement.
-                // Let's assume the frontend sends the whole object. If strict null, we treat as json null.
+                // Let's assume the frontend sends the whole object. If strict null, we treat as
+                // json null.
                 logger.warn("Content object is null for note update");
-                 contentNode = null; // Let service handle null to mean "no change" if appropriate, or empty
+                contentNode = null; // Let service handle null to mean "no change" if appropriate, or empty
             } else {
-                 contentNode = objectMapper.valueToTree(contentObj);
+                contentNode = objectMapper.valueToTree(contentObj);
             }
         } catch (IllegalArgumentException e) {
             logger.error("Error parsing content for note update", e);
@@ -492,6 +495,76 @@ public class NoteController extends BaseController {
         return ResponseEntity.ok(backlinks);
     }
 
+    @GetMapping("/notes/{id}/links")
+    public ResponseEntity<?> getAllLinks(@PathVariable Long id, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        if (!service.canView(id, username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You do not have permission to view this note."));
+        }
+
+        return ResponseEntity.ok(service.getAllLinks(id, username));
+    }
+
+    @GetMapping("/notes/graph")
+    public ResponseEntity<?> getUserGraph(Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        return ResponseEntity.ok(service.getUserGraph(username));
+    }
+
+    @GetMapping("/notes/broken-links")
+    public ResponseEntity<?> getBrokenLinks(Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        return ResponseEntity.ok(service.getBrokenLinks(username));
+    }
+
+    @PostMapping("/notes/{id}/links/{targetId}")
+    public ResponseEntity<?> createManualLink(@PathVariable Long id, @PathVariable Long targetId,
+            Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        if (!service.canEdit(id, username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You do not have permission to edit this note."));
+        }
+
+        return service.createManualLink(id, targetId, username)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/notes/{id}/links/{targetId}")
+    public ResponseEntity<?> removeManualLink(@PathVariable Long id, @PathVariable Long targetId,
+            Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        if (!service.canEdit(id, username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "You do not have permission to edit this note."));
+        }
+
+        if (service.removeManualLink(id, targetId, username)) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
     @GetMapping("/notes/{id}/suggestions")
     public ResponseEntity<?> getNoteSuggestions(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
@@ -561,5 +634,116 @@ public class NoteController extends BaseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Calendar link not found or you do not have permission to unlink it."));
         }
+    }
+
+    // ==================== Trash / Soft Delete ====================
+
+    @PostMapping("/notes/{id}/trash")
+    public ResponseEntity<?> moveToTrash(@PathVariable Long id, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        if (service.moveToTrash(id, username)) {
+            return ResponseEntity.ok(Map.of("message", "Note moved to trash"));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Note not found"));
+    }
+
+    @PostMapping("/notes/{id}/restore")
+    public ResponseEntity<?> restoreFromTrash(@PathVariable Long id, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        if (service.restoreFromTrash(id, username)) {
+            return ResponseEntity.ok(Map.of("message", "Note restored from trash"));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Note not found or not in trash"));
+    }
+
+    @GetMapping("/notes/trash")
+    public ResponseEntity<?> getTrash(Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        return ResponseEntity.ok(service.getTrash(username));
+    }
+
+    @DeleteMapping("/notes/trash")
+    public ResponseEntity<?> emptyTrash(Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        int count = service.emptyTrash(username);
+        return ResponseEntity.ok(Map.of("message", count + " notes permanently deleted"));
+    }
+
+    // ==================== Tags ====================
+
+    @PutMapping("/notes/{id}/tags")
+    public ResponseEntity<?> updateTags(@PathVariable Long id, @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        @SuppressWarnings("unchecked")
+        java.util.List<String> tagList = (java.util.List<String>) body.get("tags");
+        String[] tags = tagList != null ? tagList.toArray(new String[0]) : new String[0];
+
+        return service.updateTags(id, username, tags)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/notes/by-tag/{tag}")
+    public ResponseEntity<?> getNotesByTag(@PathVariable String tag, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        return ResponseEntity.ok(service.getNotesByTag(username, tag));
+    }
+
+    // ==================== Duplicate ====================
+
+    @PostMapping("/notes/{id}/duplicate")
+    public ResponseEntity<?> duplicateNote(@PathVariable Long id, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+        return service.duplicateNote(id, username)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/notes/preview")
+    public ResponseEntity<?> getPreviewByTitle(@RequestParam String title, Authentication auth) {
+        String username = currentUsername(auth);
+        if (username == null)
+            return ResponseEntity.status(401).build();
+
+        Optional<Note> noteOpt = service.findByTitle(username, title);
+        if (noteOpt.isEmpty())
+            return ResponseEntity.notFound().build();
+
+        Note n = noteOpt.get();
+        Map<String, Object> preview = new HashMap<>();
+        preview.put("id", n.getId());
+        preview.put("title", n.getTitle());
+        preview.put("updatedAt", n.getUpdatedAt());
+
+        // Extract snippet
+        String fullText = service.extractTextFromNode(n.getContent());
+        String snippet = fullText.length() > PREVIEW_LENGTH
+                ? fullText.substring(0, PREVIEW_LENGTH) + "..."
+                : fullText;
+        preview.put("preview", snippet);
+
+        return ResponseEntity.ok(preview);
     }
 }

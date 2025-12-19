@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface MoodEntryRepository extends JpaRepository<MoodEntry, Long> {
     List<MoodEntry> findByUsernameAndCreatedAtAfter(String username, Instant after);
+
+    void deleteByJournalId(Long journalId);
 }

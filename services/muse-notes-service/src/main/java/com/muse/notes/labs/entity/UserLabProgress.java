@@ -19,6 +19,11 @@ public class UserLabProgress {
     private boolean isCompleted;
     private Integer quizScore;
 
+    @Column(columnDefinition = "TEXT")
+    private String metadataJson;
+
+    private Long runtimeMinutes = 0L;
+
     private Instant lastAccessedAt;
 
     @PrePersist
@@ -74,5 +79,25 @@ public class UserLabProgress {
 
     public void setQuizScore(Integer quizScore) {
         this.quizScore = quizScore;
+    }
+
+    public String getMetadataJson() {
+        return metadataJson;
+    }
+
+    public void setMetadataJson(String metadataJson) {
+        this.metadataJson = metadataJson;
+    }
+
+    public Long getRuntimeMinutes() {
+        return runtimeMinutes;
+    }
+
+    public void setRuntimeMinutes(Long runtimeMinutes) {
+        this.runtimeMinutes = runtimeMinutes;
+    }
+
+    public Instant getLastAccessedAt() {
+        return lastAccessedAt;
     }
 }

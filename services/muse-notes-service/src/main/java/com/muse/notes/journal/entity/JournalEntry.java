@@ -49,6 +49,20 @@ public class JournalEntry {
     @Column
     private String courseCode;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(columnDefinition = "TEXT[]")
+    private String[] tags;
+
+    // Embedding for semantic search (maps to V28 migration)
+    @Column(columnDefinition = "vector(768)")
+    private float[] embedding;
+
+    // Mood field for quick mood tracking
+    @Column
+    private String mood;
+
     @Column(nullable = false)
     private Instant createdAt;
 

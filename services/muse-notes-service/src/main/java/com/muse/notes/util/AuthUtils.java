@@ -35,12 +35,22 @@ public class AuthUtils {
             try {
                 return Long.valueOf(jwt.getSubject());
             } catch (NumberFormatException e) {
-                // Subject is not a number, so it's likely a username. Cannot use as ID directly.
+                // Subject is not a number, so it's likely a username. Cannot use as ID
+                // directly.
                 return null;
             }
         }
-        // Fallback for other principal types if necessary (e.g., mock tests or different auth mechanisms)
-        // For a resource server, principal should ideally always be a Jwt
+        return null;
+    }
+
+    public static String getUserIdStrFromAuthentication(Authentication auth) {
+        Long userId = getUserIdFromAuthentication(auth);
+        if (userId != null) {
+            return userId.toString();
+        }
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getSubject();
+        }
         return null;
     }
 }

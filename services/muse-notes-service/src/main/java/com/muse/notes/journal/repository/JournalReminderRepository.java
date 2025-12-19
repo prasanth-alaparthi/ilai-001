@@ -10,4 +10,6 @@ public interface JournalReminderRepository extends JpaRepository<JournalReminder
     List<JournalReminder> findByRemindAtBeforeAndSent(Instant before, Boolean sent);
 
     List<JournalReminder> findByUsernameOrderByRemindAtDesc(String username);
+
+    void deleteByJournalId(Long journalId);
 }

@@ -4,6 +4,7 @@ import {
     Play, Pause, RotateCcw, Settings, Zap, Target,
     ArrowRight, CircleDot, Maximize2, HelpCircle
 } from 'lucide-react';
+import labsService from '../../services/labsService';
 
 const Physics_Simulations = {
     PROJECTILE: 'projectile',
@@ -196,15 +197,59 @@ const PhysicsLab = () => {
         );
     };
 
+    const [circuitDescription, setCircuitDescription] = useState('A 10V battery connected to a 5 ohm resistor and a 10 ohm resistor in parallel.');
+    const [circuitAnalysis, setCircuitAnalysis] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    const analyzeCircuit = async () => {
+        setIsAnalyzing(true);
+        try {
+            // Using the new solve endpoint for circuit analysis
+            const res = await labsService.solveEquation(`Analyze this circuit: ${circuitDescription}`);
+            setCircuitAnalysis(res.solution);
+        } catch (err) {
+            setCircuitAnalysis('Failed to analyze circuit. Please check your connection.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     const renderCircuitSimulation = () => (
-        <div className="bg-gradient-to-b from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 relative overflow-hidden" style={{ height: 400 }}>
-            <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                    <Zap className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-2">
-                        Circuit Simulator
-                    </h3>
-                    <p className="text-surface-500">Coming soon - Build and test virtual circuits</p>
+        <div className="bg-gradient-to-b from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 relative flex flex-col" style={{ height: 400 }}>
+            <div className="flex items-center gap-3 mb-4">
+                <Zap className="w-6 h-6 text-yellow-500" />
+                <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
+                    AI Circuit Assistant (v1.0)
+                </h3>
+            </div>
+
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden">
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium uppercase tracking-wider text-surface-500">
+                        Circuit Description
+                    </label>
+                    <textarea
+                        value={circuitDescription}
+                        onChange={(e) => setCircuitDescription(e.target.value)}
+                        className="flex-1 p-3 rounded-xl bg-white/50 dark:bg-black/20 border border-yellow-500/30 focus:border-yellow-500 outline-none text-sm resize-none"
+                        placeholder="Describe your circuit components and connections..."
+                    />
+                    <button
+                        onClick={analyzeCircuit}
+                        disabled={isAnalyzing}
+                        className="py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                    >
+                        {isAnalyzing ? 'Analyzing...' : 'Run Simulation'}
+                    </button>
+                </div>
+
+                <div className="flex flex-col gap-2 overflow-hidden">
+                    <label className="text-xs font-medium uppercase tracking-wider text-surface-500">
+                        Analysis Results
+                    </label>
+                    <div className="flex-1 p-3 rounded-xl bg-black/5 dark:bg-black/40 border border-surface-200 dark:border-surface-700 overflow-y-auto text-sm font-mono whitespace-pre-wrap">
+                        {circuitAnalysis || 'Simulation results will appear here...'}
+                    </div>
                 </div>
             </div>
         </div>
@@ -235,8 +280,8 @@ const PhysicsLab = () => {
                         key={sim.id}
                         onClick={() => { setSimulation(sim.id); resetSimulation(); }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${simulation === sim.id
-                                ? 'bg-yellow-500 text-white'
-                                : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
                             }`}
                     >
                         <sim.icon className="w-4 h-4" />

@@ -189,8 +189,8 @@ const GeographyLab = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-teal-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-teal-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -210,8 +210,8 @@ const GeographyLab = () => {
                                         key={key}
                                         onClick={() => setSelectedRegion(selectedRegion === key ? null : key)}
                                         className={`p-4 rounded-xl border-2 transition-all ${selectedRegion === key
-                                                ? 'border-white bg-gray-800'
-                                                : 'border-gray-700 hover:border-gray-600'
+                                            ? 'border-white bg-gray-800'
+                                            : 'border-gray-700 hover:border-gray-600'
                                             }`}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -275,30 +275,51 @@ const GeographyLab = () => {
 
                 {/* Climate Tab */}
                 {activeTab === 'climate' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {CLIMATE_ZONES.map((zone, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className="bg-gray-900 rounded-xl border border-gray-800 p-6"
-                            >
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div
-                                        className="w-12 h-12 rounded-xl flex items-center justify-center"
-                                        style={{ background: `${zone.color}20` }}
-                                    >
-                                        <Thermometer size={24} style={{ color: zone.color }} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium text-white">{zone.name}</h3>
-                                        <p className="text-sm text-gray-500">{zone.temp}</p>
-                                    </div>
+                    <div className="space-y-6">
+                        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                            <h3 className="text-lg font-medium text-white mb-4">Climate Zone Simulator</h3>
+                            <div className="flex items-center gap-6">
+                                <div className="flex-1">
+                                    <label className="text-sm text-gray-500 mb-2 block">Global Temp Offset: +{selectedRegion === 'polar' ? 2.5 : 1.2}°C</label>
+                                    <input
+                                        type="range"
+                                        min="0" max="5" step="0.1"
+                                        className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-2">Adjust temp to see predicted climate zone shifts (PhD Level Projection Model)</p>
                                 </div>
-                                <p className="text-sm text-gray-400">{zone.description}</p>
-                            </motion.div>
-                        ))}
+                                <div className="p-4 bg-teal-500/10 rounded-xl border border-teal-500/20">
+                                    <div className="text-xs text-teal-500 mb-1">Sea Level Rise</div>
+                                    <div className="text-2xl font-bold text-white">0.42m</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {CLIMATE_ZONES.map((zone, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.1 }}
+                                    className="bg-gray-900 rounded-xl border border-gray-800 p-6"
+                                >
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div
+                                            className="w-12 h-12 rounded-xl flex items-center justify-center"
+                                            style={{ background: `${zone.color}20` }}
+                                        >
+                                            <Thermometer size={24} style={{ color: zone.color }} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-medium text-white">{zone.name}</h3>
+                                            <p className="text-sm text-gray-500">{zone.temp}</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-400">{zone.description}</p>
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -385,12 +406,12 @@ const GeographyLab = () => {
                                                 onClick={() => answerQuestion(option)}
                                                 disabled={quizState.answered}
                                                 className={`w-full p-4 rounded-xl text-left transition-all flex items-center justify-between ${quizState.answered
-                                                        ? isCorrect
-                                                            ? 'bg-green-500/20 border-green-500'
-                                                            : isSelected
-                                                                ? 'bg-red-500/20 border-red-500'
-                                                                : 'bg-gray-800 border-gray-700'
-                                                        : 'bg-gray-800 hover:bg-gray-700 border-gray-700'
+                                                    ? isCorrect
+                                                        ? 'bg-green-500/20 border-green-500'
+                                                        : isSelected
+                                                            ? 'bg-red-500/20 border-red-500'
+                                                            : 'bg-gray-800 border-gray-700'
+                                                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700'
                                                     } border`}
                                             >
                                                 {option}

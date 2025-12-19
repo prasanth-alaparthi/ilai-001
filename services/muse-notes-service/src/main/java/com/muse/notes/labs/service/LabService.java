@@ -73,4 +73,49 @@ public class LabService {
     public List<UserLabProgress> getUserProgress(String userId) {
         return progressRepository.findByUserId(userId);
     }
+
+    public java.util.Map<String, Object> getStats(String userId) {
+        List<UserLabProgress> progress = progressRepository.findByUserId(userId);
+        long completed = progress.stream().filter(UserLabProgress::isCompleted).count();
+        long inProgress = progress.size() - completed;
+        long totalRuntime = progress.stream().mapToLong(p -> p.getRuntimeMinutes() != null ? p.getRuntimeMinutes() : 0)
+                .sum();
+
+        String formattedTime = String.format("%02d:%02d:%02d",
+                totalRuntime / 60, totalRuntime % 60, 0);
+
+        return java.util.Map.of(
+                "completed", completed,
+                "inProgress", inProgress,
+                "totalTime", formattedTime);
+    }
+
+    @Transactional
+    public UserLabProgress saveLabSession(Long labId, String userId, String metadataJson, Long runtime) {
+        Lab lab = getLabById(labId);
+
+        UserLabProgress progress = progressRepository.findByUserIdAndLabId(userId, labId)
+                .orElseGet(() -> {
+                    UserLabProgress p = new UserLabProgress();
+                    p.setUserId(userId);
+                    p.setLab(lab);
+                    return p;
+                });
+
+        if (metadataJson != null) {
+            progress.setMetadataJson(metadataJson);
+        }
+        if (runtime != null) {
+            progress.setRuntimeMinutes(
+                    (progress.getRuntimeMinutes() != null ? progress.getRuntimeMinutes() : 0) + runtime);
+        }
+
+        return progressRepository.save(progress);
+    }
+
+    public UserLabProgress getLabSession(Long labId, String userId) {
+        return progressRepository.findByUserIdAndLabId(userId, labId)
+                .orElseThrow(
+                        () -> new EntityNotFoundException("No session found for user " + userId + " and lab " + labId));
+    }
 }

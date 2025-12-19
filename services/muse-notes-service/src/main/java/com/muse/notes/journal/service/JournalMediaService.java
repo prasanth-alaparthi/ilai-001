@@ -1,8 +1,8 @@
 package com.muse.notes.journal.service;
 
-// import com.muse.auth.ai.service.OpenAIIntegrationService; // Removed dependency
 import com.muse.notes.journal.entity.JournalAudio;
 import com.muse.notes.journal.repository.JournalAudioRepository;
+import com.muse.notes.service.GeminiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,12 +15,12 @@ import java.time.Instant;
 public class JournalMediaService {
     private final Logger log = LoggerFactory.getLogger(JournalMediaService.class);
     private final JournalAudioRepository audioRepo;
-    // private final OpenAIIntegrationService openAI; // Removed dependency
+    private final GeminiService geminiService;
     private final Path storageDir;
 
-    public JournalMediaService(JournalAudioRepository audioRepo) {
+    public JournalMediaService(JournalAudioRepository audioRepo, GeminiService geminiService) {
         this.audioRepo = audioRepo;
-        // this.openAI = openAI;
+        this.geminiService = geminiService;
         this.storageDir = Paths.get(System.getProperty("java.io.tmpdir"), "muse_journal_audio");
         try {
             Files.createDirectories(storageDir);
@@ -42,17 +42,15 @@ public class JournalMediaService {
         ja.setCreatedAt(Instant.now());
         audioRepo.save(ja);
 
-        /*
-         * try {
-         * if (openAI != null && openAI.enabled()) {
-         * String text = openAI.transcribeAudio(dest.toFile());
-         * ja.setTranscription(text);
-         * audioRepo.save(ja);
-         * }
-         * } catch (Exception e) {
-         * log.warn("transcription failed", e);
-         * }
-         */
+        try {
+            if (geminiService != null) {
+                String text = geminiService.transcribeAudio(file.getBytes(), file.getContentType(), null).block();
+                ja.setTranscription(text);
+                audioRepo.save(ja);
+            }
+        } catch (Exception e) {
+            log.warn("transcription failed", e);
+        }
         return ja;
     }
 }

@@ -16,7 +16,7 @@ services:
         condition: service_healthy
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:80" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -46,7 +46,7 @@ services:
     ports:
       - "8081:8081"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -80,71 +80,48 @@ services:
       muse-auth-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 90s
     restart: always
 
-  # ========== PHASE 2: Uncomment when ready ==========
-  
-  # # Redis (needed for AI and Social services)
-  # redis:
-  #   image: redis:7-alpine
-  #   command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   restart: always
+  # ========== Social Service (Chat + Feed) ==========
+  muse-social-service:
+    build:
+      context: ./services/muse-social-service
+      dockerfile: Dockerfile
+    container_name: muse-social-service
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    ports:
+      - "8083:8083"
+    depends_on:
+      - redis
+    restart: always
 
-  # # AI Service
-  # muse-ai-service:
-  #   build:
-  #     context: ./services/muse-ai-service
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
-  #     SERVER_PORT: 8088
-  #     SPRING_DATASOURCE_URL: ${DB_URL}
-  #     SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
-  #     SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-  #     JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-  #     GEMINI_API_KEY: ${GEMINI_API_KEY}
-  #     GROQ_API_KEY: ${GROQ_API_KEY:-}
-  #     LLM_PROVIDER: ${LLM_PROVIDER:-groq}
-  #     SPRING_REDIS_HOST: redis
-  #     SPRING_REDIS_PORT: 6379
-  #   ports:
-  #     - "8088:8088"
-  #   depends_on:
-  #     - redis
-  #   restart: always
-
-  # # Social Service (Chat + Feed)
-  # muse-social-service:
-  #   build:
-  #     context: ./services/muse-social-service
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     JAVA_TOOL_OPTIONS: "-Xms256m -Xmx384m"
-  #     SERVER_PORT: 8083
-  #     SPRING_DATASOURCE_URL: ${DB_URL}
-  #     SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
-  #     SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-  #     JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-  #     SPRING_REDIS_HOST: redis
-  #     SPRING_REDIS_PORT: 6379
-  #   ports:
-  #     - "8083:8083"
-  #   depends_on:
-  #     - redis
-  #   restart: always
+  # Redis (needed for Social service)
+  redis:
+    image: redis:7-alpine
+    container_name: muse-redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
 
 networks:
   default:
     name: ilai-network
 
-# volumes:
-#   redis_data:
+volumes:
+  redis_data:

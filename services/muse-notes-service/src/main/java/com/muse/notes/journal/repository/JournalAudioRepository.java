@@ -12,4 +12,6 @@ public interface JournalAudioRepository extends JpaRepository<JournalAudio, Long
     Optional<JournalAudio> findFirstByJournalIdOrderByCreatedAtDesc(Long journalId); // Added this method
 
     List<JournalAudio> findByUsernameOrderByCreatedAtDesc(String username);
+
+    void deleteByJournalId(Long journalId);
 }

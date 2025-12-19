@@ -3,6 +3,7 @@ package com.muse.notes.journal.controller;
 import com.muse.notes.journal.dto.ReviewDecisionRequest;
 import com.muse.notes.journal.entity.Submission;
 import com.muse.notes.journal.service.JournalService;
+import com.muse.notes.journal.repository.TeacherCourseMappingRepository;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +20,12 @@ import java.util.Map;
 public class JournalTeacherController {
 
     private final JournalService journalService;
+    private final TeacherCourseMappingRepository teacherCourseMappingRepository;
 
-    public JournalTeacherController(JournalService journalService) {
+    public JournalTeacherController(JournalService journalService,
+            TeacherCourseMappingRepository teacherCourseMappingRepository) {
         this.journalService = journalService;
+        this.teacherCourseMappingRepository = teacherCourseMappingRepository;
     }
 
     private String currentUsername(Authentication auth) {
@@ -43,8 +47,10 @@ public class JournalTeacherController {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        // TODO: check teacher is actually assigned to this course (when course mapping
-        // exists)
+        // Check teacher is actually assigned to this course
+        if (teacherCourseMappingRepository.findByTeacherUsernameAndCourseCode(username, courseCode).isEmpty()) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Not assigned to this course"));
+        }
 
         List<Submission> subs = journalService.listSubmissionsForCourseQueue(courseCode);
         List<Map<String, Object>> dto = subs.stream().map(s -> {

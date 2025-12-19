@@ -20,11 +20,17 @@ public class JournalExtendedController {
 
     private final JournalReminderRepository reminderRepo;
     private final MoodEntryRepository moodRepo;
+    private final com.muse.notes.journal.repository.JournalEntryRepository entryRepo;
+    private final com.muse.notes.service.GeminiService geminiService;
 
     public JournalExtendedController(JournalReminderRepository reminderRepo,
-            MoodEntryRepository moodRepo) {
+            MoodEntryRepository moodRepo,
+            com.muse.notes.journal.repository.JournalEntryRepository entryRepo,
+            com.muse.notes.service.GeminiService geminiService) {
         this.reminderRepo = reminderRepo;
         this.moodRepo = moodRepo;
+        this.entryRepo = entryRepo;
+        this.geminiService = geminiService;
     }
 
     private String currentUsername(Authentication auth) {
@@ -87,32 +93,57 @@ public class JournalExtendedController {
         return ResponseEntity.ok(Map.of("mood", me));
     }
 
-    @GetMapping("/mood/summary")
-    public ResponseEntity<?> moodSummary(@RequestParam(required = false) String username,
-            @RequestParam(defaultValue = "7") int days,
-            Authentication auth) {
-        // returns counts per mood for last `days`
-        String user = username;
-        if (user == null)
-            user = currentUsername(auth);
-        if (user == null)
-            return ResponseEntity.badRequest().body(Map.of("message", "username required"));
+    // =====================================================================
+    // MOOD TRENDS VISUALIZATION - COMMENTED OUT
+    // Reason: Raw data capture works but no frontend visualization (charts/graphs)
+    // TODO: Implement when frontend chart components are ready
+    // =====================================================================
+    /*
+     * @GetMapping("/mood/summary")
+     * public ResponseEntity<?> moodSummary(@RequestParam(required = false) String
+     * username,
+     * 
+     * @RequestParam(defaultValue = "7") int days,
+     * Authentication auth) {
+     * // returns counts per mood for last `days`
+     * String user = username;
+     * if (user == null)
+     * user = currentUsername(auth);
+     * if (user == null)
+     * return ResponseEntity.badRequest().body(Map.of("message",
+     * "username required"));
+     * 
+     * Instant since = Instant.now().minusSeconds((long) days * 86400L);
+     * List<MoodEntry> list = moodRepo.findByUsernameAndCreatedAtAfter(user, since);
+     * Map<String, Integer> counts = new HashMap<>();
+     * for (MoodEntry m : list)
+     * counts.put(m.getMood(), counts.getOrDefault(m.getMood(), 0) + 1);
+     * return ResponseEntity.ok(Map.of("since", since.toString(), "counts",
+     * counts));
+     * }
+     */
 
-        Instant since = Instant.now().minusSeconds((long) days * 86400L);
-        List<MoodEntry> list = moodRepo.findByUsernameAndCreatedAtAfter(user, since);
-        Map<String, Integer> counts = new HashMap<>();
-        for (MoodEntry m : list)
-            counts.put(m.getMood(), counts.getOrDefault(m.getMood(), 0) + 1);
-        return ResponseEntity.ok(Map.of("since", since.toString(), "counts", counts));
-    }
-
-    // Podcast TTS builder (stub).
+    // Podcast TTS builder
     @PostMapping("/{journalId}/podcast")
     public ResponseEntity<?> buildPodcast(@PathVariable Long journalId, Authentication auth) {
         String user = currentUsername(auth);
         if (user == null)
             return ResponseEntity.status(401).body(Map.of("message", "unauthenticated"));
-        String ttsUrl = "/tts/generated/" + journalId + ".mp3"; // placeholder
-        return ResponseEntity.ok(Map.of("playlist", List.of(Map.of("title", "Journal " + journalId, "url", ttsUrl))));
+
+        return entryRepo.findById(journalId)
+                .map(entry -> {
+                    String prompt = "Create a 2-minute engaging podcast script for this journal entry titled '"
+                            + entry.getTitle() + "'. Content: " + entry.getContentJson();
+                    String summary = geminiService.generateContent(prompt).block();
+                    String ttsUrl = "/api/ai/tts?text="
+                            + java.net.URLEncoder.encode(summary, java.nio.charset.StandardCharsets.UTF_8);
+
+                    return ResponseEntity.ok(Map.of(
+                            "playlist", List.of(Map.of(
+                                    "title", "Audio Insight: " + entry.getTitle(),
+                                    "url", ttsUrl,
+                                    "script", summary))));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }

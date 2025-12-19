@@ -85,6 +85,7 @@ const ClubDetail = lazy(() => import('./pages/Clubs/ClubDetail'));
 
 // Notebook (AI Features)
 const Notebook = lazy(() => import('./pages/Notebook'));
+const TrashPage = lazy(() => import('./pages/TrashPage'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen bg-background">
@@ -136,6 +137,7 @@ export default function App() {
                         <Route path="social/profile" element={<SocialProfile />} />
                         <Route path="social/profile/:userId" element={<SocialProfile />} />
                         <Route path="notes" element={<NotesHome />} />
+                        <Route path="notes/trash" element={<TrashPage />} />
                         <Route path="notes/:id/edit" element={<NoteEditPage />} />
                         <Route path="journal" element={<JournalPage />} />
                         <Route path="library" element={<Library />} />

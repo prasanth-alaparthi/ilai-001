@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface JournalTranscriptRepository extends JpaRepository<JournalTranscript, Long> {
     Optional<JournalTranscript> findFirstByJournalIdOrderByCreatedAtDesc(Long journalId);
+
+    void deleteByJournalId(Long journalId);
 }

@@ -71,27 +71,27 @@ const AIToolsPanel = ({
 
             switch (activeTab) {
                 case 'study':
-                    endpoint = '/api/notebook/study-guide';
+                    endpoint = '/api/ai/study-guide';
                     body = { topic: noteTitle || 'Study Guide', content, noteIds: [] };
                     break;
                 case 'concepts':
-                    endpoint = '/api/notebook/key-concepts';
+                    endpoint = '/api/ai/key-concepts';
                     body = { content };
                     break;
                 case 'mindmap':
-                    endpoint = '/api/notebook/mind-map';
+                    endpoint = '/api/ai/mind-map';
                     body = { content, centralTopic: noteTitle || 'Main Topic' };
                     break;
                 case 'audio':
-                    endpoint = '/api/notebook/podcast-script';
+                    endpoint = '/api/ai/podcast-script';
                     body = { content, topic: noteTitle || 'Audio Overview' };
                     break;
                 case 'timeline':
-                    endpoint = '/api/notebook/timeline';
+                    endpoint = '/api/ai/timeline';
                     body = { content };
                     break;
                 case 'faq':
-                    endpoint = '/api/notebook/faq';
+                    endpoint = '/api/ai/faq';
                     body = { content, count: 5 };
                     break;
                 default:

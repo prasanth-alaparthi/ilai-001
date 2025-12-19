@@ -4,6 +4,9 @@ import com.muse.social.feed.entity.*;
 import com.muse.social.feed.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +48,10 @@ public class SocialService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "social_following", key = "#followerId"),
+            @CacheEvict(value = "social_followers", key = "#followingId")
+    })
     public void unfollow(String followerId, String followingId) {
         if (followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
             followRepository.deleteByFollowerIdAndFollowingId(followerId, followingId);
@@ -57,10 +64,12 @@ public class SocialService {
         return followRepository.existsByFollowerIdAndFollowingId(followerId, followingId);
     }
 
+    @Cacheable(value = "social_following", key = "#userId")
     public List<String> getFollowing(String userId) {
         return followRepository.findFollowingIds(userId);
     }
 
+    @Cacheable(value = "social_followers", key = "#userId")
     public List<String> getFollowers(String userId) {
         return followRepository.findFollowerIds(userId);
     }
@@ -68,6 +77,7 @@ public class SocialService {
     // ==================== Friend Requests ====================
 
     @Transactional
+    @CacheEvict(value = "social_pending_requests", key = "#toUserId")
     public FriendRequest sendFriendRequest(String fromUserId, String toUserId, String message) {
         if (fromUserId.equals(toUserId)) {
             throw new IllegalArgumentException("Cannot send friend request to yourself");
@@ -130,6 +140,7 @@ public class SocialService {
         log.info("Friend request {} declined", requestId);
     }
 
+    @Cacheable(value = "social_pending_requests", key = "#userId")
     public List<FriendRequest> getPendingRequests(String userId) {
         return friendRequestRepository.findByToUserIdAndStatus(userId, FriendRequest.RequestStatus.PENDING);
     }

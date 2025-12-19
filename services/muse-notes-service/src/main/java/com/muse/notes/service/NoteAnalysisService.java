@@ -49,9 +49,6 @@ public class NoteAnalysisService {
                 note.setEmbedding(embedding);
                 repo.save(note);
 
-                // Update Note Links (Related Notes)
-                updateNoteLinks(note, embedding);
-
                 // Generate Suggestions (Similar notes not yet linked)
                 generateSuggestions(note, embedding);
             });
@@ -67,40 +64,23 @@ public class NoteAnalysisService {
         });
     }
 
-    private void updateNoteLinks(Note note, float[] embedding) {
-        String embeddingString = Arrays.toString(embedding);
-        List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 5);
-
-        // We shouldn't delete all links, maybe just refresh them?
-        // For now, let's keep the existing logic but be careful in a transaction
-        linkRepo.deleteBySourceNoteId(note.getId());
-
-        for (Note related : relatedNotes) {
-            if (!related.getId().equals(note.getId())) {
-                NoteLink link = NoteLink.builder()
-                        .sourceNoteId(note.getId())
-                        .linkedNoteId(related.getId())
-                        .relevanceScore(0.0f) // Placeholder
-                        .build();
-                linkRepo.save(link);
-            }
-        }
-    }
-
     private void generateSuggestions(Note note, float[] embedding) {
         String embeddingString = Arrays.toString(embedding);
-        List<Note> similarNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 3);
+        List<Note> similarNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 10);
 
         for (Note similar : similarNotes) {
-            if (!similar.getId().equals(note.getId())
-                    && linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(note.getId()).stream()
-                            .noneMatch(nl -> nl.getLinkedNoteId().equals(similar.getId()))) {
-                suggestionRepo.save(NoteSuggestion.builder()
-                        .note(note)
-                        .type("RELATED_NOTE")
-                        .suggestionContent("Consider linking to note: " + similar.getTitle() + " (ID: "
-                                + similar.getId() + ")")
-                        .build());
+            if (!similar.getId().equals(note.getId())) {
+                float similarity = EmbeddingService.cosineSimilarity(embedding, similar.getEmbedding());
+
+                // Only suggest if very similar (> 0.8) and NOT already linked
+                if (similarity > 0.8 && linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(note.getId()).stream()
+                        .noneMatch(nl -> nl.getLinkedNoteId().equals(similar.getId()))) {
+                    suggestionRepo.save(NoteSuggestion.builder()
+                            .note(note)
+                            .type("RELATED_NOTE")
+                            .suggestionContent("Consider linking to note: " + similar.getTitle())
+                            .build());
+                }
             }
         }
     }

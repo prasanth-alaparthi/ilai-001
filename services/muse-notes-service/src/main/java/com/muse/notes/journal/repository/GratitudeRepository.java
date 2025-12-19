@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface GratitudeRepository extends JpaRepository<Gratitude, Long> {
     List<Gratitude> findByUserIdAndEntryDate(Long userId, LocalDate entryDate);
+
+    void deleteByUserIdAndEntryDate(Long userId, LocalDate entryDate);
 }

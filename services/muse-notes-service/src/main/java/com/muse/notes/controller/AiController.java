@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.HashMap;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.muse.notes.service.GeminiService;
@@ -220,6 +221,170 @@ public class AiController extends BaseController {
                 })
                 .onErrorResume(
                         e -> Mono.just(ResponseEntity.status(500).body(Map.of("error", (Object) e.getMessage()))));
+    }
+
+    @PostMapping("/study-guide")
+    public Mono<ResponseEntity<Map<String, Object>>> studyGuide(@RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null)
+            return Mono.just(ResponseEntity.status(401).body(Map.of("message", "Not authenticated")));
+        String content = (String) body.getOrDefault("content", "");
+        String topic = (String) body.getOrDefault("topic", "General");
+        String prompt = String.format(
+                "Create a comprehensive Study Guide for '%s' based on this content. Structure it with sections like 'Introduction', 'Core Concepts', 'Detailed Breakdown', and 'Summary'. Return a JSON object with a 'topic' key and a 'sections' key (map of title to text content):\n\n%s",
+                topic, content);
+
+        return geminiService.generateContent(prompt).map(res -> {
+            try {
+                return ResponseEntity.ok(objectMapper.readValue(cleanJson(res), Map.class));
+            } catch (Exception e) {
+                return ResponseEntity.ok(Map.of("topic", topic, "fullContent", res));
+            }
+        });
+    }
+
+    @PostMapping("/key-concepts")
+    public Mono<ResponseEntity<Object>> keyConcepts(@RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null)
+            return Mono.just(ResponseEntity.status(401).build());
+        String content = (String) body.getOrDefault("content", "");
+        String prompt = "Extract the key concepts from the following text. Return a JSON array of objects, each with 'term' (string), 'definition' (string), 'importance' (one of: 'high', 'medium', 'low'), and 'relatedTerms' (array of strings):\n\n"
+                + content;
+
+        return geminiService.generateContent(prompt).map(res -> {
+            try {
+                return ResponseEntity.ok(objectMapper.readValue(cleanJson(res), Object.class));
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body("Failed to parse concepts JSON: " + res);
+            }
+        });
+    }
+
+    @PostMapping("/mind-map")
+    public Mono<ResponseEntity<Object>> mindMap(@RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null)
+            return Mono.just(ResponseEntity.status(401).build());
+        String content = (String) body.getOrDefault("content", "");
+        String topic = (String) body.getOrDefault("centralTopic", "Core Idea");
+        String prompt = String.format(
+                "Convert the following text into a Mind Map structure. Return a JSON object with: 'central' (object with 'label'), and 'branches' (array of objects with 'label' and 'children' array of objects with 'label'). Focus on hierarchy.\n\nContent:\n%s",
+                content);
+
+        return geminiService.generateContent(prompt).map(res -> {
+            try {
+                return ResponseEntity.ok(objectMapper.readValue(cleanJson(res), Object.class));
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body("Failed to parse mind-map JSON: " + res);
+            }
+        });
+    }
+
+    @PostMapping("/podcast-script")
+    public Mono<ResponseEntity<Object>> podcastScript(@RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null)
+            return Mono.just(ResponseEntity.status(401).build());
+        String content = (String) body.getOrDefault("content", "");
+        String topic = (String) body.getOrDefault("topic", "Discussion");
+        String prompt = String.format(
+                "Write a 3-minute casual educational podcast script between two hosts (Alex and Jamie) discussing the following content. Return a JSON object with 'topic', 'estimatedSeconds', and 'dialogue' (array of objects with 'speaker' and 'text'):\n\n%s",
+                content);
+
+        return geminiService.generateContent(prompt).map(res -> {
+            try {
+                return ResponseEntity.ok(objectMapper.readValue(cleanJson(res), Object.class));
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body("Failed to parse podcast JSON: " + res);
+            }
+        });
+    }
+
+    @PostMapping("/timeline")
+    public Mono<ResponseEntity<Object>> timeline(@RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null)
+            return Mono.just(ResponseEntity.status(401).build());
+        String content = (String) body.getOrDefault("content", "");
+        String prompt = "Extract chronological events from the text. Return a JSON array of objects with 'date' (string), 'event' (string), and 'significance' (string):\n\n"
+                + content;
+
+        return geminiService.generateContent(prompt).map(res -> {
+            try {
+                return ResponseEntity.ok(objectMapper.readValue(cleanJson(res), Object.class));
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body("Failed to parse timeline JSON: " + res);
+            }
+        });
+    }
+
+    @PostMapping("/faq")
+    public Mono<ResponseEntity<Object>> faq(@RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null)
+            return Mono.just(ResponseEntity.status(401).build());
+        String content = (String) body.getOrDefault("content", "");
+        int count = (int) body.getOrDefault("count", 5);
+        String prompt = String.format(
+                "Generate %d deep-dive FAQs based on the following text. Return a JSON array of objects with 'question' and 'answer':\n\n%s",
+                count, content);
+
+        return geminiService.generateContent(prompt).map(res -> {
+            try {
+                return ResponseEntity.ok(objectMapper.readValue(cleanJson(res), Object.class));
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body("Failed to parse faq JSON: " + res);
+            }
+        });
+    }
+
+    // ==================== TTS (Text-to-Speech) Endpoint ====================
+    @GetMapping("/tts")
+    public Mono<ResponseEntity<Map<String, Object>>> textToSpeech(
+            @RequestParam String text,
+            @RequestParam(defaultValue = "en-US") String lang,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null) {
+            return Mono.just(ResponseEntity.status(401).body(Map.of("message", "Not authenticated")));
+        }
+
+        if (!checkSubscription(jwt)) {
+            return Mono.just(ResponseEntity.status(403)
+                    .body(Map.of("message", "TTS requires Premium subscription")));
+        }
+
+        // Limit text length for TTS
+        String truncatedText = text.length() > 5000 ? text.substring(0, 5000) : text;
+
+        log.info("TTS request for {} characters", truncatedText.length());
+
+        return geminiService.textToSpeech(truncatedText, lang)
+                .map(audioBase64 -> {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("audio", audioBase64);
+                    response.put("format", "mp3");
+                    response.put("lang", lang);
+                    return ResponseEntity.ok(response);
+                })
+                .onErrorResume(e -> {
+                    log.error("TTS generation failed: {}", e.getMessage());
+                    return Mono.just(ResponseEntity.status(500)
+                            .body(Map.of("error", "TTS generation failed: " + e.getMessage())));
+                });
+    }
+
+    @PostMapping("/tts")
+    public Mono<ResponseEntity<Map<String, Object>>> textToSpeechPost(
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        String content = (String) body.getOrDefault("content", "");
+        String lang = (String) body.getOrDefault("lang", "en-US");
+
+        if (content == null || content.isBlank()) {
+            return Mono.just(ResponseEntity.badRequest().body(Map.of("message", "Content is required")));
+        }
+        return textToSpeech(content, lang, jwt);
     }
 
     private String cleanJson(String response) {

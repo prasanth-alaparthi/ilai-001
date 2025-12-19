@@ -4,6 +4,7 @@ import {
     Heart, Dna, Brain, Leaf, Eye, Settings, Play, Pause,
     RotateCcw, ZoomIn, ZoomOut, ChevronRight
 } from 'lucide-react';
+import labsService from '../../services/labsService';
 
 const Biology_Simulations = {
     CELL: 'cell',
@@ -16,6 +17,24 @@ const BiologyLab = () => {
     const [simulation, setSimulation] = useState(Biology_Simulations.CELL);
     const [isRunning, setIsRunning] = useState(false);
     const [zoom, setZoom] = useState(1);
+
+    // AI Genomics Assistant state
+    const [dnaInput, setDnaInput] = useState('ATGCGTCG');
+    const [analysisResult, setAnalysisResult] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    const analyzeDNA = async () => {
+        if (!dnaInput) return;
+        setIsAnalyzing(true);
+        try {
+            const data = await labsService.explainConcept(`Analyze this DNA sequence and explain potential gene expression or genomic features: ${dnaInput}`);
+            setAnalysisResult(data.explanation);
+        } catch (error) {
+            setAnalysisResult('Failed to analyze DNA. Please try again.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
     // Cell state
     const [selectedOrganelle, setSelectedOrganelle] = useState(null);
@@ -168,8 +187,8 @@ const BiologyLab = () => {
                             {/* Original strand */}
                             <div
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold text-white mb-1 ${base === 'A' ? 'bg-green-500' :
-                                        base === 'T' ? 'bg-red-500' :
-                                            base === 'G' ? 'bg-blue-500' : 'bg-yellow-500'
+                                    base === 'T' ? 'bg-red-500' :
+                                        base === 'G' ? 'bg-blue-500' : 'bg-yellow-500'
                                     }`}
                             >
                                 {base}
@@ -184,8 +203,8 @@ const BiologyLab = () => {
                                     opacity: replicationProgress > (i / dnaSequence.length) * 100 ? 1 : 0.3
                                 }}
                                 className={`w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold text-white mt-1 ${baseComplementary[base] === 'A' ? 'bg-green-500' :
-                                        baseComplementary[base] === 'T' ? 'bg-red-500' :
-                                            baseComplementary[base] === 'G' ? 'bg-blue-500' : 'bg-yellow-500'
+                                    baseComplementary[base] === 'T' ? 'bg-red-500' :
+                                        baseComplementary[base] === 'G' ? 'bg-blue-500' : 'bg-yellow-500'
                                     }`}
                             >
                                 {baseComplementary[base]}
@@ -336,8 +355,8 @@ const BiologyLab = () => {
                         key={sim.id}
                         onClick={() => { setSimulation(sim.id); setIsRunning(false); }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${simulation === sim.id
-                                ? 'bg-green-500 text-white'
-                                : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
                             }`}
                     >
                         <sim.icon className="w-4 h-4" />
@@ -382,14 +401,43 @@ const BiologyLab = () => {
                 )}
 
                 {simulation === Biology_Simulations.DNA && (
-                    <button
-                        onClick={replicateDNA}
-                        disabled={isRunning}
-                        className="px-6 py-3 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                    >
-                        <Dna className="w-5 h-5" />
-                        {isRunning ? 'Replicating...' : 'Start Replication'}
-                    </button>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={replicateDNA}
+                            disabled={isRunning}
+                            className="px-6 py-3 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                        >
+                            <Dna className="w-5 h-5" />
+                            {isRunning ? 'Replicating...' : 'Start Replication'}
+                        </button>
+
+                        <div className="flex-1 bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
+                            <label className="block text-xs font-bold uppercase tracking-widest text-purple-500 mb-2">
+                                AI Genomics Assistant
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={dnaInput}
+                                    onChange={(e) => setDnaInput(e.target.value)}
+                                    placeholder="Enter sequence (e.g. ATGC...)"
+                                    className="flex-1 bg-white dark:bg-black/20 border border-purple-500/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-500 font-mono"
+                                />
+                                <button
+                                    onClick={analyzeDNA}
+                                    disabled={isAnalyzing}
+                                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+                                >
+                                    {isAnalyzing ? '...' : 'Analyze'}
+                                </button>
+                            </div>
+                            {analysisResult && (
+                                <div className="mt-3 text-xs font-mono text-purple-700 dark:text-purple-300 bg-purple-500/10 p-2 rounded border border-purple-500/20 max-h-32 overflow-y-auto">
+                                    {analysisResult}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 )}
 
                 {simulation === Biology_Simulations.HEART && (
@@ -410,8 +458,8 @@ const BiologyLab = () => {
                         <button
                             onClick={() => setIsRunning(!isRunning)}
                             className={`px-6 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 ${isRunning
-                                    ? 'bg-red-600 text-white hover:bg-red-700'
-                                    : 'bg-green-600 text-white hover:bg-green-700'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-green-600 text-white hover:bg-green-700'
                                 }`}
                         >
                             {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
@@ -424,8 +472,8 @@ const BiologyLab = () => {
                     <button
                         onClick={() => setIsRunning(!isRunning)}
                         className={`px-6 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 ${isRunning
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : 'bg-green-600 text-white hover:bg-green-700'
+                            ? 'bg-red-600 text-white hover:bg-red-700'
+                            : 'bg-green-600 text-white hover:bg-green-700'
                             }`}
                     >
                         {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}

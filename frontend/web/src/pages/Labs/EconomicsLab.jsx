@@ -192,15 +192,30 @@ const EconomicsLab = () => {
         }
     }, [activeTab, drawCurves]);
 
-    // Stock simulation
+    // Stock simulation with events
     const simulateStock = useCallback(() => {
-        const change = (Math.random() - 0.48) * 5; // Slight upward bias
+        const events = [
+            { msg: "Interest rates held steady", impact: 1.02 },
+            { msg: "Tech sector rally", impact: 1.05 },
+            { msg: "Energy crunch concerns", impact: 0.95 },
+            { msg: "GDP growth exceeding forecasts", impact: 1.03 },
+            { msg: "Supply chain disruptions", impact: 0.92 }
+        ];
+
         setStockPrice(prev => {
-            const newPrice = Math.max(1, prev + change);
+            const event = Math.random() > 0.9 ? events[Math.floor(Math.random() * events.length)] : null;
+            const bias = event ? event.impact : 1.001; // Slight natural growth
+            const volatility = (Math.random() - 0.5) * 4;
+
+            const newPrice = Math.max(1, (prev * bias) + volatility);
             setStockHistory(hist => [...hist.slice(-99), newPrice]);
+
+            if (event && isSimulating) {
+                console.log(`ECON EVENT: ${event.msg}`);
+            }
             return newPrice;
         });
-    }, []);
+    }, [isSimulating]);
 
     useEffect(() => {
         if (isSimulating) {
@@ -240,8 +255,8 @@ const EconomicsLab = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-lime-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-lime-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}

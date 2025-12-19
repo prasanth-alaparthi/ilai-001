@@ -30,34 +30,104 @@ export default function JournalHome() {
 
   const moods = ["Happy", "Neutral", "Sad", "Excited", "Stressed", "Calm"];
 
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashEntries, setTrashEntries] = useState([]);
+  const [tags, setTags] = useState([]); // Selected tags for current entry
+
   useEffect(() => {
     loadEntries();
   }, []);
 
   const loadEntries = async () => {
     try {
-      const res = await apiClient.get("/journals");
-      const list = res.data?.content || res.data || [];
+      const res = await apiClient.get("/journal/entries");
+      const list = res.data || [];
       // Sort by date desc
       list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setEntries(list);
     } catch (e) { console.error(e); }
   };
 
+  const loadTrash = async () => {
+    try {
+      const res = await apiClient.get("/journal/entries/trash");
+      setTrashEntries(res.data || []);
+      setShowTrash(true);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      loadEntries();
+      return;
+    }
+    try {
+      const res = await apiClient.get(`/journal/entries/search?q=${encodeURIComponent(searchQuery)}`);
+      setEntries(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleStartWriting = () => {
     setSelectedEntry(null);
     setEditorTitle("");
-    setEditorContent(null); // Empty content for new
+    setEditorContent(null);
     setMood("Neutral");
+    setTags([]);
     setIsWriting(true);
   };
 
   const handleEditEntry = (entry) => {
     setSelectedEntry(entry);
     setEditorTitle(entry.title);
-    setEditorContent(JSON.parse(entry.contentJson || '{}')); // Assuming contentJson structure
+    setEditorContent(entry.contentJson ? JSON.parse(entry.contentJson) : null);
     setMood(entry.mood || "Neutral");
+    setTags(entry.tags || []);
     setIsWriting(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Move this entry to trash?")) return;
+    try {
+      await apiClient.delete(`/journal/entries/${id}`);
+      loadEntries();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete entry");
+    }
+  };
+
+  const handleRestore = async (id) => {
+    try {
+      await apiClient.post(`/journal/entries/${id}/restore`);
+      loadTrash();
+      loadEntries();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    if (!window.confirm("Permanently delete this entry? This cannot be undone.")) return;
+    try {
+      await apiClient.delete(`/journal/entries/${id}/permanent`);
+      loadTrash();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (!window.confirm("Empty trash? All items will be permanently deleted.")) return;
+    try {
+      await apiClient.delete("/journal/entries/trash");
+      loadTrash();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleSave = async () => {
@@ -68,14 +138,22 @@ export default function JournalHome() {
         title: editorTitle,
         contentJson: JSON.stringify(editorContent),
         mood: mood,
+        tags: tags,
         isPublic: false
       };
 
+      let savedEntry;
       if (selectedEntry) {
-        await apiClient.put(`/journals/${selectedEntry.id}`, payload);
+        const res = await apiClient.put(`/journal/entries/${selectedEntry.id}`, payload);
+        savedEntry = res.data;
       } else {
-        await apiClient.post("/journals", payload);
+        const res = await apiClient.post("/journal/entries", payload);
+        savedEntry = res.data;
       }
+
+      // Sync tags separately if needed by your API, but here we include it in payload
+      // If your backend needs a separate call for tags:
+      await apiClient.put(`/journal/entries/${savedEntry.id || selectedEntry.id}/tags`, { tags });
 
       await loadEntries();
       setIsWriting(false);
@@ -88,7 +166,12 @@ export default function JournalHome() {
   };
 
   // Group entries by month/year for timeline
-  const groupedEntries = entries.reduce((acc, entry) => {
+  const filteredEntries = entries.filter(e =>
+    e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (e.tags && e.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())))
+  );
+
+  const groupedEntries = filteredEntries.reduce((acc, entry) => {
     const date = new Date(entry.createdAt);
     const key = updateKey(date);
     if (!acc[key]) acc[key] = [];
@@ -105,7 +188,7 @@ export default function JournalHome() {
 
       {/* --- Main Timeline View --- */}
       <motion.div
-        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-500 ${isWriting ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
+        className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-500 ${isWriting || showTrash ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'}`}
       >
         {/* Header */}
         <header className="h-20 flex items-center justify-between px-8 md:px-12 backdrop-blur-sm z-10">
@@ -113,13 +196,22 @@ export default function JournalHome() {
             <h1 className="text-3xl font-serif font-medium">My Journal</h1>
             <p className="text-secondary text-sm">Reflect, record, and remember.</p>
           </div>
-          <button
-            onClick={handleStartWriting}
-            className="group flex items-center gap-2 px-5 py-2.5 bg-primary text-background rounded-full font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-          >
-            <PenTool size={18} />
-            <span>Write Entry</span>
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={loadTrash}
+              className="p-2.5 text-secondary hover:text-primary hover:bg-surface rounded-full transition-all"
+              title="Trash"
+            >
+              <MoreVertical size={20} />
+            </button>
+            <button
+              onClick={handleStartWriting}
+              className="group flex items-center gap-2 px-5 py-2.5 bg-primary text-background rounded-full font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+            >
+              <PenTool size={18} />
+              <span>Write Entry</span>
+            </button>
+          </div>
         </header>
 
         {/* Search & content */}
@@ -129,10 +221,11 @@ export default function JournalHome() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/50" size={18} />
               <input
                 type="text"
-                placeholder="Search memories..."
+                placeholder="Search memories or #tags..."
                 className="w-full bg-surface/50 border border-border rounded-xl py-3 pl-12 pr-4 outline-none focus:border-accent-blue/50 transition-colors placeholder:text-secondary/30"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
 
@@ -151,23 +244,39 @@ export default function JournalHome() {
                         initial={{ opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        onClick={() => handleEditEntry(entry)}
                         className="group relative bg-surface/40 hover:bg-surface/80 border border-transparent hover:border-border/50 rounded-2xl p-6 cursor-pointer transition-all hover:shadow-lg"
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3" onClick={() => handleEditEntry(entry)}>
                             <span className="text-2xl font-serif font-bold text-primary">{format(new Date(entry.createdAt), "dd")}</span>
                             <div className="flex flex-col">
                               <span className="text-xs text-secondary uppercase font-medium">{format(new Date(entry.createdAt), "EEEE")}</span>
                               <span className="text-xs text-secondary/50">{format(new Date(entry.createdAt), "hh:mm a")}</span>
                             </div>
                           </div>
-                          <MoreVertical size={16} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}
+                              className="p-1.5 text-secondary hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
                         </div>
-                        <h4 className="text-xl font-medium mb-2 group-hover:text-accent-blue transition-colors">{entry.title}</h4>
-                        <div className="text-secondary/70 text-sm line-clamp-3 font-light leading-relaxed">
-                          {/* Plain text preview would be better, but assuming contentJson is complex */}
-                          Click to read more...
+                        <div onClick={() => handleEditEntry(entry)}>
+                          <h4 className="text-xl font-medium mb-2 group-hover:text-accent-blue transition-colors">{entry.title}</h4>
+                          {entry.tags && entry.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {entry.tags.map(tag => (
+                                <span key={tag} className="text-[10px] px-2 py-0.5 bg-accent-blue/10 text-accent-blue rounded-full uppercase tracking-tighter">
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="text-secondary/70 text-sm line-clamp-3 font-light leading-relaxed">
+                            {entry.highlights || "Click to read more..."}
+                          </div>
                         </div>
                       </motion.div>
                     ))}
@@ -184,6 +293,50 @@ export default function JournalHome() {
           </div>
         </div>
       </motion.div>
+
+      {/* --- Trash View Overlay --- */}
+      <AnimatePresence>
+        {showTrash && (
+          <motion.div
+            initial={{ opacity: 0, x: "100%" }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: "100%" }}
+            className="fixed inset-y-0 right-0 w-full md:w-[400px] bg-background/80 backdrop-blur-xl border-l border-border z-[60] shadow-2xl flex flex-col"
+          >
+            <div className="h-16 flex items-center justify-between px-6 border-b border-border/30">
+              <div className="flex items-center gap-2">
+                <X className="cursor-pointer" size={20} onClick={() => setShowTrash(false)} />
+                <h3 className="font-medium">Recycle Bin</h3>
+              </div>
+              <button
+                onClick={handleEmptyTrash}
+                className="text-xs text-red-500 hover:text-red-600 font-medium"
+              >
+                Empty Trash
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {trashEntries.length === 0 && (
+                <div className="mt-20 text-center text-secondary/50">
+                  <p className="italic">Trash is empty</p>
+                </div>
+              )}
+              {trashEntries.map(entry => (
+                <div key={entry.id} className="bg-surface/50 border border-border rounded-xl p-4 group">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium text-sm">{entry.title}</h4>
+                    <div className="flex gap-1">
+                      <button onClick={() => handleRestore(entry.id)} className="p-1 px-2 text-[10px] bg-accent-blue/10 text-accent-blue rounded hover:bg-accent-blue/20 transition-colors">Restore</button>
+                      <button onClick={() => handlePermanentDelete(entry.id)} className="p-1 px-2 text-[10px] bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-colors">Delete</button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-secondary/50">{entry.deletedAt ? format(new Date(entry.deletedAt), "MMM dd, yyyy HH:mm") : ""}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* --- Distraction Free Editor Overlay --- */}
       <AnimatePresence>
@@ -243,8 +396,8 @@ export default function JournalHome() {
                     <button
                       onClick={() => setShowWritingAssistant(!showWritingAssistant)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${showWritingAssistant
-                          ? 'bg-emerald-500 text-white border-emerald-500'
-                          : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800/50'
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800/50'
                         }`}
                     >
                       <Wand2 size={14} />
@@ -262,6 +415,28 @@ export default function JournalHome() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Tags Input */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {tags.map(tag => (
+                      <span key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-surface-200 dark:bg-surface-700 rounded-full text-xs font-medium border border-border">
+                        #{tag}
+                        <X size={12} className="cursor-pointer hover:text-red-500" onClick={() => setTags(tags.filter(t => t !== tag))} />
+                      </span>
+                    ))}
+                    <input
+                      type="text"
+                      placeholder="Add #tag..."
+                      className="bg-transparent border-none outline-none text-xs text-secondary placeholder:text-secondary/30 min-w-[80px]"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.target.value.trim()) {
+                          const newTag = e.target.value.trim().replace(/^#/, '');
+                          if (!tags.includes(newTag)) setTags([...tags, newTag]);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
                   </div>
 
                   <input

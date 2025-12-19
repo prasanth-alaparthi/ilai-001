@@ -60,4 +60,11 @@ public class Note {
     @Column(name = "embedding")
     @JdbcTypeCode(SqlTypes.VECTOR)
     private float[] embedding;
+
+    @Column(name = "tags", columnDefinition = "TEXT[]")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private String[] tags;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 }

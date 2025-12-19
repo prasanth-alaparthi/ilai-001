@@ -132,6 +132,31 @@ circuit.measure([0, 1], [0, 1])
         setShowTutorials(false);
     };
 
+    const [showSettings, setShowSettings] = useState(false);
+    const [ibmToken, setIbmToken] = useState(localStorage.getItem('ibm_quantum_token') || '');
+
+    const saveSettings = () => {
+        localStorage.setItem('ibm_quantum_token', ibmToken);
+        setShowSettings(false);
+    };
+
+    const exportResults = () => {
+        if (!results) return;
+        const data = {
+            num_qubits: numQubits,
+            circuit: circuit,
+            results: results,
+            timestamp: new Date().toISOString(),
+            engine: 'Qiskit Aer Simulator'
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quantum_results_${new Date().getTime()}.json`;
+        a.click();
+    };
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-300 font-mono relative">
             {/* Header */}
@@ -392,12 +417,14 @@ circuit.measure([0, 1], [0, 1])
                                         ))}
                                 </div>
 
-                                {/* Raw Counts */}
+                                {/* Export Button */}
                                 <div className="mt-4">
-                                    <div className="text-xs text-gray-500 mb-2">Raw Counts</div>
-                                    <div className="bg-black p-2 rounded font-mono text-xs text-green-400 max-h-32 overflow-auto">
-                                        {JSON.stringify(results.counts, null, 2)}
-                                    </div>
+                                    <button
+                                        onClick={exportResults}
+                                        className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs flex items-center justify-center gap-2 border border-gray-700 transition"
+                                    >
+                                        <Plus size={14} className="rotate-45" /> Export Data (.json)
+                                    </button>
                                 </div>
                             </div>
                         ) : (
@@ -418,14 +445,66 @@ circuit.measure([0, 1], [0, 1])
                             Running on Qiskit Aer (local)
                         </div>
                         <button
-                            disabled
-                            className="mt-3 w-full py-2 bg-gray-800 text-gray-500 rounded-lg text-xs cursor-not-allowed"
+                            onClick={() => setShowSettings(true)}
+                            className="mt-3 w-full py-2 bg-violet-500/10 text-violet-400 border border-violet-500/30 rounded-lg text-xs hover:bg-violet-500/20 transition"
                         >
-                            🔒 IBM Quantum (Coming Soon)
+                            ⚙️ IBM Quantum Settings
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* IBM Quantum Settings Modal */}
+            <AnimatePresence>
+                {showSettings && (
+                    <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowSettings(false)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-xl p-6 relative z-10"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-white">Hardware Settings</h3>
+                                <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">IBM Quantum API Token</label>
+                                    <input
+                                        type="password"
+                                        value={ibmToken}
+                                        onChange={(e) => setIbmToken(e.target.value)}
+                                        className="w-full bg-black border border-gray-700 rounded-lg p-3 text-sm text-green-400 focus:border-violet-500 outline-none"
+                                        placeholder="Paste your IBMQ token here..."
+                                    />
+                                    <p className="text-[10px] text-gray-600 mt-2">
+                                        Your token is stored locally in your browser and used only for hardware execution.
+                                        Get one at <a href="https://quantum.ibm.com/" target="_blank" rel="noreferrer" className="text-violet-400 hover:underline">IBM Quantum</a>.
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={saveSettings}
+                                    className="w-full py-3 bg-violet-500 hover:bg-violet-600 text-white rounded-lg font-bold transition"
+                                >
+                                    Save Configuration
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Tutorials Panel */}
             <AnimatePresence>

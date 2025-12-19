@@ -9,6 +9,7 @@ import {
     // Social Labs icons
     MapPin, Landmark, TrendingUp, Clock
 } from 'lucide-react';
+import labsService from '../../services/labsService';
 
 const LabsDashboard = () => {
     const [stats, setStats] = useState({
@@ -16,10 +17,20 @@ const LabsDashboard = () => {
         inProgress: 0,
         totalTime: '00:00:00'
     });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Mock data
-        setStats({ completed: 3, inProgress: 2, totalTime: '05:30:12' });
+        const fetchStats = async () => {
+            try {
+                const data = await labsService.getStats();
+                setStats(data);
+            } catch (error) {
+                console.error('Failed to fetch lab stats', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
     }, []);
 
     const subjects = [

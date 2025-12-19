@@ -195,6 +195,55 @@ const MolecularViewerLab = () => {
     }, [zoom]);
 
     // Draw the molecule
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target.result;
+            // Robust PDB parsing logic
+            const lines = content.split('\n');
+            const newAtoms = [];
+            const newBonds = [];
+
+            lines.forEach(line => {
+                if (line.startsWith('ATOM') || line.startsWith('HETATM')) {
+                    const element = line.substring(76, 78).trim() || line.substring(13, 14).trim();
+                    const x = parseFloat(line.substring(30, 38));
+                    const y = parseFloat(line.substring(38, 46));
+                    const z = parseFloat(line.substring(46, 54));
+
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                        newAtoms.push({ element, x, y, z });
+                    }
+                }
+            });
+
+            if (newAtoms.length > 0) {
+                // Auto-center the molecule
+                const centerX = newAtoms.reduce((s, a) => s + a.x, 0) / newAtoms.length;
+                const centerY = newAtoms.reduce((s, a) => s + a.y, 0) / newAtoms.length;
+                const centerZ = newAtoms.reduce((s, a) => s + a.z, 0) / newAtoms.length;
+
+                const centeredAtoms = newAtoms.map(a => ({
+                    ...a,
+                    x: a.x - centerX,
+                    y: a.y - centerY,
+                    z: a.z - centerZ
+                }));
+
+                setMolecule({
+                    name: file.name,
+                    formula: 'Custom',
+                    atoms: centeredAtoms,
+                    bonds: [], // Bonds can be calculated by distance if needed
+                    description: `Uploaded PDB file with ${newAtoms.length} atoms.`
+                });
+            }
+        };
+        reader.readAsText(file);
+    };
     const draw = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -449,8 +498,8 @@ const MolecularViewerLab = () => {
                                         key={key}
                                         onClick={() => setVizStyle(key)}
                                         className={`w-full px-3 py-2 rounded-lg text-sm text-left transition-colors ${vizStyle === key
-                                                ? 'bg-purple-600 text-white'
-                                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                             }`}
                                     >
                                         {style.name}

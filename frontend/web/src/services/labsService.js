@@ -48,6 +48,40 @@ const labsService = {
         return response.data;
     },
 
+    // Get user's lab statistics (completed, in-progress, etc.)
+    async getStats() {
+        const response = await apiClient.get('/labs/stats');
+        return response.data;
+    },
+
+    // Export lab simulation results
+    async exportResult(labId) {
+        const response = await apiClient.get(`/labs/${labId}/export`);
+        return response.data;
+    },
+
+    // Save current lab session state
+    async saveSession(labId, metadata, runtime = 0) {
+        const response = await apiClient.post(`/labs/${labId}/save-session`, {
+            metadataJson: JSON.stringify(metadata),
+            runtime
+        });
+        return response.data;
+    },
+
+    // Load saved lab session state
+    async getSession(labId) {
+        try {
+            const response = await apiClient.get(`/labs/${labId}/session`);
+            if (response.data && response.data.metadataJson) {
+                return JSON.parse(response.data.metadataJson);
+            }
+            return null;
+        } catch (error) {
+            return null; // Return null if no session exists or error
+        }
+    },
+
     // ==================== AI Features ====================
 
     // Solve equation using AI
