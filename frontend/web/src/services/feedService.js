@@ -1,37 +1,46 @@
 import apiClient from './apiClient';
 
+// Helper to normalize paginated/error responses to arrays
+const normalizeArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    if (data?.items && Array.isArray(data.items)) return data.items;
+    if (data?.posts && Array.isArray(data.posts)) return data.posts;
+    return [];
+};
+
 const feedService = {
     // ==================== Feed APIs ====================
 
     // Get personalized NeuroFeed
     async getFeed(limit = 20, offset = 0) {
         const response = await apiClient.get(`/feed`, { params: { limit, offset } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Get trending posts
     async getTrending(limit = 20) {
         const response = await apiClient.get(`/feed/trending`, { params: { limit } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Get posts from following
     async getFollowingFeed(limit = 20) {
         const response = await apiClient.get(`/feed/following`, { params: { limit } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Get posts by hashtag
     async getByHashtag(tag, limit = 20) {
         const response = await apiClient.get(`/feed/hashtag/${tag}`, { params: { limit } });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Get saved posts
     async getSaved(collection = null) {
         const params = collection ? { collection } : {};
         const response = await apiClient.get(`/feed/saved`, { params });
-        return response.data;
+        return normalizeArray(response.data);
     },
 
     // Create new post
