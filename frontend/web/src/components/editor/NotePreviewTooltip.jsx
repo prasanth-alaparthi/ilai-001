@@ -5,7 +5,7 @@ import {
     ExternalLink, ArrowRight, Loader2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import notesService from '../../services/notesService';
+import { notesService } from '../../services/notesService';
 
 export default function NotePreviewTooltip({ targetEl, onClose }) {
     const [preview, setPreview] = useState(null);
