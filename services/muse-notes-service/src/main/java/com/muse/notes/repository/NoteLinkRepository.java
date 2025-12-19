@@ -9,6 +9,10 @@ import java.util.List;
 @Repository
 public interface NoteLinkRepository extends JpaRepository<NoteLink, NoteLink.NoteLinkId> {
     List<NoteLink> findBySourceNoteIdOrderByRelevanceScoreDesc(Long sourceNoteId);
+
     List<NoteLink> findByLinkedNoteIdOrderByRelevanceScoreDesc(Long linkedNoteId);
+
     void deleteBySourceNoteId(Long sourceNoteId);
+
+    void deleteByLinkedNoteId(Long linkedNoteId);
 }

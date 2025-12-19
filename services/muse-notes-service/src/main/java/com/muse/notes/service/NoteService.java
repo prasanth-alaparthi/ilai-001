@@ -259,7 +259,15 @@ public class NoteService {
     @CacheEvict(value = "notes", key = "#id + '_' + #username")
     public boolean deleteNote(Long id, String username) {
         return repo.findByIdAndOwnerUsername(id, username).map(n -> {
+            // Clean up all links before deleting to prevent orphaned rows
+            linkRepo.deleteBySourceNoteId(id); // Links FROM this note
+            linkRepo.deleteByLinkedNoteId(id); // Links TO this note
+
+            // Clean up other related entities
+            suggestionRepo.deleteByNoteId(id);
+
             repo.delete(n);
+            log.info("Deleted note {} and cleaned up related links", id);
             return true;
         }).orElse(false);
     }
