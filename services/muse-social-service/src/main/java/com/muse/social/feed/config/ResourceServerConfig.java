@@ -10,7 +10,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -27,11 +26,7 @@ public class ResourceServerConfig {
     @Order(1)
     public SecurityFilterChain staticResourcesFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher(
-                        new AntPathRequestMatcher("/ws/feed/**"),
-                        new AntPathRequestMatcher("/ws-chat/**"),
-                        new AntPathRequestMatcher("/ws/video/**"),
-                        new AntPathRequestMatcher("/actuator/**"))
+                .securityMatcher("/ws/feed/**", "/ws-chat/**", "/ws/video/**", "/actuator/**")
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .csrf(csrf -> csrf.disable());
         return http.build();
