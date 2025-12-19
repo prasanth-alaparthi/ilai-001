@@ -103,17 +103,8 @@ public class PostController {
     }
 
     // --- Social Interactions (Convenience Endpoints) ---
-
-    @PostMapping("/{postId}/like")
-    public ResponseEntity<?> likePost(@PathVariable Long postId, Authentication auth) {
-        Long userId = AuthUtils.getUserIdFromAuthentication(auth);
-        // Check if already liked? ReactionService handles duplicates or we can check
-        // here.
-        // Assuming ReactionService.addReaction handles it or we just add.
-        // Frontend expects toggle behavior?
-        // For now, let's just add a LIKE reaction.
-        return ResponseEntity.ok(reactionService.addReaction(userId, postId, "POST", "LIKE"));
-    }
+    // Note: likePost, unlikePost, savePost, and unsavePost are handled by
+    // SmartFeedController
 
     @PostMapping("/{postId}/comments")
     public ResponseEntity<?> commentOnPost(@PathVariable Long postId, @RequestBody Map<String, String> payload,
