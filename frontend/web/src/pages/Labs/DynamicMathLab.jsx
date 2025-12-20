@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { create, all } from 'mathjs';
 import 'mathlive';
+import labsService from '../../services/labsService';
 
 // Initialize Math.js with all features
 const math = create(all);
@@ -215,34 +216,39 @@ const useMathSolver = () => {
         }
     };
 
-    // Pro solver (API call)
+    // Pro solver (API call via labsService)
     const solvePro = async (expression, type = 'sympy') => {
         setIsLoading(true);
         try {
-            const endpoint = type === 'chemistry'
-                ? '/api/chemistry/balance'
-                : '/api/physics/solve';
+            let data;
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    equation: expression,
-                    equation_type: type === 'chemistry' ? 'balance' : 'symbolic',
-                    variable: 'x'
-                })
-            });
-
-            const data = await response.json();
+            if (type === 'chemistry') {
+                // Use labsService for chemistry (it has analyzeChemistry, we need balance)
+                // For now, call the balance endpoint directly with the computed URL
+                const computeUrl = import.meta.env.VITE_COMPUTE_ENGINE_URL || '';
+                const response = await fetch(`${computeUrl}/api/chemistry/balance`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        equation: expression,
+                        equation_type: 'balance'
+                    })
+                });
+                data = await response.json();
+            } else {
+                // Use labsService for physics/sympy
+                data = await labsService.solvePhysics(expression, 'symbolic', 'x');
+            }
 
             if (data.success) {
                 return {
-                    result: data.derivation_latex || data.result,
+                    result: data.derivation_latex || data.result || data.balanced,
                     steps: [
                         `🚀 Pro Solver: ${type === 'chemistry' ? 'Chemistry' : 'SymPy'}`,
                         ...(data.assumptions || []).map(a => `Assumption: ${a.name} = ${a.value}`),
+                        ...(data.steps || []).map(s => s),
                         `Evidence: ${data.evidence || 'Symbolic computation'}`,
-                        `✓ Result: ${data.derivation_latex || data.result}`
+                        `✓ Result: ${data.derivation_latex || data.result || data.balanced}`
                     ],
                     type: 'pro',
                     latex: data.derivation_latex
