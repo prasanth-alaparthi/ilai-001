@@ -275,20 +275,36 @@ const useMathSolver = () => {
  */
 const MathField = ({ value, onChange, onSubmit, placeholder, disabled }) => {
     const mathFieldRef = useRef(null);
+    const callbackRef = useRef({ onChange, onSubmit });
+
+    // Keep callbacks up to date
+    useEffect(() => {
+        callbackRef.current = { onChange, onSubmit };
+    }, [onChange, onSubmit]);
 
     useEffect(() => {
         const mf = mathFieldRef.current;
         if (!mf) return;
 
-        mf.value = value;
+        // Set initial value
+        if (value && mf.value !== value) {
+            mf.value = value;
+        }
 
         const handleInput = (evt) => {
             const latex = evt.target.value;
-            onChange(latex);
 
-            // Auto-solve on "="
-            if (latex.endsWith('=')) {
-                onSubmit(latex);
+            // Call onChange via ref to avoid stale closure
+            if (callbackRef.current.onChange) {
+                callbackRef.current.onChange(latex);
+            }
+
+            // Auto-solve on "=" - call onSubmit via ref
+            if (latex.endsWith('=') && callbackRef.current.onSubmit) {
+                // Small delay to allow state update
+                setTimeout(() => {
+                    callbackRef.current.onSubmit(latex);
+                }, 10);
             }
         };
 
