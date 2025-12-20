@@ -59,27 +59,8 @@ const CreatePage = lazy(() => import('./pages/CreatePage'));
 // Labs
 const LabsLayout = lazy(() => import('./pages/Labs/LabsLayout'));
 const LabsDashboard = lazy(() => import('./pages/Labs/LabsDashboard'));
-const SubjectLabs = lazy(() => import('./pages/Labs/SubjectLabs'));
 const LabWorkspace = lazy(() => import('./pages/Labs/LabWorkspace'));
-const QuantumLab = lazy(() => import('./pages/Labs/QuantumLab'));
-const PhysicsLab = lazy(() => import('./pages/Labs/PhysicsLab'));
-const ChemistryLab = lazy(() => import('./pages/Labs/ChemistryLab'));
-const BiologyLab = lazy(() => import('./pages/Labs/BiologyLab'));
-// New PhD-level Labs
-const CodeEditorLab = lazy(() => import('./pages/Labs/CodeEditorLab'));
-const MathGraphingLab = lazy(() => import('./pages/Labs/MathGraphingLab'));
-const MolecularViewerLab = lazy(() => import('./pages/Labs/MolecularViewerLab'));
-const DSAVisualizerLab = lazy(() => import('./pages/Labs/DSAVisualizerLab'));
-const GeographyLab = lazy(() => import('./pages/Labs/GeographyLab'));
-const HistoryTimelineLab = lazy(() => import('./pages/Labs/HistoryTimelineLab'));
-const EconomicsLab = lazy(() => import('./pages/Labs/EconomicsLab'));
-const LiteratureLab = lazy(() => import('./pages/Labs/LiteratureLab'));
-const LanguagesLab = lazy(() => import('./pages/Labs/LanguagesLab'));
-const PoliticalScienceLab = lazy(() => import('./pages/Labs/PoliticalScienceLab'));
-const FashionLab = lazy(() => import('./pages/Labs/FashionLab'));
-const CultureLab = lazy(() => import('./pages/Labs/CultureLab'));
 const DynamicMathLab = lazy(() => import('./pages/Labs/DynamicMathLab'));
-const AgenticRAGLab = lazy(() => import('./pages/Labs/AgenticRAGLab'));
 // Classroom & Clubs
 const ClassroomDashboard = lazy(() => import('./pages/Classroom/ClassroomDashboard'));
 const OnlineClassRoom = lazy(() => import('./pages/Classroom/OnlineClassRoom'));
@@ -192,28 +173,7 @@ export default function App() {
                         {/* Labs Module */}
                         <Route path="labs" element={<LabsLayout />}>
                           <Route index element={<LabsDashboard />} />
-                          <Route path="quantum" element={<QuantumLab />} />
-                          <Route path="physics" element={<PhysicsLab />} />
-                          <Route path="chemistry" element={<ChemistryLab />} />
-                          <Route path="biology" element={<BiologyLab />} />
-                          {/* New PhD-level Labs */}
-                          <Route path="cs" element={<CodeEditorLab />} />
-                          <Route path="code-editor" element={<CodeEditorLab />} />
-                          <Route path="math" element={<MathGraphingLab />} />
-                          <Route path="molecular" element={<MolecularViewerLab />} />
-                          <Route path="dsa" element={<DSAVisualizerLab />} />
-                          <Route path="geography" element={<GeographyLab />} />
-                          <Route path="history" element={<HistoryTimelineLab />} />
-                          <Route path="economics" element={<EconomicsLab />} />
-                          <Route path="literature" element={<LiteratureLab />} />
-                          <Route path="languages" element={<LanguagesLab />} />
-                          <Route path="political-science" element={<PoliticalScienceLab />} />
-                          <Route path="fashion" element={<FashionLab />} />
-                          <Route path="culture" element={<CultureLab />} />
-                          <Route path="dynamic-math" element={<DynamicMathLab />} />
-                          <Route path="agentic-rag" element={<AgenticRAGLab />} />
-                          {/* Dynamic subject route */}
-                          <Route path=":subject" element={<SubjectLabs />} />
+                          <Route path="research" element={<DynamicMathLab />} />
                           <Route path="view/:id" element={<LabWorkspace />} />
                         </Route>
 
