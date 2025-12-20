@@ -124,13 +124,15 @@ async def balance_chemistry(request: ChemistryBalanceRequest):
         normalized = re.sub(r'\s+', '', equation).upper()
         for key, value in common_reactions.items():
             if re.sub(r'\s+', '', key).upper() == normalized:
+                # Fix: Extract replacement to avoid backslash in f-string
+                balanced_latex = value['balanced'].replace('→', '\\rightarrow')
                 return {
                     "success": True,
                     "subject": "Stoichiometry",
                     "original": equation,
                     "balanced": value["balanced"],
                     "coefficients": value["coefficients"],
-                    "derivation_latex": f"\\text{{Balanced: }} {value['balanced'].replace('→', '\\\\rightarrow')}",
+                    "derivation_latex": f"\\text{{Balanced: }} {balanced_latex}",
                     "assumptions": [
                         {"name": "Law", "value": "Conservation of Mass", "description": "Atoms are neither created nor destroyed"}
                     ],
