@@ -78,6 +78,7 @@ const LanguagesLab = lazy(() => import('./pages/Labs/LanguagesLab'));
 const PoliticalScienceLab = lazy(() => import('./pages/Labs/PoliticalScienceLab'));
 const FashionLab = lazy(() => import('./pages/Labs/FashionLab'));
 const CultureLab = lazy(() => import('./pages/Labs/CultureLab'));
+const DynamicMathLab = lazy(() => import('./pages/Labs/DynamicMathLab'));
 // Classroom & Clubs
 const ClassroomDashboard = lazy(() => import('./pages/Classroom/ClassroomDashboard'));
 const OnlineClassRoom = lazy(() => import('./pages/Classroom/OnlineClassRoom'));
@@ -208,6 +209,7 @@ export default function App() {
                           <Route path="political-science" element={<PoliticalScienceLab />} />
                           <Route path="fashion" element={<FashionLab />} />
                           <Route path="culture" element={<CultureLab />} />
+                          <Route path="dynamic-math" element={<DynamicMathLab />} />
                           {/* Dynamic subject route */}
                           <Route path=":subject" element={<SubjectLabs />} />
                           <Route path="view/:id" element={<LabWorkspace />} />
