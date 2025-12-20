@@ -4,21 +4,23 @@
  * Features:
  * - Core Solver: MathLive + Math.js + SymPy backend
  * - Neuro-Search: Agentic RAG with Tavily + Groq reranking
- * - Variable Registry: Cross-lab persistent variables
+ * - Variable Registry: Postgres-backed with WebSocket sync
  * - Lab Injection: Auto-inject constants from research
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Brain, Calculator, Search, Plus, Trash2, Sparkles,
     ChevronDown, ChevronUp, Zap, Loader2, BookOpen,
     ArrowRight, ExternalLink, Beaker, Atom, Variable,
-    CheckCircle2, AlertCircle, Lightbulb, Cpu
+    CheckCircle2, AlertCircle, Lightbulb, Cpu, Wifi, WifiOff
 } from 'lucide-react';
 import { create, all } from 'mathjs';
 import 'mathlive';
 import labsService from '../../services/labsService';
+import { useVariableSync } from '../../hooks/useVariableSync';
+import { AuthContext } from '../../state/AuthContext';
 
 // Math.js configuration
 const math = create(all);
@@ -177,9 +179,21 @@ const SourceCard = ({ title, url, snippet }) => (
  * Main Research Lab Component
  */
 const ResearchLab = () => {
+    // Auth context for user ID
+    const { user } = useContext(AuthContext) || {};
+    const userId = user?.id || 'anonymous';
+
+    // WebSocket-synced variable registry (Postgres-backed)
+    const {
+        variables: wsVariables,
+        isConnected,
+        upsertVariable,
+        deleteVariable,
+        getVariablesForCalc
+    } = useVariableSync(userId);
+
     // Core Solver State
     const [expressions, setExpressions] = useState([{ id: 1, input: '', result: null, error: null }]);
-    const [variables, setVariables] = useState({});
     const [isProSolving, setIsProSolving] = useState(false);
 
     // Neuro-Search State
@@ -194,11 +208,15 @@ const ResearchLab = () => {
     const [activeTab, setActiveTab] = useState('solver'); // 'solver' | 'search'
     const [showVariables, setShowVariables] = useState(true);
 
+    // Get variables as simple object for calculations
+    const variables = getVariablesForCalc();
+
     // Check if expression needs Pro solver
     const needsProSolver = (expr) => {
         const proPatterns = [
             /diff\(/i, /integrate\(/i, /derivative\(/i, /limit\(/i,
-            /[A-Z][a-z]?\d*\s*\+\s*[A-Z][a-z]?\d*\s*=/ // Chemistry
+            /\d+\s*(m|cm|mm|km|g|kg|s|N|J|W)\b/i, // Units
+            /^[A-Za-z0-9@+\-\[\]\(\)\\/#=%]+$/ // SMILES-like
         ];
         return proPatterns.some(p => p.test(expr));
     };
@@ -212,12 +230,13 @@ const ResearchLab = () => {
                 .replace(/√/g, 'sqrt').replace(/π/g, 'pi')
                 .replace(/\s*=\s*$/, '').trim();
 
-            // Variable assignment
+            // Variable assignment - sync to Postgres via WebSocket
             const assignMatch = cleanExpr.match(/^([a-z_]\w*)\s*=\s*(.+)$/i);
             if (assignMatch) {
                 const [, varName, valueExpr] = assignMatch;
                 const value = math.evaluate(valueExpr, variables);
-                setVariables(prev => ({ ...prev, [varName]: value }));
+                // Persist to Postgres via WebSocket
+                upsertVariable(varName, value, { subject: 'math', source: 'user' });
                 return { result: value, variable: varName };
             }
 
@@ -226,7 +245,7 @@ const ResearchLab = () => {
         } catch (err) {
             return { error: err.message };
         }
-    }, [variables]);
+    }, [variables, upsertVariable]);
 
     // Pro solve via API (calculus, chemistry)
     const solvePro = async (expression) => {
@@ -333,9 +352,9 @@ const ResearchLab = () => {
         }
     };
 
-    // Inject variable from search
+    // Inject variable from search (persisted to Postgres via WebSocket)
     const injectVariable = (name, value, unit) => {
-        setVariables(prev => ({ ...prev, [name]: parseFloat(value) || value }));
+        upsertVariable(name, value, { unit, subject: 'search', source: 'search' });
         setActiveTab('solver');
     };
 
@@ -350,7 +369,14 @@ const ResearchLab = () => {
                         </div>
                         <div>
                             <h1 className="text-xl font-bold text-white">Research Lab</h1>
-                            <p className="text-xs text-gray-500">Core Solver + Neuro-Search</p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                                Core Solver + Neuro-Search
+                                {isConnected ? (
+                                    <Wifi size={10} className="text-green-400" />
+                                ) : (
+                                    <WifiOff size={10} className="text-red-400" />
+                                )}
+                            </p>
                         </div>
                     </div>
 
@@ -558,15 +584,16 @@ const ResearchLab = () => {
                                         exit={{ height: 0, opacity: 0 }}
                                         className="mt-3 space-y-2"
                                     >
-                                        {Object.keys(variables).length === 0 ? (
+                                        {Object.keys(wsVariables).length === 0 ? (
                                             <p className="text-xs text-gray-600">No variables defined yet</p>
                                         ) : (
-                                            Object.entries(variables).map(([name, value]) => (
+                                            Object.entries(wsVariables).map(([key, v]) => (
                                                 <VariableBadge
-                                                    key={name}
-                                                    name={name}
-                                                    value={formatResult(value)}
-                                                    source="user"
+                                                    key={key}
+                                                    name={v.symbol}
+                                                    value={formatResult(v.numericValue)}
+                                                    unit={v.unit}
+                                                    source={v.source || 'user'}
                                                 />
                                             ))
                                         )}
