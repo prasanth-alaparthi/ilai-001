@@ -1,0 +1,39 @@
+# Python service .dockerignore
+# Prevents local dev artifacts from bloating Docker context
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Development
+*.md
+*.log
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Local data
+*.db
+*.sqlite
+data/
+chroma_db/
