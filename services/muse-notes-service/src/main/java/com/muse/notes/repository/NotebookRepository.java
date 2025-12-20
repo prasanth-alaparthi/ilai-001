@@ -16,4 +16,6 @@ public interface NotebookRepository extends JpaRepository<Notebook, Long> {
 
     @Query("SELECT COALESCE(MAX(n.orderIndex), 0) FROM Notebook n WHERE n.ownerUsername = :username")
     int findMaxOrderIndexByOwnerUsername(@Param("username") String username);
+
+    Optional<Notebook> findByOwnerUsernameAndTitle(String ownerUsername, String title);
 }

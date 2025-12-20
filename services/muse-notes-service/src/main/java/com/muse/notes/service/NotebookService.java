@@ -79,4 +79,13 @@ public class NotebookService {
         }
         repo.saveAll(notebooks);
     }
+
+    /**
+     * Find a notebook by name or create it if it doesn't exist.
+     * Used by Lab Persistent Save for auto-pathing.
+     */
+    public Notebook findOrCreateByName(String username, String title) {
+        return repo.findByOwnerUsernameAndTitle(username, title)
+                .orElseGet(() -> createNotebook(username, title, "#6366f1"));
+    }
 }

@@ -14,11 +14,13 @@ import {
     Brain, Calculator, Search, Plus, Trash2, Sparkles,
     ChevronDown, ChevronUp, Zap, Loader2, BookOpen,
     ArrowRight, ExternalLink, Beaker, Atom, Variable,
-    CheckCircle2, AlertCircle, Lightbulb, Cpu, Wifi, WifiOff
+    CheckCircle2, AlertCircle, Lightbulb, Cpu, Wifi, WifiOff,
+    Save, FolderOpen
 } from 'lucide-react';
 import { create, all } from 'mathjs';
 import 'mathlive';
 import labsService from '../../services/labsService';
+import notesService from '../../services/notesService';
 import { useVariableSync } from '../../hooks/useVariableSync';
 import { useUser } from '../../state/UserContext';
 
@@ -208,6 +210,11 @@ const ResearchLab = () => {
     const [activeTab, setActiveTab] = useState('solver'); // 'solver' | 'search'
     const [showVariables, setShowVariables] = useState(true);
 
+    // Save to Workspace State
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [activeSubject, setActiveSubject] = useState('Maths');
+
     // Get variables as simple object for calculations
     const variables = getVariablesForCalc();
 
@@ -287,6 +294,49 @@ const ResearchLab = () => {
     // Add new expression
     const addExpression = () => {
         setExpressions(prev => [...prev, { id: Date.now(), input: '', result: null, error: null }]);
+    };
+
+    // Auto-path generator for Save to Workspace
+    const generateAutoPath = (subject = 'Maths') => {
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-GB').replace(/\//g, '-');
+        return {
+            notebook: `${subject} Lab`,
+            section: dateStr,
+            title: 'Research Session'
+        };
+    };
+
+    // Save to Workspace - Persistent Save
+    const saveToWorkspace = async () => {
+        setIsSaving(true);
+        setSaveSuccess(false);
+
+        try {
+            const currentExpression = expressions[0]?.input || '';
+            const currentResult = expressions[0]?.result != null ? String(expressions[0].result) : '';
+
+            const payload = {
+                autoPath: generateAutoPath(activeSubject),
+                equation: currentExpression,
+                solution: currentResult,
+                variables: Object.fromEntries(wsVariables.map(v => [v.symbol, v.value])),
+                researchResults: searchResults || '',
+                sources: sources.map(s => ({ title: s.title, url: s.url, content: s.content })),
+                subject: activeSubject
+            };
+
+            const response = await notesService.post('/labs/persistent-save', payload);
+
+            if (response.data?.success) {
+                setSaveSuccess(true);
+                setTimeout(() => setSaveSuccess(false), 3000);
+            }
+        } catch (err) {
+            console.error('Save to workspace failed:', err);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // Neuro-Search with SSE streaming
@@ -417,6 +467,30 @@ const ResearchLab = () => {
                             Research
                         </button>
                     </div>
+
+                    {/* Save to Workspace Button */}
+                    <motion.button
+                        onClick={saveToWorkspace}
+                        disabled={isSaving}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className={`
+                            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                            ${saveSuccess
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 hover:border-purple-400/50'}
+                            ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                    >
+                        {isSaving ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : saveSuccess ? (
+                            <CheckCircle2 size={16} />
+                        ) : (
+                            <Save size={16} />
+                        )}
+                        {saveSuccess ? 'Saved!' : 'Save to Workspace'}
+                    </motion.button>
                 </div>
             </header>
 

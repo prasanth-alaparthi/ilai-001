@@ -32,4 +32,6 @@ public interface SectionRepository extends JpaRepository<Section, Long> {
 
     @Query("SELECT COALESCE(MAX(s.orderIndex), 0) FROM Section s WHERE s.parent.id = :parentId")
     int findMaxOrderIndexByParentId(@Param("parentId") Long parentId);
+
+    Optional<Section> findByNotebookIdAndTitle(Long notebookId, String title);
 }

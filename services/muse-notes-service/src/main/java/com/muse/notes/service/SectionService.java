@@ -132,4 +132,13 @@ public class SectionService {
             return true;
         }).orElse(false);
     }
+
+    /**
+     * Find a section by name within a notebook, or create it if it doesn't exist.
+     * Used by Lab Persistent Save for auto-pathing.
+     */
+    public Section findOrCreateByName(Long notebookId, String username, String title) {
+        return repo.findByNotebookIdAndTitle(notebookId, title)
+                .orElseGet(() -> createSection(notebookId, username, title).orElse(null));
+    }
 }
