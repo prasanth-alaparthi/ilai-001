@@ -1,8 +1,10 @@
 import axios from 'axios';
 
-const COMPUTE_ENGINE_URL = import.meta.env.VITE_COMPUTE_ENGINE_URL || 'http://localhost:8000';
+// In production, use relative URLs that go through Nginx proxy
+// In development, VITE_COMPUTE_ENGINE_URL can be set to http://localhost:8000
+const COMPUTE_ENGINE_URL = import.meta.env.VITE_COMPUTE_ENGINE_URL || '';
 
-// Create a separate axios instance for the compute engine
+// Create axios instance - uses relative URLs in production (proxied by Nginx)
 const computeClient = axios.create({
     baseURL: COMPUTE_ENGINE_URL,
     headers: {
