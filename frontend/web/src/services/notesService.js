@@ -341,5 +341,11 @@ export const notesService = {
 
         markdown += extractMd(content);
         return markdown;
+    },
+
+    // ==================== Lab Research ====================
+    async saveLabResearch(payload) {
+        const res = await apiClient.post("/labs/persistent-save", payload);
+        return res.data;
     }
 };

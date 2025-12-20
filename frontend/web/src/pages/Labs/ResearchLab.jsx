@@ -326,9 +326,9 @@ const ResearchLab = () => {
                 subject: activeSubject
             };
 
-            const response = await notesService.post('/labs/persistent-save', payload);
+            const response = await notesService.saveLabResearch(payload);
 
-            if (response.data?.success) {
+            if (response?.success) {
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
             }
