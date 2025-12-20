@@ -76,9 +76,16 @@ public class ResourceServerConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
-        config.setAllowedOrigins(java.util.List.of(frontendBaseUrl));
-        config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+        // Allow both configured frontend URL and production domains
+        config.setAllowedOrigins(java.util.List.of(
+                frontendBaseUrl,
+                "https://ilai.co.in",
+                "https://www.ilai.co.in",
+                "http://localhost:5173",
+                "http://localhost:80"));
+        config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedHeaders(
+                java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         config.setAllowCredentials(true);
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

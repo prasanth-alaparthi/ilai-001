@@ -85,9 +85,15 @@ public class AuthServiceSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSourceAdvanced() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(frontendBaseUrl));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+        // Allow both configured frontend URL and production domains
+        config.setAllowedOrigins(List.of(
+                frontendBaseUrl,
+                "https://ilai.co.in",
+                "https://www.ilai.co.in",
+                "http://localhost:5173",
+                "http://localhost:80"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
