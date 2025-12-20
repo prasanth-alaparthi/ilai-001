@@ -8,7 +8,7 @@
  * - Lab Injection: Auto-inject constants from research
  */
 
-import React, { useState, useCallback, useRef, useEffect, useContext } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Brain, Calculator, Search, Plus, Trash2, Sparkles,
@@ -20,7 +20,7 @@ import { create, all } from 'mathjs';
 import 'mathlive';
 import labsService from '../../services/labsService';
 import { useVariableSync } from '../../hooks/useVariableSync';
-import { AuthContext } from '../../state/AuthContext';
+import { useUser } from '../../state/UserContext';
 
 // Math.js configuration
 const math = create(all);
@@ -179,8 +179,8 @@ const SourceCard = ({ title, url, snippet }) => (
  * Main Research Lab Component
  */
 const ResearchLab = () => {
-    // Auth context for user ID
-    const { user } = useContext(AuthContext) || {};
+    // User context for user ID
+    const { user } = useUser() || {};
     const userId = user?.id || 'anonymous';
 
     // WebSocket-synced variable registry (Postgres-backed)
@@ -306,19 +306,34 @@ const ResearchLab = () => {
                 body: JSON.stringify({ query: searchQuery, max_hops: 3, include_private: true })
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+                // Append new data to buffer
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete lines from buffer
+                const lines = buffer.split('\n');
+                // Keep incomplete last line in buffer
+                buffer = lines.pop() || '';
 
                 for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+
                     try {
-                        const data = JSON.parse(line.slice(6));
+                        const jsonStr = line.slice(6).trim();
+                        if (!jsonStr || jsonStr === '[DONE]') continue;
+
+                        const data = JSON.parse(jsonStr);
 
                         switch (data.type) {
                             case 'thinking':
@@ -341,7 +356,10 @@ const ResearchLab = () => {
                                 break;
                         }
                     } catch (e) {
-                        console.warn('Parse error:', e);
+                        // Only log if it's not an empty line
+                        if (line.trim().length > 6) {
+                            console.debug('SSE parse skip:', line.slice(0, 50));
+                        }
                     }
                 }
             }
