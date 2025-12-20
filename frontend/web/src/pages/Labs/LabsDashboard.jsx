@@ -79,6 +79,19 @@ const LabsDashboard = () => {
             progress: 25
         },
         {
+            id: 'dynamic-math',
+            name: 'DYNAMIC_MATH',
+            description: 'Apple Math Notes style. Auto-solve on = with steps.',
+            icon: Calculator,
+            color: 'text-blue-400',
+            borderColor: 'border-blue-400/30',
+            bgHover: 'hover:bg-blue-400/10',
+            path: '/labs/dynamic-math',
+            progress: 0,
+            isNew: true,
+            isPro: true
+        },
+        {
             id: 'quantum',
             name: 'QUANTUM_SIM',
             description: 'Quantum Circuits, Qubits, Entanglement.',
