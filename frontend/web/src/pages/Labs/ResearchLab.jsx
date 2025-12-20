@@ -228,14 +228,26 @@ const ResearchLab = () => {
         }
     }, [variables]);
 
-    // Pro solve via API
+    // Pro solve via API (calculus, chemistry)
     const solvePro = async (expression) => {
         setIsProSolving(true);
         try {
-            const response = await labsService.post('/physics/derive', { expression });
-            return { result: response.data };
+            const response = await labsService.post('/solver/solve', {
+                expression,
+                variables: variables
+            });
+            const data = response.data;
+            if (data.success) {
+                return {
+                    result: data.result,
+                    steps: data.steps,
+                    derivation: data.derivation_latex
+                };
+            } else {
+                return { error: data.error };
+            }
         } catch (err) {
-            return { error: err.response?.data?.detail || err.message };
+            return { error: err.response?.data?.error || err.message };
         } finally {
             setIsProSolving(false);
         }

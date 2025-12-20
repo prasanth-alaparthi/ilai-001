@@ -92,6 +92,120 @@ async def solve_physics(request: PhysicsRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+# ==================== CORE SOLVER (Calculus + Algebra) ====================
+
+class SolverRequest(BaseModel):
+    expression: str
+    variables: Optional[Dict[str, Any]] = None
+
+@app.post("/api/solver/solve")
+async def solve_expression(request: SolverRequest):
+    """
+    Unified solver for math expressions.
+    Handles: calculus (diff, integrate), algebra, variable substitution
+    Strips trailing = for auto-solve functionality
+    """
+    try:
+        # Clean expression - remove trailing = for evaluation
+        expr_str = request.expression.strip()
+        if expr_str.endswith('='):
+            expr_str = expr_str[:-1].strip()
+        
+        # Replace LaTeX-style commands with SymPy equivalents
+        expr_str = expr_str.replace('^', '**')
+        expr_str = expr_str.replace('×', '*')
+        expr_str = expr_str.replace('÷', '/')
+        
+        # Define common symbols
+        x, y, z, t, a, b, c = sp.symbols('x y z t a b c')
+        local_dict = {'x': x, 'y': y, 'z': z, 't': t, 'a': a, 'b': b, 'c': c}
+        
+        # Add user variables if provided
+        if request.variables:
+            for var_name, var_value in request.variables.items():
+                try:
+                    local_dict[var_name] = sp.Number(var_value)
+                except:
+                    local_dict[var_name] = sp.Symbol(var_name)
+        
+        # Parse and evaluate
+        result = None
+        steps = []
+        derivation_latex = ""
+        
+        # Check for calculus operations
+        if 'diff(' in expr_str or 'derivative(' in expr_str:
+            # Derivative: diff(x**2, x) -> 2x
+            steps.append(f"Input: {expr_str}")
+            result = sp.sympify(expr_str, locals=local_dict)
+            evaluated = result.doit()
+            steps.append(f"Apply derivative rules")
+            steps.append(f"Result: {sp.latex(evaluated)}")
+            derivation_latex = f"\\frac{{d}}{{dx}}\\left({sp.latex(result.args[0])}\\right) = {sp.latex(evaluated)}"
+            result = evaluated
+            
+        elif 'integrate(' in expr_str or 'integral(' in expr_str:
+            # Integral: integrate(x**2, x) -> x³/3
+            steps.append(f"Input: {expr_str}")
+            result = sp.sympify(expr_str, locals=local_dict)
+            evaluated = result.doit()
+            steps.append(f"Apply integration rules")
+            steps.append(f"Result: {sp.latex(evaluated)} + C")
+            derivation_latex = f"\\int {sp.latex(result.args[0])} \\, dx = {sp.latex(evaluated)} + C"
+            result = evaluated
+            
+        elif 'limit(' in expr_str:
+            # Limit: limit(sin(x)/x, x, 0) -> 1
+            steps.append(f"Input: {expr_str}")
+            result = sp.sympify(expr_str, locals=local_dict)
+            evaluated = result.doit()
+            steps.append(f"Evaluate limit")
+            steps.append(f"Result: {sp.latex(evaluated)}")
+            derivation_latex = f"\\lim_{{x \\to {result.args[2]}}} {sp.latex(result.args[0])} = {sp.latex(evaluated)}"
+            result = evaluated
+            
+        else:
+            # Simple expression evaluation
+            steps.append(f"Input: {expr_str}")
+            result = sp.sympify(expr_str, locals=local_dict)
+            
+            # Try to simplify
+            simplified = sp.simplify(result)
+            if simplified != result:
+                steps.append(f"Simplify: {sp.latex(simplified)}")
+                result = simplified
+            
+            # Try numeric evaluation
+            try:
+                numeric = float(result.evalf())
+                steps.append(f"Evaluate: {numeric}")
+                derivation_latex = f"{expr_str} = {sp.latex(result)}"
+                if abs(numeric - round(numeric)) < 1e-10:
+                    result = int(round(numeric))
+                else:
+                    result = numeric
+            except:
+                derivation_latex = f"{expr_str} = {sp.latex(result)}"
+        
+        return {
+            "success": True,
+            "result": str(result),
+            "result_latex": sp.latex(result) if hasattr(result, '__class__') and result.__class__.__module__.startswith('sympy') else str(result),
+            "derivation_latex": derivation_latex,
+            "steps": steps,
+            "type": "symbolic" if isinstance(result, sp.Basic) else "numeric"
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "success": False, 
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 # ==================== CHEMISTRY BALANCING ====================
 
 class ChemistryBalanceRequest(BaseModel):
