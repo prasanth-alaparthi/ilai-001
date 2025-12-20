@@ -32,6 +32,27 @@ math.config({
 const RESULT_COLOR = '#007AFF';
 const ERROR_COLOR = '#FF3B30';
 
+// Helper function to format Math.js results for display
+const formatDisplayResult = (result) => {
+    if (result === null || result === undefined) return 'undefined';
+
+    // Check for mathjs BigNumber
+    if (typeof result === 'object' && result.mathjs === 'BigNumber') {
+        return result.value || String(result);
+    }
+
+    // Use math.format for proper number formatting
+    try {
+        return math.format(result, { precision: 10 });
+    } catch {
+        // Fallback for non-math.js objects
+        if (typeof result === 'object') {
+            return JSON.stringify(result);
+        }
+        return String(result);
+    }
+};
+
 /**
  * Custom Hook: useMathSolver
  * Handles local (Math.js) and Pro (API) solving
@@ -386,7 +407,7 @@ const ExpressionRow = ({
                                 className="text-xl font-mono font-semibold"
                                 style={{ color: RESULT_COLOR }}
                             >
-                                {typeof result === 'object' ? JSON.stringify(result) : String(result)}
+                                {formatDisplayResult(result)}
                             </span>
                             {type === 'pro' && (
                                 <Sparkles size={16} className="text-amber-400" />
