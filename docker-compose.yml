@@ -279,6 +279,52 @@ services:
       retries: 5
       start_period: 15s
 
+  # --- Universal Compute Engine (Labs backend - Python/FastAPI) ---
+  muse-compute-engine:
+    build:
+      context: ./services/muse-compute-engine
+      dockerfile: Dockerfile
+    container_name: muse-compute-engine
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    networks:
+      - muse-network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8000/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --- Agentic RAG Service (LangGraph + Tavily + Vision) ---
+  muse-agentic-rag:
+    build:
+      context: ./services/muse-agentic-rag
+      dockerfile: Dockerfile
+    container_name: muse-agentic-rag
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - NOTES_SERVICE_URL=http://muse-notes-service:8082
+    ports:
+      - "8001:8001"
+    networks:
+      - muse-network
+    restart: always
+    depends_on:
+      - muse-notes-service
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8001/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   # --- Frontend ---
   muse-frontend:
     build:

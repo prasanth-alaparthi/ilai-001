@@ -7,7 +7,9 @@ import {
     // Arts Labs icons
     MessageSquare, BookOpen, Palette, Globe2,
     // Social Labs icons
-    MapPin, Landmark, TrendingUp, Clock
+    MapPin, Landmark, TrendingUp, Clock,
+    // Agentic RAG
+    Brain
 } from 'lucide-react';
 import labsService from '../../services/labsService';
 
@@ -87,6 +89,19 @@ const LabsDashboard = () => {
             borderColor: 'border-blue-400/30',
             bgHover: 'hover:bg-blue-400/10',
             path: '/labs/dynamic-math',
+            progress: 0,
+            isNew: true,
+            isPro: true
+        },
+        {
+            id: 'agentic-rag',
+            name: 'AGENTIC_RAG',
+            description: 'Multi-hop research agent with cross-encoder reranking.',
+            icon: Brain,
+            color: 'text-purple-400',
+            borderColor: 'border-purple-400/30',
+            bgHover: 'hover:bg-purple-400/10',
+            path: '/labs/agentic-rag',
             progress: 0,
             isNew: true,
             isPro: true
