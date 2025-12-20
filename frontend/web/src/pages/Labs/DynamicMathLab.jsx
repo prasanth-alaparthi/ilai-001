@@ -57,7 +57,7 @@ const useMathSolver = () => {
             // Merge with stored variables
             const fullScope = { ...variables, ...scope };
 
-            // Clean expression
+            // Clean expression - remove trailing = for evaluation
             let cleanExpr = expression
                 .replace(/×/g, '*')
                 .replace(/÷/g, '/')
@@ -66,6 +66,7 @@ const useMathSolver = () => {
                 .replace(/³/g, '^3')
                 .replace(/√/g, 'sqrt')
                 .replace(/π/g, 'pi')
+                .replace(/\s*=\s*$/, '')  // Remove trailing = for auto-solve
                 .trim();
 
             // Check for variable assignment
