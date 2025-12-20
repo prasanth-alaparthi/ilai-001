@@ -51,6 +51,7 @@
     "idb": "^8.0.0",
     "jspdf": "^3.0.4",
     "katex": "^0.16.25",
+    "react-katex": "^3.0.1",
     "libsodium-wrappers": "^0.7.15",
     "localforage": "^1.10.0",
     "lucide-react": "^0.556.0",
