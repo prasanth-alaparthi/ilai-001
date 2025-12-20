@@ -29,7 +29,7 @@ pull_code() {
     git pull
 }
 
-# Build a service using Docker
+# Build a Java service using Docker
 build_service() {
     local service=$1
     local service_dir="services/muse-${service}-service"
@@ -53,6 +53,49 @@ build_service() {
     docker build -t "ilai-001_muse-${service}-service:latest" "./$service_dir"
     
     log_info "$service service built successfully!"
+}
+
+# Build Python service (compute-engine / labs)
+build_python_service() {
+    local service=$1
+    local service_dir="services/muse-${service}"
+    
+    if [ ! -d "$service_dir" ]; then
+        log_error "Service directory $service_dir not found!"
+        return 1
+    fi
+    
+    log_info "Building $service Python service..."
+    
+    # Build Docker image directly (no Maven needed)
+    docker build -t "ilai-001_muse-${service}:latest" "./$service_dir"
+    
+    log_info "$service Python service built successfully!"
+}
+
+# Deploy a Python service
+deploy_python_service() {
+    local service=$1
+    local port=$2
+    local container_name="muse-${service}"
+    local image_name="ilai-001_muse-${service}:latest"
+    
+    log_info "Deploying $service Python service..."
+    
+    # Stop and remove existing container
+    docker stop "$container_name" 2>/dev/null || true
+    docker rm "$container_name" 2>/dev/null || true
+    
+    # Run new container
+    docker run -d \
+        --name "$container_name" \
+        --network ilai-001_muse-network \
+        -e "PYTHONUNBUFFERED=1" \
+        -p "${port}:${port}" \
+        --restart always \
+        "$image_name"
+    
+    log_info "$service service deployed on port $port!"
 }
 
 # Deploy a service
@@ -131,6 +174,24 @@ case "${1:-all}" in
         deploy_service "notes" 8082 "muse_notes"
         check_health "notes" 8082
         ;;
+    ai)
+        pull_code
+        build_service "ai"
+        deploy_service "ai" 8088 "muse_ai"
+        check_health "ai" 8088
+        ;;
+    labs)
+        pull_code
+        build_python_service "compute-engine"
+        deploy_python_service "compute-engine" 8000
+        log_info "Checking labs health..."
+        sleep 5
+        if curl -s "http://localhost:8000/health" | grep -q "ok"; then
+            log_info "Labs (compute-engine) is healthy!"
+        else
+            log_warn "Labs health check failed. Check logs: docker logs muse-compute-engine"
+        fi
+        ;;
     frontend)
         deploy_frontend
         ;;
@@ -138,11 +199,16 @@ case "${1:-all}" in
         pull_code
         build_service "auth"
         build_service "notes"
+        build_service "ai"
+        build_python_service "compute-engine"
         deploy_service "auth" 8081 "muse-auth"
         deploy_service "notes" 8082 "muse_notes"
+        deploy_service "ai" 8088 "muse_ai"
+        deploy_python_service "compute-engine" 8000
         deploy_frontend
         check_health "auth" 8081
         check_health "notes" 8082
+        check_health "ai" 8088
         ;;
     status)
         docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -151,7 +217,7 @@ case "${1:-all}" in
         docker logs -f "muse-${2:-auth}-service"
         ;;
     *)
-        echo "Usage: $0 {auth|notes|frontend|all|status|logs [service]}"
+        echo "Usage: $0 {auth|notes|ai|labs|frontend|all|status|logs [service]}"
         exit 1
         ;;
 esac

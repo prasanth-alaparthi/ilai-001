@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic
+sympy
+numpy
+scipy
+pandas
+networkx
+nltk
+spacy
+biopython
+matplotlib
+# rdkit - install via conda: conda install -c conda-forge rdkit
+# Note: For production, use pre-built Docker image with rdkit

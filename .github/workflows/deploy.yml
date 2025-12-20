@@ -159,11 +159,72 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/ilai-social:latest
 
   # ========================================
+  # Build AI Service
+  # ========================================
+  build-ai:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Build ai service
+        working-directory: services/muse-ai-service
+        run: mvn clean package -DskipTests
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push ai image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/muse-ai-service
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/ilai-ai:latest
+
+  # ========================================
+  # Build Labs Service (Python Compute Engine)
+  # ========================================
+  build-labs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push labs image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/muse-compute-engine
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/ilai-labs:latest
+
+  # ========================================
   # Deploy to EC2
   # ========================================
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-frontend, build-auth, build-notes, build-social]
+    needs: [build-frontend, build-auth, build-notes, build-social, build-ai, build-labs]
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -182,13 +243,16 @@ jobs:
             sudo docker pull ghcr.io/prasanth-alaparthi/ilai-auth:latest
             sudo docker pull ghcr.io/prasanth-alaparthi/ilai-notes:latest
             sudo docker pull ghcr.io/prasanth-alaparthi/ilai-social:latest
+            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-ai:latest
+            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-labs:latest
             
-            # Create muse_social database if not exists
+            # Create databases if not exist
             sudo docker exec muse-postgres psql -U postgres -c "CREATE DATABASE muse_social;" 2>/dev/null || true
+            sudo docker exec muse-postgres psql -U postgres -c "CREATE DATABASE muse_ai;" 2>/dev/null || true
             
             # Stop and remove old containers
-            sudo docker stop muse-frontend muse-auth-service muse-notes-service muse-social-service 2>/dev/null || true
-            sudo docker rm muse-frontend muse-auth-service muse-notes-service muse-social-service 2>/dev/null || true
+            sudo docker stop muse-frontend muse-auth-service muse-notes-service muse-social-service muse-ai-service muse-compute-engine 2>/dev/null || true
+            sudo docker rm muse-frontend muse-auth-service muse-notes-service muse-social-service muse-ai-service muse-compute-engine 2>/dev/null || true
             
             # Start auth service
             sudo docker run -d \
@@ -228,6 +292,25 @@ jobs:
               -p 80:80 \
               --restart always \
               ghcr.io/prasanth-alaparthi/ilai-frontend:latest
+            
+            # Start AI service
+            sudo docker run -d \
+              --name muse-ai-service \
+              --network ilai-001_muse-network \
+              --env-file .env \
+              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse_ai \
+              -p 8088:8088 \
+              --restart always \
+              ghcr.io/prasanth-alaparthi/ilai-ai:latest
+            
+            # Start Labs (Compute Engine) service
+            sudo docker run -d \
+              --name muse-compute-engine \
+              --network ilai-001_muse-network \
+              -e PYTHONUNBUFFERED=1 \
+              -p 8000:8000 \
+              --restart always \
+              ghcr.io/prasanth-alaparthi/ilai-labs:latest
             
             # Verify
             sleep 10

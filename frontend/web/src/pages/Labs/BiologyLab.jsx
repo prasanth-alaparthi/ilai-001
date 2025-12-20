@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Heart, Dna, Brain, Leaf, Eye, Settings, Play, Pause,
-    RotateCcw, ZoomIn, ZoomOut, ChevronRight
+    RotateCcw, ZoomIn, ZoomOut, ChevronRight, FlaskConical
 } from 'lucide-react';
 import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 const Biology_Simulations = {
     CELL: 'cell',
     DNA: 'dna',
     HEART: 'heart',
-    ECOSYSTEM: 'ecosystem'
+    ECOSYSTEM: 'ecosystem',
+    DNA_TRANSCRIPTION: 'dna_transcription'
 };
 
 const BiologyLab = () => {
@@ -33,6 +35,30 @@ const BiologyLab = () => {
             setAnalysisResult('Failed to analyze DNA. Please try again.');
         } finally {
             setIsAnalyzing(false);
+        }
+    };
+
+    // DNA Transcription (BioPython) state
+    const [transcriptionInput, setTranscriptionInput] = useState('ATGCGATCGATCG');
+    const [transcriptionResult, setTranscriptionResult] = useState(null);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [transcriptionError, setTranscriptionError] = useState(null);
+
+    const transcribeDNA = async () => {
+        setIsTranscribing(true);
+        setTranscriptionError(null);
+        setTranscriptionResult(null);
+        try {
+            const result = await labsService.transcribeBiology(transcriptionInput);
+            if (result.success) {
+                setTranscriptionResult(result);
+            } else {
+                setTranscriptionError(result.error);
+            }
+        } catch (err) {
+            setTranscriptionError(err.message || 'Failed to transcribe DNA');
+        } finally {
+            setIsTranscribing(false);
         }
     };
 
@@ -349,7 +375,8 @@ const BiologyLab = () => {
                     { id: Biology_Simulations.CELL, name: 'Cell Structure', icon: Eye },
                     { id: Biology_Simulations.DNA, name: 'DNA Replication', icon: Dna },
                     { id: Biology_Simulations.HEART, name: 'Cardiac Cycle', icon: Heart },
-                    { id: Biology_Simulations.ECOSYSTEM, name: 'Ecosystem', icon: Leaf }
+                    { id: Biology_Simulations.ECOSYSTEM, name: 'Ecosystem', icon: Leaf },
+                    { id: Biology_Simulations.DNA_TRANSCRIPTION, name: 'DNA→Protein', icon: FlaskConical }
                 ].map(sim => (
                     <button
                         key={sim.id}
@@ -371,6 +398,66 @@ const BiologyLab = () => {
                 {simulation === Biology_Simulations.DNA && renderDNASimulation()}
                 {simulation === Biology_Simulations.HEART && renderHeartSimulation()}
                 {simulation === Biology_Simulations.ECOSYSTEM && renderEcosystemSimulation()}
+                {simulation === Biology_Simulations.DNA_TRANSCRIPTION && (
+                    <div className="bg-gradient-to-b from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-2xl p-6" style={{ minHeight: 400 }}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <FlaskConical className="w-6 h-6 text-teal-500" />
+                            <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
+                                BioPython DNA→Protein Transcription
+                            </h3>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                DNA Sequence (5′ → 3′)
+                            </label>
+                            <input
+                                type="text"
+                                value={transcriptionInput}
+                                onChange={(e) => setTranscriptionInput(e.target.value.toUpperCase().replace(/[^ATGC]/g, ''))}
+                                className="w-full p-3 rounded-xl bg-white/50 dark:bg-black/20 border border-teal-500/30 focus:border-teal-500 outline-none font-mono text-lg tracking-widest"
+                                placeholder="ATGCGATCGATCG"
+                            />
+                            <p className="text-xs text-surface-500 mt-1">Enter DNA nucleotides (A, T, G, C only)</p>
+                        </div>
+
+                        <button
+                            onClick={transcribeDNA}
+                            disabled={isTranscribing || transcriptionInput.length < 3}
+                            className="mb-6 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isTranscribing ? 'Transcribing with BioPython...' : 'Transcribe & Translate'}
+                        </button>
+
+                        {transcriptionResult && (
+                            <div className="space-y-4 mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                        <div className="text-xs text-surface-500 uppercase">mRNA</div>
+                                        <div className="text-sm font-mono text-teal-600 break-all">{transcriptionResult.mrna}</div>
+                                    </div>
+                                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                        <div className="text-xs text-surface-500 uppercase">Protein</div>
+                                        <div className="text-lg font-mono font-bold text-purple-600 break-all">{transcriptionResult.protein}</div>
+                                    </div>
+                                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                        <div className="text-xs text-surface-500 uppercase">GC Content</div>
+                                        <div className="text-xl font-bold text-blue-600">{transcriptionResult.gc_content}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <DerivationViewer
+                            latex={transcriptionResult?.derivation_latex}
+                            assumptions={transcriptionResult?.assumptions}
+                            evidence={transcriptionResult?.evidence}
+                            subject={transcriptionResult?.subject}
+                            isLoading={isTranscribing}
+                            error={transcriptionError}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Controls */}

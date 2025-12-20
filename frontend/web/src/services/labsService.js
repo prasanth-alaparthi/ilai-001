@@ -1,116 +1,136 @@
-import apiClient from './apiClient';
+import axios from 'axios';
+
+const COMPUTE_ENGINE_URL = import.meta.env.VITE_COMPUTE_ENGINE_URL || 'http://localhost:8000';
+
+// Create a separate axios instance for the compute engine
+const computeClient = axios.create({
+    baseURL: COMPUTE_ENGINE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
 
 /**
- * Labs Service - Interactive learning labs
- * Connects to muse-notes-service at /api/labs
+ * Labs Compute Service
+ * Provides API calls to the muse-compute-engine Python backend
  */
 const labsService = {
-    // ==================== Lab CRUD ====================
+    // ==================== PHYSICS ====================
 
-    // Get all labs (optionally filtered by subject)
-    async getAllLabs(subject = null) {
-        const params = subject ? { subject } : {};
-        const response = await apiClient.get('/labs', { params });
-        return response.data;
-    },
-
-    // Get labs by subject/category
-    async getLabsBySubject(subject) {
-        const response = await apiClient.get('/labs', { params: { subject } });
-        return response.data;
-    },
-
-    // Get single lab by ID
-    async getLabById(labId) {
-        const response = await apiClient.get(`/labs/${labId}`);
-        return response.data;
-    },
-
-    // Create a new lab (admin only)
-    async createLab(labData) {
-        const response = await apiClient.post('/labs', labData);
-        return response.data;
-    },
-
-    // ==================== Progress Tracking ====================
-
-    // Mark lab as completed with quiz score
-    async completeLab(labId, quizScore = null) {
-        const response = await apiClient.post(`/labs/${labId}/complete`, {
-            quizScore
+    /**
+     * Solve physics/math equation using SymPy
+     * @param {string} equation - The equation to solve (e.g., "x**2 - 4")
+     * @param {string} equationType - 'algebraic' or 'ode'
+     * @param {string} variable - Variable to solve for (default: 'x')
+     */
+    async solvePhysics(equation, equationType = 'algebraic', variable = 'x') {
+        const response = await computeClient.post('/api/physics/solve', {
+            equation,
+            equation_type: equationType,
+            variable
         });
         return response.data;
     },
 
-    // Get user's progress across all labs
-    async getProgress() {
-        const response = await apiClient.get('/labs/progress');
+    // ==================== CHEMISTRY ====================
+
+    /**
+     * Analyze molecule from SMILES string using RDKit
+     * @param {string} smiles - SMILES string (e.g., "CCO" for ethanol)
+     */
+    async analyzeChemistry(smiles) {
+        const response = await computeClient.post('/api/chemistry/analyze', { smiles });
         return response.data;
     },
 
-    // Get user's lab statistics (completed, in-progress, etc.)
-    async getStats() {
-        const response = await apiClient.get('/labs/stats');
-        return response.data;
-    },
+    // ==================== BIOLOGY ====================
 
-    // Export lab simulation results
-    async exportResult(labId) {
-        const response = await apiClient.get(`/labs/${labId}/export`);
-        return response.data;
-    },
-
-    // Save current lab session state
-    async saveSession(labId, metadata, runtime = 0) {
-        const response = await apiClient.post(`/labs/${labId}/save-session`, {
-            metadataJson: JSON.stringify(metadata),
-            runtime
+    /**
+     * Transcribe DNA to mRNA and protein using BioPython
+     * @param {string} dnaSequence - DNA sequence (e.g., "ATGCGATCG")
+     */
+    async transcribeBiology(dnaSequence) {
+        const response = await computeClient.post('/api/biology/transcribe', {
+            dna_sequence: dnaSequence
         });
         return response.data;
     },
 
-    // Load saved lab session state
-    async getSession(labId) {
-        try {
-            const response = await apiClient.get(`/labs/${labId}/session`);
-            if (response.data && response.data.metadataJson) {
-                return JSON.parse(response.data.metadataJson);
-            }
-            return null;
-        } catch (error) {
-            return null; // Return null if no session exists or error
-        }
-    },
+    // ==================== ECONOMICS ====================
 
-    // ==================== AI Features ====================
-
-    // Solve equation using AI
-    async solveEquation(equation) {
-        const response = await apiClient.post('/labs/ai/solve', { equation });
+    /**
+     * Calculate market equilibrium using SciPy
+     * @param {object} params - Supply/demand parameters
+     */
+    async calculateEquilibrium(params) {
+        const response = await computeClient.post('/api/economics/equilibrium', {
+            supply_intercept: params.supplyIntercept,
+            supply_slope: params.supplySlope,
+            demand_intercept: params.demandIntercept,
+            demand_slope: params.demandSlope
+        });
         return response.data;
     },
 
-    // Balance chemical reaction
-    async balanceReaction(reaction) {
-        const response = await apiClient.post('/labs/ai/balance', { reaction });
+    // ==================== LITERATURE ====================
+
+    /**
+     * Analyze poetry scansion and meter using NLTK
+     * @param {string} text - Poetry text to analyze
+     */
+    async analyzeScansion(text) {
+        const response = await computeClient.post('/api/literature/scansion', { text });
         return response.data;
     },
 
-    // Explain scientific concept
-    async explainConcept(concept) {
-        const response = await apiClient.post('/labs/ai/explain', { concept });
+    // ==================== LANGUAGES ====================
+
+    /**
+     * Parse sentence for dependency/POS using SpaCy
+     * @param {string} sentence - Sentence to parse
+     */
+    async parseLanguage(sentence) {
+        const response = await computeClient.post('/api/language/parse', { sentence });
         return response.data;
     },
 
-    // ==================== Categories ====================
+    // ==================== FASHION ====================
 
-    CATEGORIES: [
-        { id: 'MATH', name: 'Mathematics', icon: '📐' },
-        { id: 'PHYSICS', name: 'Physics', icon: '⚡' },
-        { id: 'CHEMISTRY', name: 'Chemistry', icon: '🧪' },
-        { id: 'BIOLOGY', name: 'Biology', icon: '🧬' },
-        { id: 'CS', name: 'Computer Science', icon: '💻' }
-    ]
+    /**
+     * Draft pattern from body measurements using Gilewska method
+     * @param {object} measurements - {bust, waist, hips} in cm
+     */
+    async draftPattern(measurements) {
+        const response = await computeClient.post('/api/fashion/draft', {
+            bust: measurements.bust,
+            waist: measurements.waist,
+            hips: measurements.hips
+        });
+        return response.data;
+    },
+
+    // ==================== NETWORK/CULTURE ====================
+
+    /**
+     * Analyze social network using NetworkX
+     * @param {Array} edges - Array of [node1, node2] pairs
+     */
+    async analyzeNetwork(edges) {
+        const response = await computeClient.post('/api/culture/network', { edges });
+        return response.data;
+    },
+
+    // ==================== CODE EXECUTION ====================
+
+    /**
+     * Execute code (Python only locally)
+     * @param {string} language - Programming language
+     * @param {string} code - Source code to execute
+     */
+    async executeCode(language, code) {
+        const response = await computeClient.post('/api/code/execute', { language, code });
+        return response.data;
+    }
 };
 
 export default labsService;

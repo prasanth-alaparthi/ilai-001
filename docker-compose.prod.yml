@@ -116,6 +116,24 @@ services:
     networks:
       - ilai-network
 
+  muse-compute-engine:
+    build:
+      context: ./services/muse-compute-engine
+      dockerfile: Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: always
+    networks:
+      - ilai-network
+
   muse-academic-service:
     build:
       context: ./services/muse-academic-service

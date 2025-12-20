@@ -2,15 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Beaker, Play, RotateCcw, Droplets, Flame, Thermometer,
-    FlaskConical, Atom, Settings, AlertTriangle, CheckCircle
+    FlaskConical, Atom, Settings, AlertTriangle, CheckCircle, Search
 } from 'lucide-react';
 import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 const Chemistry_Experiments = {
     TITRATION: 'titration',
     REACTIONS: 'reactions',
     PERIODIC: 'periodic',
-    PH_SCALE: 'ph_scale'
+    PH_SCALE: 'ph_scale',
+    MOLECULE_ANALYZER: 'molecule_analyzer'
 };
 
 const ChemistryLab = () => {
@@ -48,6 +50,30 @@ const ChemistryLab = () => {
 
     // pH Scale state
     const [selectedSubstance, setSelectedSubstance] = useState(null);
+
+    // Molecule Analyzer state
+    const [smiles, setSmiles] = useState('CCO');
+    const [moleculeResult, setMoleculeResult] = useState(null);
+    const [isAnalyzingMolecule, setIsAnalyzingMolecule] = useState(false);
+    const [moleculeError, setMoleculeError] = useState(null);
+
+    const analyzeMolecule = async () => {
+        setIsAnalyzingMolecule(true);
+        setMoleculeError(null);
+        setMoleculeResult(null);
+        try {
+            const result = await labsService.analyzeChemistry(smiles);
+            if (result.success) {
+                setMoleculeResult(result);
+            } else {
+                setMoleculeError(result.error);
+            }
+        } catch (err) {
+            setMoleculeError(err.message || 'Failed to analyze molecule');
+        } finally {
+            setIsAnalyzingMolecule(false);
+        }
+    };
 
     const reactions = [
         { name: 'Na + Cl₂ → NaCl', reactants: ['Sodium', 'Chlorine'], product: 'Sodium Chloride', type: 'Synthesis', color: '#f97316' },
@@ -333,7 +359,8 @@ const ChemistryLab = () => {
                 {[
                     { id: Chemistry_Experiments.TITRATION, name: 'Acid-Base Titration', icon: Droplets },
                     { id: Chemistry_Experiments.REACTIONS, name: 'Chemical Reactions', icon: Atom },
-                    { id: Chemistry_Experiments.PH_SCALE, name: 'pH Scale', icon: Thermometer }
+                    { id: Chemistry_Experiments.PH_SCALE, name: 'pH Scale', icon: Thermometer },
+                    { id: Chemistry_Experiments.MOLECULE_ANALYZER, name: 'Molecule Analyzer', icon: Search }
                 ].map(exp => (
                     <button
                         key={exp.id}
@@ -354,6 +381,68 @@ const ChemistryLab = () => {
                 {experiment === Chemistry_Experiments.TITRATION && renderTitration()}
                 {experiment === Chemistry_Experiments.REACTIONS && renderReactions()}
                 {experiment === Chemistry_Experiments.PH_SCALE && renderPhScale()}
+                {experiment === Chemistry_Experiments.MOLECULE_ANALYZER && (
+                    <div className="bg-gradient-to-b from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-2xl p-6" style={{ minHeight: 400 }}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <Search className="w-6 h-6 text-green-500" />
+                            <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
+                                RDKit Molecule Analyzer
+                            </h3>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                SMILES String
+                            </label>
+                            <input
+                                type="text"
+                                value={smiles}
+                                onChange={(e) => setSmiles(e.target.value)}
+                                className="w-full p-3 rounded-xl bg-white/50 dark:bg-black/20 border border-green-500/30 focus:border-green-500 outline-none font-mono"
+                                placeholder="CCO (Ethanol), C1=CC=CC=C1 (Benzene)"
+                            />
+                            <p className="text-xs text-surface-500 mt-1">Examples: CCO (Ethanol), C1=CC=CC=C1 (Benzene), CC(=O)O (Acetic Acid)</p>
+                        </div>
+
+                        <button
+                            onClick={analyzeMolecule}
+                            disabled={isAnalyzingMolecule || !smiles.trim()}
+                            className="mb-6 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isAnalyzingMolecule ? 'Analyzing with RDKit...' : 'Analyze Molecule'}
+                        </button>
+
+                        {moleculeResult && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                    <div className="text-xs text-surface-500 uppercase">Formula</div>
+                                    <div className="text-xl font-bold text-green-600">{moleculeResult.formula}</div>
+                                </div>
+                                <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                    <div className="text-xs text-surface-500 uppercase">Mol. Weight</div>
+                                    <div className="text-xl font-bold text-blue-600">{moleculeResult.molecular_weight} g/mol</div>
+                                </div>
+                                <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                    <div className="text-xs text-surface-500 uppercase">Atoms</div>
+                                    <div className="text-xl font-bold text-purple-600">{moleculeResult.num_atoms}</div>
+                                </div>
+                                <div className="bg-white/50 dark:bg-black/20 p-4 rounded-xl">
+                                    <div className="text-xs text-surface-500 uppercase">Bonds</div>
+                                    <div className="text-xl font-bold text-orange-600">{moleculeResult.num_bonds}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        <DerivationViewer
+                            latex={moleculeResult?.derivation_latex}
+                            assumptions={moleculeResult?.assumptions}
+                            evidence={moleculeResult?.evidence}
+                            subject={moleculeResult?.subject}
+                            isLoading={isAnalyzingMolecule}
+                            error={moleculeError}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Controls */}

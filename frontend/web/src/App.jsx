@@ -27,6 +27,7 @@ const Chat = lazy(() => import('./pages/Chat'));
 const NoteEditPage = lazy(() => import('./pages/NoteEditPage'));
 const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage'));
 const MyAccount = lazy(() => import('./pages/MyAccount'));
+const UniversalEngine = lazy(() => import('./pages/UniversalEngine'));
 
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Quiz = lazy(() => import('./pages/Quiz'));
@@ -180,6 +181,7 @@ export default function App() {
                         <Route path="agents" element={<AgentDashboard />} />
                         <Route path="research" element={<DeepResearch />} />
                         <Route path="study-search" element={<StudySearchPage />} />
+                        <Route path="engine" element={<UniversalEngine />} />
 
                         {/* Billing */}
                         <Route path="pricing" element={<Pricing />} />

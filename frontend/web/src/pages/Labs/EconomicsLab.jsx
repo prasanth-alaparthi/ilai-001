@@ -13,8 +13,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart,
-    Activity, RefreshCw, Play, Pause, Settings, Info
+    Activity, RefreshCw, Play, Pause, Settings, Info, Calculator
 } from 'lucide-react';
+import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 // Economic data
 const COUNTRIES = [
@@ -62,6 +64,34 @@ const EconomicsLab = () => {
     const [stockHistory, setStockHistory] = useState([100]);
     const [isSimulating, setIsSimulating] = useState(false);
     const simulationRef = useRef(null);
+
+    // SciPy Equilibrium state
+    const [scipyResult, setScipyResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+    const [calcError, setCalcError] = useState(null);
+
+    const calculateWithSciPy = async () => {
+        setIsCalculating(true);
+        setCalcError(null);
+        setScipyResult(null);
+        try {
+            const result = await labsService.calculateEquilibrium({
+                supplyIntercept: supplyParams.c,
+                supplySlope: supplyParams.d,
+                demandIntercept: demandParams.a,
+                demandSlope: demandParams.b
+            });
+            if (result.success) {
+                setScipyResult(result);
+            } else {
+                setCalcError(result.error);
+            }
+        } catch (err) {
+            setCalcError(err.message || 'Failed to calculate equilibrium');
+        } finally {
+            setIsCalculating(false);
+        }
+    };
 
     // Calculate equilibrium
     useEffect(() => {
@@ -250,7 +280,7 @@ const EconomicsLab = () => {
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 bg-gray-900 rounded-xl p-1 w-fit">
-                    {['supply-demand', 'gdp', 'stocks', 'concepts'].map(tab => (
+                    {['supply-demand', 'equilibrium', 'gdp', 'stocks', 'concepts'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -349,6 +379,107 @@ const EconomicsLab = () => {
                                 <canvas ref={canvasRef} width={700} height={450} className="w-full" />
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* SciPy Equilibrium Tab */}
+                {activeTab === 'equilibrium' && (
+                    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Calculator className="w-6 h-6 text-lime-400" />
+                            <h3 className="text-xl font-semibold text-white">
+                                SciPy Market Equilibrium Calculator
+                            </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-medium text-blue-400">Demand Function: Qd = a - b·P</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-gray-500 block mb-1">a (intercept)</label>
+                                        <input
+                                            type="number"
+                                            value={demandParams.a}
+                                            onChange={(e) => setDemandParams(p => ({ ...p, a: parseInt(e.target.value) || 0 }))}
+                                            className="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-500 block mb-1">b (slope)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={demandParams.b}
+                                            onChange={(e) => setDemandParams(p => ({ ...p, b: parseFloat(e.target.value) || 0 }))}
+                                            className="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-medium text-green-400">Supply Function: Qs = c + d·P</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-gray-500 block mb-1">c (intercept)</label>
+                                        <input
+                                            type="number"
+                                            value={supplyParams.c}
+                                            onChange={(e) => setSupplyParams(p => ({ ...p, c: parseInt(e.target.value) || 0 }))}
+                                            className="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-500 block mb-1">d (slope)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={supplyParams.d}
+                                            onChange={(e) => setSupplyParams(p => ({ ...p, d: parseFloat(e.target.value) || 0 }))}
+                                            className="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={calculateWithSciPy}
+                            disabled={isCalculating}
+                            className="mb-6 px-6 py-3 bg-lime-600 hover:bg-lime-500 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isCalculating ? 'Calculating with SciPy...' : 'Calculate Equilibrium'}
+                        </button>
+
+                        {scipyResult && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-gray-800 p-4 rounded-xl">
+                                    <div className="text-xs text-gray-500 uppercase">Equilibrium Price</div>
+                                    <div className="text-xl font-bold text-yellow-400">${scipyResult.equilibrium_price}</div>
+                                </div>
+                                <div className="bg-gray-800 p-4 rounded-xl">
+                                    <div className="text-xs text-gray-500 uppercase">Equilibrium Quantity</div>
+                                    <div className="text-xl font-bold text-blue-400">{scipyResult.equilibrium_quantity} units</div>
+                                </div>
+                                <div className="bg-gray-800 p-4 rounded-xl">
+                                    <div className="text-xs text-gray-500 uppercase">Supply Elasticity</div>
+                                    <div className="text-xl font-bold text-green-400">{scipyResult.elasticity_supply}</div>
+                                </div>
+                                <div className="bg-gray-800 p-4 rounded-xl">
+                                    <div className="text-xs text-gray-500 uppercase">Demand Elasticity</div>
+                                    <div className="text-xl font-bold text-red-400">{scipyResult.elasticity_demand}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        <DerivationViewer
+                            latex={scipyResult?.derivation_latex}
+                            assumptions={scipyResult?.assumptions}
+                            evidence={scipyResult?.evidence}
+                            subject={scipyResult?.subject}
+                            isLoading={isCalculating}
+                            error={calcError}
+                        />
                     </div>
                 )}
 

@@ -2,15 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Play, Pause, RotateCcw, Settings, Zap, Target,
-    ArrowRight, CircleDot, Maximize2, HelpCircle
+    ArrowRight, CircleDot, Maximize2, HelpCircle, Calculator
 } from 'lucide-react';
 import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 const Physics_Simulations = {
     PROJECTILE: 'projectile',
     PENDULUM: 'pendulum',
     WAVES: 'waves',
-    CIRCUITS: 'circuits'
+    CIRCUITS: 'circuits',
+    EQUATION_SOLVER: 'equation_solver'
 };
 
 const PhysicsLab = () => {
@@ -35,6 +37,31 @@ const PhysicsLab = () => {
     const [waveFrequency, setWaveFrequency] = useState(2);
     const [waveAmplitude, setWaveAmplitude] = useState(50);
     const [wavePhase, setWavePhase] = useState(0);
+
+    // Equation solver state
+    const [equation, setEquation] = useState('x**2 - 4');
+    const [equationType, setEquationType] = useState('algebraic');
+    const [solverResult, setSolverResult] = useState(null);
+    const [isSolving, setIsSolving] = useState(false);
+    const [solverError, setSolverError] = useState(null);
+
+    const solveEquation = async () => {
+        setIsSolving(true);
+        setSolverError(null);
+        setSolverResult(null);
+        try {
+            const result = await labsService.solvePhysics(equation, equationType);
+            if (result.success) {
+                setSolverResult(result);
+            } else {
+                setSolverError(result.error);
+            }
+        } catch (err) {
+            setSolverError(err.message || 'Failed to solve equation');
+        } finally {
+            setIsSolving(false);
+        }
+    };
 
     useEffect(() => {
         return () => {
@@ -274,7 +301,8 @@ const PhysicsLab = () => {
                     { id: Physics_Simulations.PROJECTILE, name: 'Projectile Motion', icon: Target },
                     { id: Physics_Simulations.PENDULUM, name: 'Pendulum', icon: CircleDot },
                     { id: Physics_Simulations.WAVES, name: 'Wave Interference', icon: Maximize2 },
-                    { id: Physics_Simulations.CIRCUITS, name: 'Circuits', icon: Zap }
+                    { id: Physics_Simulations.CIRCUITS, name: 'Circuits', icon: Zap },
+                    { id: Physics_Simulations.EQUATION_SOLVER, name: 'Equation Solver', icon: Calculator }
                 ].map(sim => (
                     <button
                         key={sim.id}
@@ -296,6 +324,62 @@ const PhysicsLab = () => {
                 {simulation === Physics_Simulations.PENDULUM && renderPendulumSimulation()}
                 {simulation === Physics_Simulations.WAVES && renderWaveSimulation()}
                 {simulation === Physics_Simulations.CIRCUITS && renderCircuitSimulation()}
+                {simulation === Physics_Simulations.EQUATION_SOLVER && (
+                    <div className="bg-gradient-to-b from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl p-6" style={{ minHeight: 400 }}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <Calculator className="w-6 h-6 text-purple-500" />
+                            <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
+                                SymPy Equation Solver
+                            </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                    Equation (Python syntax)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={equation}
+                                    onChange={(e) => setEquation(e.target.value)}
+                                    className="w-full p-3 rounded-xl bg-white/50 dark:bg-black/20 border border-purple-500/30 focus:border-purple-500 outline-none font-mono"
+                                    placeholder="x**2 - 4"
+                                />
+                                <p className="text-xs text-surface-500 mt-1">Examples: x**2 - 4, sin(x) - 0.5, x**3 - 2*x + 1</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                    Equation Type
+                                </label>
+                                <select
+                                    value={equationType}
+                                    onChange={(e) => setEquationType(e.target.value)}
+                                    className="w-full p-3 rounded-xl bg-white/50 dark:bg-black/20 border border-purple-500/30 focus:border-purple-500 outline-none"
+                                >
+                                    <option value="algebraic">Algebraic</option>
+                                    <option value="ode">Ordinary Differential Equation</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={solveEquation}
+                            disabled={isSolving || !equation.trim()}
+                            className="mb-6 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isSolving ? 'Solving with SymPy...' : 'Solve Equation'}
+                        </button>
+
+                        <DerivationViewer
+                            latex={solverResult?.derivation_latex}
+                            assumptions={solverResult?.assumptions}
+                            evidence={solverResult?.evidence}
+                            subject={solverResult?.subject}
+                            isLoading={isSolving}
+                            error={solverError}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Controls */}

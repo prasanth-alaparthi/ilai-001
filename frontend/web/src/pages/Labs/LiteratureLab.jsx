@@ -13,8 +13,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookOpen, Feather, Sparkles, Search, Quote, Hash,
-    Users, Palette, Target, ChevronRight, RefreshCw, Copy
+    Users, Palette, Target, ChevronRight, RefreshCw, Copy, Music
 } from 'lucide-react';
+import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 // Literary devices
 const LITERARY_DEVICES = [
@@ -138,6 +140,30 @@ const LiteratureLab = () => {
     const [randomPrompt, setRandomPrompt] = useState(WRITING_PROMPTS[0]);
     const [copied, setCopied] = useState(false);
 
+    // NLTK Scansion state
+    const [poetryInput, setPoetryInput] = useState("Shall I compare thee to a summer's day?");
+    const [scansionResult, setScansionResult] = useState(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scansionError, setScansionError] = useState(null);
+
+    const analyzeScansion = async () => {
+        setIsScanning(true);
+        setScansionError(null);
+        setScansionResult(null);
+        try {
+            const result = await labsService.analyzeScansion(poetryInput);
+            if (result.success) {
+                setScansionResult(result);
+            } else {
+                setScansionError(result.error);
+            }
+        } catch (err) {
+            setScansionError(err.message || 'Failed to analyze scansion');
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
     const filteredDevices = searchDevice
         ? LITERARY_DEVICES.filter(d =>
             d.name.toLowerCase().includes(searchDevice.toLowerCase()) ||
@@ -174,13 +200,13 @@ const LiteratureLab = () => {
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 bg-gray-900 rounded-xl p-1 w-fit">
-                    {['poems', 'devices', 'authors', 'writing'].map(tab => (
+                    {['poems', 'scansion', 'devices', 'authors', 'writing'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-pink-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-pink-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -199,8 +225,8 @@ const LiteratureLab = () => {
                                     key={idx}
                                     onClick={() => setSelectedPoem(poem)}
                                     className={`w-full p-4 rounded-xl border text-left transition-all ${selectedPoem === poem
-                                            ? 'bg-pink-600/10 border-pink-500'
-                                            : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                                        ? 'bg-pink-600/10 border-pink-500'
+                                        : 'bg-gray-900 border-gray-800 hover:border-gray-700'
                                         }`}
                                 >
                                     <div className="font-medium text-white">{poem.title}</div>
@@ -246,6 +272,87 @@ const LiteratureLab = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* NLTK Scansion Tab */}
+                {activeTab === 'scansion' && (
+                    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Music className="w-6 h-6 text-pink-400" />
+                            <h3 className="text-xl font-semibold text-white">
+                                NLTK Poetry Scansion Analyzer
+                            </h3>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                                Enter a line of poetry
+                            </label>
+                            <input
+                                type="text"
+                                value={poetryInput}
+                                onChange={(e) => setPoetryInput(e.target.value)}
+                                className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-pink-500 outline-none text-white font-serif text-lg"
+                                placeholder="Shall I compare thee to a summer's day?"
+                            />
+                        </div>
+
+                        <button
+                            onClick={analyzeScansion}
+                            disabled={isScanning || !poetryInput.trim()}
+                            className="mb-6 px-6 py-3 bg-pink-600 hover:bg-pink-500 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isScanning ? 'Analyzing with NLTK...' : 'Analyze Meter'}
+                        </button>
+
+                        {scansionResult && (
+                            <div className="space-y-4 mb-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Syllables</div>
+                                        <div className="text-xl font-bold text-pink-400">{scansionResult.syllable_count}</div>
+                                    </div>
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Meter Type</div>
+                                        <div className="text-lg font-bold text-purple-400">{scansionResult.meter_type}</div>
+                                    </div>
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Scansion Pattern</div>
+                                        <div className="text-lg font-mono text-yellow-400">{scansionResult.scansion_pattern}</div>
+                                    </div>
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Iambic Pentameter?</div>
+                                        <div className={`text-xl font-bold ${scansionResult.is_iambic_pentameter ? 'text-green-400' : 'text-red-400'}`}>
+                                            {scansionResult.is_iambic_pentameter ? 'Yes' : 'No'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {scansionResult.word_breakdown?.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-400 mb-2">Word Breakdown</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {scansionResult.word_breakdown.map((word, idx) => (
+                                                <div key={idx} className="px-3 py-2 bg-gray-800 rounded-lg">
+                                                    <div className="text-white">{word.word}</div>
+                                                    <div className="text-xs font-mono text-pink-400">{word.pattern}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <DerivationViewer
+                            latex={scansionResult?.derivation_latex}
+                            assumptions={scansionResult?.assumptions}
+                            evidence={scansionResult?.evidence}
+                            subject={scansionResult?.subject}
+                            isLoading={isScanning}
+                            error={scansionError}
+                        />
                     </div>
                 )}
 
@@ -356,8 +463,8 @@ const LiteratureLab = () => {
                                     key={idx}
                                     onClick={() => setRandomPrompt(p)}
                                     className={`p-3 rounded-lg text-sm text-left transition-all ${randomPrompt === p
-                                            ? 'bg-pink-600/20 border border-pink-500'
-                                            : 'bg-gray-800 border border-gray-700 hover:border-gray-600'
+                                        ? 'bg-pink-600/20 border border-pink-500'
+                                        : 'bg-gray-800 border border-gray-700 hover:border-gray-600'
                                         }`}
                                 >
                                     {p.type}

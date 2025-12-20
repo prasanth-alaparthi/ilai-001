@@ -12,8 +12,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Globe2, Music, Utensils, Palette, Building, Users,
-    ChevronRight, MapPin, Calendar
+    ChevronRight, MapPin, Calendar, Share2
 } from 'lucide-react';
+import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 // World cultures
 const WORLD_CULTURES = [
@@ -85,6 +87,34 @@ const CultureLab = () => {
     const [activeTab, setActiveTab] = useState('cultures');
     const [selectedCulture, setSelectedCulture] = useState(WORLD_CULTURES[0]);
 
+    // NetworkX Social Network state
+    const [networkEdges, setNetworkEdges] = useState('Alice,Bob\nBob,Charlie\nCharlie,Diana\nDiana,Alice\nAlice,Charlie');
+    const [networkResult, setNetworkResult] = useState(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [networkError, setNetworkError] = useState(null);
+
+    const analyzeNetwork = async () => {
+        setIsAnalyzing(true);
+        setNetworkError(null);
+        setNetworkResult(null);
+        try {
+            const edges = networkEdges.split('\n').map(line => {
+                const [a, b] = line.split(',').map(s => s.trim());
+                return [a, b];
+            }).filter(([a, b]) => a && b);
+            const result = await labsService.analyzeNetwork(edges);
+            if (result.success) {
+                setNetworkResult(result);
+            } else {
+                setNetworkError(result.error);
+            }
+        } catch (err) {
+            setNetworkError(err.message || 'Failed to analyze network');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-300 p-4 md:p-8">
             <div className="max-w-7xl mx-auto">
@@ -101,13 +131,13 @@ const CultureLab = () => {
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 bg-gray-900 rounded-xl p-1 w-fit">
-                    {['cultures', 'art', 'heritage'].map(tab => (
+                    {['cultures', 'network', 'art', 'heritage'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-orange-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-orange-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -125,8 +155,8 @@ const CultureLab = () => {
                                     key={idx}
                                     onClick={() => setSelectedCulture(culture)}
                                     className={`w-full p-4 rounded-xl border text-left transition-all flex items-center gap-3 ${selectedCulture === culture
-                                            ? 'border-orange-500'
-                                            : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                                        ? 'border-orange-500'
+                                        : 'bg-gray-900 border-gray-800 hover:border-gray-700'
                                         }`}
                                     style={selectedCulture === culture ? { backgroundColor: `${culture.color}20` } : {}}
                                 >
@@ -193,6 +223,87 @@ const CultureLab = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* NetworkX Social Network Tab */}
+                {activeTab === 'network' && (
+                    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Share2 className="w-6 h-6 text-orange-400" />
+                            <h3 className="text-xl font-semibold text-white">
+                                NetworkX Social Network Analysis
+                            </h3>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                                Enter edges (one per line, format: Node1,Node2)
+                            </label>
+                            <textarea
+                                value={networkEdges}
+                                onChange={(e) => setNetworkEdges(e.target.value)}
+                                rows={5}
+                                className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-orange-500 outline-none text-white font-mono"
+                                placeholder="Alice,Bob&#10;Bob,Charlie&#10;Charlie,Diana"
+                            />
+                        </div>
+
+                        <button
+                            onClick={analyzeNetwork}
+                            disabled={isAnalyzing || !networkEdges.trim()}
+                            className="mb-6 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isAnalyzing ? 'Analyzing with NetworkX...' : 'Analyze Network'}
+                        </button>
+
+                        {networkResult && (
+                            <div className="space-y-4 mb-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Nodes</div>
+                                        <div className="text-xl font-bold text-orange-400">{networkResult.num_nodes}</div>
+                                    </div>
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Edges</div>
+                                        <div className="text-xl font-bold text-blue-400">{networkResult.num_edges}</div>
+                                    </div>
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Density</div>
+                                        <div className="text-xl font-bold text-purple-400">{networkResult.density}</div>
+                                    </div>
+                                    <div className="bg-gray-800 p-4 rounded-xl">
+                                        <div className="text-xs text-gray-500 uppercase">Connected</div>
+                                        <div className={`text-xl font-bold ${networkResult.is_connected ? 'text-green-400' : 'text-red-400'}`}>
+                                            {networkResult.is_connected ? 'Yes' : 'No'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {networkResult.degree_centrality && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-400 mb-2">Degree Centrality</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {Object.entries(networkResult.degree_centrality).map(([node, value], idx) => (
+                                                <div key={idx} className="px-3 py-2 bg-gray-800 rounded-lg">
+                                                    <div className="text-white">{node}</div>
+                                                    <div className="text-xs text-orange-400">{value}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <DerivationViewer
+                            latex={networkResult?.derivation_latex}
+                            assumptions={networkResult?.assumptions}
+                            evidence={networkResult?.evidence}
+                            subject={networkResult?.subject}
+                            isLoading={isAnalyzing}
+                            error={networkError}
+                        />
                     </div>
                 )}
 

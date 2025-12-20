@@ -12,8 +12,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     MessageSquare, BookOpen, Volume2, Check, X, RefreshCw,
-    Globe, ChevronRight, Award
+    Globe, ChevronRight, Award, Search
 } from 'lucide-react';
+import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 // Vocabulary data
 const VOCABULARY = {
@@ -61,6 +63,30 @@ const LanguagesLab = () => {
     const [flashcardIndex, setFlashcardIndex] = useState(0);
     const [showTranslation, setShowTranslation] = useState(false);
     const [quizState, setQuizState] = useState({ current: 0, score: 0, answered: false, selected: null });
+
+    // SpaCy Syntax Parser state
+    const [sentenceInput, setSentenceInput] = useState('The quick brown fox jumps over the lazy dog.');
+    const [parseResult, setParseResult] = useState(null);
+    const [isParsing, setIsParsing] = useState(false);
+    const [parseError, setParseError] = useState(null);
+
+    const parseSentence = async () => {
+        setIsParsing(true);
+        setParseError(null);
+        setParseResult(null);
+        try {
+            const result = await labsService.parseLanguage(sentenceInput);
+            if (result.success) {
+                setParseResult(result);
+            } else {
+                setParseError(result.error);
+            }
+        } catch (err) {
+            setParseError(err.message || 'Failed to parse sentence');
+        } finally {
+            setIsParsing(false);
+        }
+    };
 
     const vocabulary = VOCABULARY[selectedLanguage] || [];
     const currentCard = vocabulary[flashcardIndex];
@@ -112,13 +138,13 @@ const LanguagesLab = () => {
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 bg-gray-900 rounded-xl p-1 w-fit">
-                    {['vocabulary', 'grammar', 'phrases'].map(tab => (
+                    {['vocabulary', 'grammar', 'syntax'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-rose-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-rose-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -136,8 +162,8 @@ const LanguagesLab = () => {
                                     key={lang}
                                     onClick={() => { setSelectedLanguage(lang); setFlashcardIndex(0); setShowTranslation(false); }}
                                     className={`px-4 py-2 rounded-lg text-sm capitalize ${selectedLanguage === lang
-                                            ? 'bg-rose-600 text-white'
-                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                        ? 'bg-rose-600 text-white'
+                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                         }`}
                                 >
                                     {lang}
@@ -210,12 +236,12 @@ const LanguagesLab = () => {
                                             onClick={() => answerQuiz(option)}
                                             disabled={quizState.answered}
                                             className={`w-full p-4 rounded-xl text-left transition-all flex items-center justify-between ${quizState.answered
-                                                    ? isCorrect
-                                                        ? 'bg-green-500/20 border-green-500'
-                                                        : isSelected
-                                                            ? 'bg-red-500/20 border-red-500'
-                                                            : 'bg-gray-800 border-gray-700'
-                                                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700'
+                                                ? isCorrect
+                                                    ? 'bg-green-500/20 border-green-500'
+                                                    : isSelected
+                                                        ? 'bg-red-500/20 border-red-500'
+                                                        : 'bg-gray-800 border-gray-700'
+                                                : 'bg-gray-800 hover:bg-gray-700 border-gray-700'
                                                 } border`}
                                         >
                                             {option}
@@ -243,12 +269,88 @@ const LanguagesLab = () => {
                     </div>
                 )}
 
-                {/* Phrases Tab */}
-                {activeTab === 'phrases' && (
-                    <div className="text-center py-12">
-                        <div className="text-6xl mb-4">🔜</div>
-                        <h3 className="text-xl text-white mb-2">Common Phrases Coming Soon</h3>
-                        <p className="text-gray-500">Learn everyday phrases and expressions</p>
+                {/* Syntax Parser Tab */}
+                {activeTab === 'syntax' && (
+                    <div className="space-y-6">
+                        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <Search className="w-6 h-6 text-rose-400" />
+                                <h3 className="text-xl font-semibold text-white">
+                                    SpaCy Syntax Parser
+                                </h3>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                    Enter a sentence to analyze
+                                </label>
+                                <input
+                                    type="text"
+                                    value={sentenceInput}
+                                    onChange={(e) => setSentenceInput(e.target.value)}
+                                    className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-rose-500 outline-none text-white"
+                                    placeholder="The quick brown fox jumps over the lazy dog."
+                                />
+                            </div>
+
+                            <button
+                                onClick={parseSentence}
+                                disabled={isParsing || !sentenceInput.trim()}
+                                className="mb-6 px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                            >
+                                {isParsing ? 'Parsing with SpaCy...' : 'Analyze Syntax'}
+                            </button>
+
+                            {parseResult && (
+                                <div className="space-y-4 mb-6">
+                                    <h4 className="text-sm font-medium text-gray-400 uppercase">Dependency Analysis</h4>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-800">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left text-gray-400">Token</th>
+                                                    <th className="px-3 py-2 text-left text-gray-400">POS</th>
+                                                    <th className="px-3 py-2 text-left text-gray-400">Dependency</th>
+                                                    <th className="px-3 py-2 text-left text-gray-400">Head</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {parseResult.dependencies?.map((dep, i) => (
+                                                    <tr key={i} className="border-t border-gray-800">
+                                                        <td className="px-3 py-2 font-mono text-rose-400">{dep.token}</td>
+                                                        <td className="px-3 py-2 text-blue-400">{dep.pos}</td>
+                                                        <td className="px-3 py-2 text-green-400">{dep.dep}</td>
+                                                        <td className="px-3 py-2 text-gray-300">{dep.head}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {parseResult.entities?.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-medium text-gray-400 uppercase mb-2">Named Entities</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {parseResult.entities.map((ent, i) => (
+                                                    <span key={i} className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
+                                                        {ent.text} ({ent.label})
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <DerivationViewer
+                                latex={parseResult?.derivation_latex}
+                                assumptions={parseResult?.assumptions}
+                                evidence={parseResult?.evidence}
+                                subject={parseResult?.subject}
+                                isLoading={isParsing}
+                                error={parseError}
+                            />
+                        </div>
                     </div>
                 )}
             </div>

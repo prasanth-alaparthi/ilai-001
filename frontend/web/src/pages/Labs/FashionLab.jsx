@@ -12,8 +12,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Palette, Droplets, Square, Circle, Triangle,
-    Shirt, Glasses, Watch, ChevronRight
+    Shirt, Glasses, Watch, ChevronRight, Scissors
 } from 'lucide-react';
+import labsService from '../../services/labsService';
+import DerivationViewer from '../../components/labs/DerivationViewer';
 
 // Color theory
 const COLOR_WHEEL = [
@@ -63,6 +65,30 @@ const FashionLab = () => {
     const [activeTab, setActiveTab] = useState('color');
     const [selectedColor, setSelectedColor] = useState(COLOR_WHEEL[0]);
 
+    // Gilewska Pattern Drafting state
+    const [measurements, setMeasurements] = useState({ bust: 90, waist: 70, hips: 95 });
+    const [patternResult, setPatternResult] = useState(null);
+    const [isDrafting, setIsDrafting] = useState(false);
+    const [draftError, setDraftError] = useState(null);
+
+    const draftPattern = async () => {
+        setIsDrafting(true);
+        setDraftError(null);
+        setPatternResult(null);
+        try {
+            const result = await labsService.draftPattern(measurements);
+            if (result.success) {
+                setPatternResult(result);
+            } else {
+                setDraftError(result.error);
+            }
+        } catch (err) {
+            setDraftError(err.message || 'Failed to draft pattern');
+        } finally {
+            setIsDrafting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-300 p-4 md:p-8">
             <div className="max-w-7xl mx-auto">
@@ -79,13 +105,13 @@ const FashionLab = () => {
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 bg-gray-900 rounded-xl p-1 w-fit">
-                    {['color', 'design', 'history'].map(tab => (
+                    {['color', 'pattern', 'design', 'history'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                                    ? 'bg-fuchsia-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'bg-fuchsia-600 text-white'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -146,6 +172,85 @@ const FashionLab = () => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* Gilewska Pattern Drafting Tab */}
+                {activeTab === 'pattern' && (
+                    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Scissors className="w-6 h-6 text-fuchsia-400" />
+                            <h3 className="text-xl font-semibold text-white">
+                                Gilewska Pattern Drafting
+                            </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                    Bust (cm)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={measurements.bust}
+                                    onChange={(e) => setMeasurements(m => ({ ...m, bust: parseFloat(e.target.value) || 0 }))}
+                                    className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-fuchsia-500 outline-none text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                    Waist (cm)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={measurements.waist}
+                                    onChange={(e) => setMeasurements(m => ({ ...m, waist: parseFloat(e.target.value) || 0 }))}
+                                    className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-fuchsia-500 outline-none text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                    Hips (cm)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={measurements.hips}
+                                    onChange={(e) => setMeasurements(m => ({ ...m, hips: parseFloat(e.target.value) || 0 }))}
+                                    className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 focus:border-fuchsia-500 outline-none text-white"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={draftPattern}
+                            disabled={isDrafting}
+                            className="mb-6 px-6 py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                        >
+                            {isDrafting ? 'Drafting Pattern...' : 'Draft Bodice Pattern'}
+                        </button>
+
+                        {patternResult && (
+                            <div className="space-y-4 mb-6">
+                                <h4 className="text-sm font-medium text-gray-400 uppercase">Pattern Pieces</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {patternResult.pattern_pieces && Object.entries(patternResult.pattern_pieces).map(([key, value], idx) => (
+                                        <div key={idx} className="bg-gray-800 p-4 rounded-xl">
+                                            <div className="text-xs text-gray-500 uppercase">{key.replace(/_/g, ' ')}</div>
+                                            <div className="text-lg font-bold text-fuchsia-400">{value} cm</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <DerivationViewer
+                            latex={patternResult?.derivation_latex}
+                            assumptions={patternResult?.assumptions}
+                            evidence={patternResult?.evidence}
+                            subject={patternResult?.subject}
+                            isLoading={isDrafting}
+                            error={draftError}
+                        />
                     </div>
                 )}
 
