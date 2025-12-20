@@ -1,11 +1,44 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from contextlib import asynccontextmanager
 import sympy as sp
 import traceback
+import os
 
-app = FastAPI(title="MUSE Universal Compute Engine", version="2.0")
+# Local imports
+try:
+    from repository import VariableRepository, VariableCreate, VariableUpdate, init_schema, close_pool
+    from websocket_handler import manager
+    from kernels import is_smiles, analyze_molecule, has_units, parse_with_units, check_dimensional_consistency
+    DB_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Some modules not available: {e}")
+    DB_AVAILABLE = False
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events"""
+    # Startup
+    if DB_AVAILABLE:
+        try:
+            await init_schema()
+            print("✓ Database schema initialized")
+        except Exception as e:
+            print(f"✗ Database init failed: {e}")
+    yield
+    # Shutdown
+    if DB_AVAILABLE:
+        await close_pool()
+
+
+app = FastAPI(
+    title="MUSE Universal Compute Engine", 
+    version="3.0",
+    lifespan=lifespan
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,7 +89,12 @@ class CodeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "muse-compute-engine", "version": "2.0"}
+    return {
+        "status": "ok", 
+        "service": "muse-compute-engine", 
+        "version": "3.0",
+        "db_available": DB_AVAILABLE
+    }
 
 # ==================== PHYSICS (SymPy) ====================
 
@@ -676,3 +714,203 @@ async def solve_legacy(request: SolveRequest):
         return await draft_pattern(FashionRequest(bust=90, waist=70, hips=95))
     else:
         return {"success": False, "error": "Use specific endpoints: /api/physics/solve, /api/chemistry/analyze, etc."}
+
+
+# ==================== VARIABLE REGISTRY API ====================
+
+@app.get("/api/solver/variables")
+async def get_variables(
+    user_id: str = Header(None, alias="X-User-ID"),
+    subject: Optional[str] = None
+):
+    """Get all variables for a user"""
+    if not DB_AVAILABLE:
+        return {"success": False, "error": "Database not available"}
+    
+    if not user_id:
+        return {"success": False, "error": "X-User-ID header required"}
+    
+    try:
+        variables = await VariableRepository.get_all(user_id, subject)
+        return {
+            "success": True,
+            "variables": [v.dict() for v in variables]
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/solver/variables")
+async def create_variable(
+    data: VariableCreate,
+    user_id: str = Header(None, alias="X-User-ID")
+):
+    """Create or update a variable"""
+    if not DB_AVAILABLE:
+        return {"success": False, "error": "Database not available"}
+    
+    if not user_id:
+        return {"success": False, "error": "X-User-ID header required"}
+    
+    try:
+        variable = await VariableRepository.upsert(user_id, data)
+        
+        # Broadcast update via WebSocket
+        await manager.broadcast_variable_update(user_id, variable.dict())
+        
+        return {
+            "success": True,
+            "variable": variable.dict()
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.patch("/api/solver/variables/{symbol}")
+async def update_variable(
+    symbol: str,
+    data: VariableUpdate,
+    user_id: str = Header(None, alias="X-User-ID"),
+    subject: str = "general"
+):
+    """Update a variable's value"""
+    if not DB_AVAILABLE:
+        return {"success": False, "error": "Database not available"}
+    
+    if not user_id:
+        return {"success": False, "error": "X-User-ID header required"}
+    
+    try:
+        variable = await VariableRepository.update(user_id, symbol, subject, data)
+        if variable:
+            # Broadcast update via WebSocket
+            await manager.broadcast_variable_update(user_id, variable.dict())
+            return {"success": True, "variable": variable.dict()}
+        return {"success": False, "error": "Variable not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/solver/variables/{symbol}")
+async def delete_variable(
+    symbol: str,
+    user_id: str = Header(None, alias="X-User-ID"),
+    subject: str = "general"
+):
+    """Delete a variable"""
+    if not DB_AVAILABLE:
+        return {"success": False, "error": "Database not available"}
+    
+    if not user_id:
+        return {"success": False, "error": "X-User-ID header required"}
+    
+    try:
+        deleted = await VariableRepository.delete(user_id, symbol, subject)
+        if deleted:
+            # Broadcast deletion via WebSocket
+            await manager.broadcast_variable_delete(user_id, symbol, subject)
+            return {"success": True}
+        return {"success": False, "error": "Variable not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ==================== WEBSOCKET FOR REAL-TIME SYNC ====================
+
+@app.websocket("/ws/variables/{user_id}")
+async def websocket_variables(websocket: WebSocket, user_id: str):
+    """WebSocket endpoint for real-time variable sync"""
+    if not DB_AVAILABLE:
+        await websocket.close(code=1011, reason="Database not available")
+        return
+    
+    await manager.connect(websocket, user_id)
+    
+    try:
+        # Send initial variables
+        variables = await VariableRepository.get_all(user_id)
+        await websocket.send_json({
+            "type": "initial_sync",
+            "data": [v.dict() for v in variables]
+        })
+        
+        # Listen for updates from client
+        while True:
+            data = await websocket.receive_json()
+            
+            if data.get("type") == "upsert":
+                var_data = VariableCreate(**data["data"])
+                variable = await VariableRepository.upsert(user_id, var_data)
+                await manager.broadcast_variable_update(user_id, variable.dict())
+            
+            elif data.get("type") == "delete":
+                symbol = data["data"]["symbol"]
+                subject = data["data"].get("subject", "general")
+                await VariableRepository.delete(user_id, symbol, subject)
+                await manager.broadcast_variable_delete(user_id, symbol, subject)
+            
+            elif data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+                
+    except WebSocketDisconnect:
+        await manager.disconnect(websocket, user_id)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        await manager.disconnect(websocket, user_id)
+
+
+# ==================== ENHANCED UNIFIED SOLVER ====================
+
+class UnifiedSolverRequest(BaseModel):
+    expression: str
+    user_id: Optional[str] = None
+    subject: str = "auto"  # auto, math, physics, chemistry
+    variables: Optional[Dict[str, Any]] = None
+
+
+@app.post("/api/solver/unified")
+async def unified_solver(request: UnifiedSolverRequest):
+    """
+    Unified solver that auto-detects input type and routes to appropriate kernel
+    - SMILES strings -> Chemistry kernel (RDKit)
+    - Unit expressions -> Physics kernel (Pint)
+    - Math expressions -> Math kernel (SymPy)
+    """
+    expr = request.expression.strip()
+    
+    # Load user variables from DB if available
+    db_vars = {}
+    if DB_AVAILABLE and request.user_id:
+        try:
+            db_vars = await VariableRepository.get_as_dict(request.user_id)
+        except:
+            pass
+    
+    # Merge with request variables
+    all_vars = {**db_vars, **(request.variables or {})}
+    
+    # Auto-detect and route
+    if request.subject == "auto":
+        # Check for chemistry (SMILES)
+        if DB_AVAILABLE and is_smiles(expr):
+            result = analyze_molecule(expr)
+            if result.get("success"):
+                return result
+        
+        # Check for physics (units)
+        if DB_AVAILABLE and has_units(expr):
+            result = parse_with_units(expr)
+            if result.get("success"):
+                return result
+    
+    elif request.subject == "chemistry":
+        if DB_AVAILABLE:
+            return analyze_molecule(expr)
+    
+    elif request.subject == "physics":
+        if DB_AVAILABLE:
+            return parse_with_units(expr)
+    
+    # Default to math solver
+    from main import solve_expression, SolverRequest as SR
+    return await solve_expression(SR(expression=expr, variables=all_vars))

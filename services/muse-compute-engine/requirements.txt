@@ -1,14 +1,30 @@
+# Core
 fastapi
 uvicorn[standard]
 pydantic
+websockets
+
+# Math/Science
 sympy
 numpy
 scipy
 pandas
+
+# Database
+asyncpg
+psycopg2-binary
+
+# Physics (unit-aware math)
+pint
+
+# Chemistry (SMILES/molecular)
+rdkit-pypi
+
+# NLP/Text
 networkx
 nltk
 spacy
 biopython
+
+# Visualization
 matplotlib
-# rdkit - install via conda: conda install -c conda-forge rdkit
-# Note: For production, use pre-built Docker image with rdkit
