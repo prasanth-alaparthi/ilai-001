@@ -60,7 +60,7 @@ const CreatePage = lazy(() => import('./pages/CreatePage'));
 const LabsLayout = lazy(() => import('./pages/Labs/LabsLayout'));
 const LabsDashboard = lazy(() => import('./pages/Labs/LabsDashboard'));
 const LabWorkspace = lazy(() => import('./pages/Labs/LabWorkspace'));
-const DynamicMathLab = lazy(() => import('./pages/Labs/DynamicMathLab'));
+const ResearchLab = lazy(() => import('./pages/Labs/ResearchLab'));
 // Classroom & Clubs
 const ClassroomDashboard = lazy(() => import('./pages/Classroom/ClassroomDashboard'));
 const OnlineClassRoom = lazy(() => import('./pages/Classroom/OnlineClassRoom'));
@@ -173,7 +173,7 @@ export default function App() {
                         {/* Labs Module */}
                         <Route path="labs" element={<LabsLayout />}>
                           <Route index element={<LabsDashboard />} />
-                          <Route path="research" element={<DynamicMathLab />} />
+                          <Route path="research" element={<ResearchLab />} />
                           <Route path="view/:id" element={<LabWorkspace />} />
                         </Route>
 
