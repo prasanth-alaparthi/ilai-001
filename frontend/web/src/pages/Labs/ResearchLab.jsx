@@ -20,7 +20,7 @@ import {
 import { create, all } from 'mathjs';
 import 'mathlive';
 import labsService from '../../services/labsService';
-import notesService from '../../services/notesService';
+import { notesService } from '../../services/notesService';
 import { useVariableSync } from '../../hooks/useVariableSync';
 import { useUser } from '../../state/UserContext';
 
