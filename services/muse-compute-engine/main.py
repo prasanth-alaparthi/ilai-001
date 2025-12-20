@@ -12,10 +12,12 @@ try:
     from repository import VariableRepository, VariableCreate, VariableUpdate, init_schema, close_pool
     from websocket_handler import manager
     from kernels import is_smiles, analyze_molecule, has_units, parse_with_units, check_dimensional_consistency
+    from sandbox import run_sandboxed_python, DOCKER_AVAILABLE, SANDBOX_CONFIG
     DB_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Some modules not available: {e}")
     DB_AVAILABLE = False
+    DOCKER_AVAILABLE = False
 
 
 @asynccontextmanager
@@ -914,3 +916,60 @@ async def unified_solver(request: UnifiedSolverRequest):
     # Default to math solver
     from main import solve_expression, SolverRequest as SR
     return await solve_expression(SR(expression=expr, variables=all_vars))
+
+
+# ==================== SANDBOX EXECUTION ====================
+
+class SandboxRequest(BaseModel):
+    code: str
+    timeout: int = 10  # seconds, max 30
+
+
+@app.post("/api/solver/execute")
+async def execute_sandboxed_code(request: SandboxRequest):
+    """
+    Execute Python code in a secure Docker sandbox.
+    
+    Resource limits:
+    - Memory: 256MB
+    - CPU: 0.5 cores
+    - Network: disabled
+    - Timeout: configurable (default 10s, max 30s)
+    """
+    # Validate timeout
+    timeout = min(request.timeout, 30)
+    
+    try:
+        # Run in sandbox
+        result = await run_sandboxed_python(request.code, timeout)
+        
+        return {
+            "success": result.get("success", False),
+            "stdout": result.get("stdout", ""),
+            "stderr": result.get("stderr", ""),
+            "return_code": result.get("return_code"),
+            "sandboxed": result.get("sandboxed", False),
+            "docker_available": DOCKER_AVAILABLE,
+            "limits": result.get("limits", SANDBOX_CONFIG) if DOCKER_AVAILABLE else None,
+            "error": result.get("error"),
+            "timeout": result.get("timeout", False),
+            "warning": result.get("warning")
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "sandboxed": False
+        }
+
+
+@app.get("/api/solver/sandbox/status")
+async def sandbox_status():
+    """Check sandbox availability and configuration"""
+    return {
+        "docker_available": DOCKER_AVAILABLE,
+        "config": SANDBOX_CONFIG if DOCKER_AVAILABLE else None,
+        "fallback_mode": not DOCKER_AVAILABLE
+    }
+

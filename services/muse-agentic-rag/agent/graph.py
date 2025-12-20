@@ -235,9 +235,19 @@ class AgentGraph:
         
         return lab_data if lab_data else None
     
-    async def arun(self, query: str, user_id: Optional[str] = None) -> AgentState:
+    async def arun(
+        self, 
+        query: str, 
+        user_id: Optional[str] = None,
+        search_mode: str = "academic"  # "general", "academic", "constants"
+    ) -> AgentState:
         """
-        Run the full agent workflow
+        Run the full agent workflow with multi-hop retrieval
+        
+        Args:
+            query: The search query
+            user_id: Optional user ID for private notes
+            search_mode: "general", "academic", or "constants"
         """
         state = AgentState(
             query=query,
@@ -245,11 +255,20 @@ class AgentGraph:
             max_iterations=self.max_hops
         )
         
+        state.thinking_log.append(f"Starting {search_mode} search for: {query}")
+        
         while state.should_continue and state.iteration < self.max_hops:
-            # Search phase
+            # Search phase - use academic mode for scientific queries
             if self.tavily_searcher:
-                web_results = await self.tavily_searcher.search(state.refined_query)
+                if search_mode == "constants":
+                    web_results = await self.tavily_searcher.search_constants(state.refined_query)
+                elif search_mode == "academic":
+                    web_results = await self.tavily_searcher.search_academic(state.refined_query)
+                else:
+                    web_results = await self.tavily_searcher.search(state.refined_query)
+                
                 state.results.extend(web_results)
+                state.thinking_log.append(f"Found {len(web_results)} results")
             
             if self.hybrid_searcher:
                 notes_results = await self.hybrid_searcher.search_notes(
@@ -257,16 +276,67 @@ class AgentGraph:
                 )
                 state.results.extend(notes_results)
                 
-                # Rerank all results
+                # Rerank all results using BGE
                 state.results = await self.hybrid_searcher.rerank(
                     state.refined_query, state.results
                 )
             
-            # Decision phase
+            # Decision phase - check if results are sufficient
             state = await self.adecide(state)
+            
+            # If continuing, log the refinement
+            if state.should_continue:
+                state.thinking_log.append(f"Hop {state.iteration}: Refining query...")
         
-        # Generate final answer
+        # Generate final answer with Groq
         state = await self.agenerate_answer(state)
+        
+        # Extract injectable variables for Labs
+        state = await self._extract_injectable_variables(state)
+        
+        return state
+    
+    async def _extract_injectable_variables(self, state: AgentState) -> AgentState:
+        """
+        Use LLM to extract any scientific constants/values that can be injected to Labs
+        """
+        if not state.results:
+            return state
+            
+        try:
+            extract_prompt = f"""
+            From the following research results about "{state.query}", extract any numeric values, 
+            constants, or measurements that could be useful for calculations.
+            
+            Results:
+            {self._format_results_for_llm(state.results[:5])}
+            
+            Return a JSON array of objects with: symbol, value, unit, description
+            Example: [{{"symbol": "c", "value": "299792458", "unit": "m/s", "description": "Speed of light"}}]
+            
+            If no extractable values, return: []
+            """
+            
+            response = await self._llm_call(
+                extract_prompt,
+                system="You are a data extraction assistant. Return only valid JSON."
+            )
+            
+            # Try to parse the response
+            import json
+            import re
+            
+            # Find JSON array in response
+            json_match = re.search(r'\[.*\]', response, re.DOTALL)
+            if json_match:
+                variables = json.loads(json_match.group())
+                if not state.lab_data:
+                    state.lab_data = {}
+                state.lab_data["variables"] = variables
+                state.thinking_log.append(f"Extracted {len(variables)} injectable variables")
+                
+        except Exception as e:
+            print(f"Variable extraction error: {e}")
         
         return state
 

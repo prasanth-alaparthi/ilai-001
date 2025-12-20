@@ -1,6 +1,7 @@
 """
 Search Module
 Implements Tavily web search, private notes search, and BGE-Reranker
+With academic domain filtering for arXiv, MIT OpenCourseWare, etc.
 """
 
 from typing import List, Dict, Any, Optional
@@ -20,10 +21,39 @@ except ImportError:
     CrossEncoder = None
 
 
+# Academic domain configuration
+ACADEMIC_DOMAINS = [
+    "arxiv.org",
+    "mit.edu", 
+    "stanford.edu",
+    "nature.com",
+    "sciencedirect.com",
+    "pubmed.ncbi.nlm.nih.gov",
+    "scholar.google.com",
+    "ieee.org",
+    "acm.org",
+    "springer.com",
+    "wiley.com",
+    "cambridge.org",
+    "oxford.ac.uk",
+    "jstor.org"
+]
+
+# Physics/Science constants domains
+CONSTANTS_DOMAINS = [
+    "nist.gov",
+    "physics.nist.gov",
+    "hyperphysics.phy-astr.gsu.edu",
+    "wolframalpha.com",
+    "physicsconstants.com"
+]
+
+
 class TavilySearcher:
     """
     Tavily API wrapper for web search
     Provides real-world research indexing capabilities
+    With academic domain filtering
     """
     
     def __init__(self):
@@ -36,7 +66,8 @@ class TavilySearcher:
         self, 
         query: str, 
         max_results: int = 10,
-        search_depth: str = "advanced"
+        search_depth: str = "advanced",
+        search_mode: str = "general"  # "general", "academic", "constants"
     ) -> List[Dict[str, Any]]:
         """
         Search the web using Tavily API
@@ -45,6 +76,7 @@ class TavilySearcher:
             query: Search query
             max_results: Maximum number of results
             search_depth: "basic" or "advanced"
+            search_mode: "general", "academic", or "constants"
             
         Returns:
             List of search results with title, url, content, score
@@ -53,24 +85,40 @@ class TavilySearcher:
             return self._mock_results(query)
         
         try:
+            # Prepare search kwargs
+            search_kwargs = {
+                "query": query,
+                "max_results": max_results,
+                "search_depth": search_depth,
+                "include_images": True,
+                "include_answer": True
+            }
+            
+            # Add domain filtering based on mode
+            if search_mode == "academic":
+                search_kwargs["include_domains"] = ACADEMIC_DOMAINS
+            elif search_mode == "constants":
+                search_kwargs["include_domains"] = CONSTANTS_DOMAINS + ACADEMIC_DOMAINS[:5]
+            
             # Run Tavily search in thread pool (it's synchronous)
             response = await asyncio.to_thread(
                 self.client.search,
-                query=query,
-                max_results=max_results,
-                search_depth=search_depth,
-                include_images=True,
-                include_answer=True
+                **search_kwargs
             )
             
             results = []
             for item in response.get("results", []):
+                # Determine if source is academic
+                url = item.get("url", "")
+                is_academic = any(domain in url for domain in ACADEMIC_DOMAINS)
+                
                 results.append({
                     "title": item.get("title", ""),
-                    "url": item.get("url", ""),
+                    "url": url,
                     "content": item.get("content", ""),
                     "score": item.get("score", 0.5),
                     "source": "tavily",
+                    "is_academic": is_academic,
                     "image_url": item.get("image_url")
                 })
             
@@ -80,6 +128,40 @@ class TavilySearcher:
             print(f"Tavily search error: {e}")
             return []
     
+    async def search_academic(
+        self,
+        query: str,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Convenience method for academic-only search
+        Filters to arXiv, MIT, Stanford, Nature, etc.
+        """
+        return await self.search(
+            query=query,
+            max_results=max_results,
+            search_depth="advanced",
+            search_mode="academic"
+        )
+    
+    async def search_constants(
+        self,
+        query: str,
+        max_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for physical constants and scientific values
+        Filters to NIST, HyperPhysics, etc.
+        """
+        # Enhance query for constants
+        enhanced_query = f"{query} value constant unit"
+        return await self.search(
+            query=enhanced_query,
+            max_results=max_results,
+            search_depth="advanced",
+            search_mode="constants"
+        )
+    
     def _mock_results(self, query: str) -> List[Dict[str, Any]]:
         """Mock results when Tavily is not configured"""
         return [{
@@ -87,7 +169,8 @@ class TavilySearcher:
             "url": "https://example.com",
             "content": f"This is a mock search result for the query: {query}. Configure TAVILY_API_KEY for real results.",
             "score": 0.5,
-            "source": "mock"
+            "source": "mock",
+            "is_academic": False
         }]
 
 
