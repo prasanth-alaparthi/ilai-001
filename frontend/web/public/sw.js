@@ -30,32 +30,22 @@ const OFFLINE_API_ROUTES = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing Service Worker...');
-
     event.waitUntil(
         caches.open(STATIC_CACHE)
-            .then(cache => {
-                console.log('[SW] Caching static assets');
-                return cache.addAll(STATIC_ASSETS);
-            })
+            .then(cache => cache.addAll(STATIC_ASSETS))
             .then(() => self.skipWaiting())
     );
 });
 
 // Activate event - clean old caches
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating Service Worker...');
-
     event.waitUntil(
         caches.keys()
             .then(keys => {
                 return Promise.all(
                     keys
                         .filter(key => key.startsWith('ilai-') && key !== STATIC_CACHE && key !== DYNAMIC_CACHE && key !== API_CACHE)
-                        .map(key => {
-                            console.log('[SW] Deleting old cache:', key);
-                            return caches.delete(key);
-                        })
+                        .map(key => caches.delete(key))
                 );
             })
             .then(() => self.clients.claim())
@@ -105,7 +95,6 @@ async function cacheFirst(request) {
         }
         return response;
     } catch (error) {
-        console.log('[SW] Cache-first failed:', error);
         return caches.match('/offline.html');
     }
 }
@@ -127,8 +116,6 @@ async function networkFirstWithCache(request) {
 
         return response;
     } catch (error) {
-        console.log('[SW] Network failed, trying cache:', url.pathname);
-
         const cached = await caches.match(request);
         if (cached) {
             return cached;
@@ -179,7 +166,6 @@ function isStaticAsset(pathname) {
 // Background sync for notes
 self.addEventListener('sync', (event) => {
     if (event.tag === 'sync-notes') {
-        console.log('[SW] Background sync: syncing notes');
         event.waitUntil(syncPendingNotes());
     }
 });
@@ -231,5 +217,3 @@ self.addEventListener('notificationclick', (event) => {
         );
     }
 });
-
-console.log('[SW] Service Worker loaded');
