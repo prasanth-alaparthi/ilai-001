@@ -1,163 +1,119 @@
-# Symbolic Solver & Note Archiver Implementation
+# Rate Limiting & API Protection - Implementation Plan
 
-## Overview
-
-| Feature | Component | API |
-|---------|-----------|-----|
-| MathLive → Solver | Frontend | POST `/api/solver/solve` |
-| Save to Workspace | Frontend + Backend | POST `/api/notes/labs/persistent-save` |
-| Auto-Path Generator | Backend | Creates `/[Subject] Lab/[Date]/[Topic]` |
+## Goal
+Implement production-grade rate limiting, internal API protection, and a Redis-based "cooling-off" jail system to prevent API cost spikes.
 
 ---
 
-## 1. Frontend: MathLive → Solver Connection
+## 1. Nginx Rate Limiting
 
-### [MODIFY] [ResearchLab.jsx](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/frontend/web/src/pages/Labs/ResearchLab.jsx)
+#### [MODIFY] [nginx.conf](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/frontend/web/nginx.conf)
 
-**Changes:**
-1. Add `onKeyDown` handler to MathField for Enter key
-2. Call `/api/solver/solve` with LaTeX string
-3. Stream result to KaTeX output panel
-
-```jsx
-// On Enter key in MathLive
-const handleMathInput = async (latex) => {
-    const response = await fetch(`${COMPUTE_URL}/api/solver/solve`, {
-        method: 'POST',
-        body: JSON.stringify({ expression: latex, variables: wsVariables })
-    });
-    const result = await response.json();
-    // Update result panel with symbolic solution
-};
+Add rate limit zones at the top of the config:
+```nginx
+# Rate limiting zones (10r/m = 1 request every 6 seconds)
+limit_req_zone $binary_remote_addr zone=solver_limit:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=rag_limit:10m rate=10r/m;
 ```
+
+Apply to `/api/solver` and `/api/rag` endpoints:
+```nginx
+limit_req zone=solver_limit burst=5 nodelay;
+limit_req zone=rag_limit burst=5 nodelay;
+```
+
+> [!IMPORTANT]
+> The `burst=5` allows 5 quick requests before throttling kicks in.
 
 ---
 
-## 2. Frontend: "Save to Workspace" Button
+## 2. Internal API Key Protection
 
-### [MODIFY] [ResearchLab.jsx](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/frontend/web/src/pages/Labs/ResearchLab.jsx)
+#### [MODIFY] [main.py (compute-engine)](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/services/muse-compute-engine/main.py)
 
-**New State:**
-```jsx
-const [isSaving, setIsSaving] = useState(false);
-const [saveSuccess, setSaveSuccess] = useState(false);
+Add middleware to verify `X-Internal-Secret` header:
+```python
+from fastapi import Header, HTTPException
+
+INTERNAL_SECRET = os.getenv("INTERNAL_API_SECRET", "ilai-internal-2024")
+
+async def verify_internal_secret(x_internal_secret: str = Header(None)):
+    if x_internal_secret != INTERNAL_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid internal secret")
 ```
 
-**Auto-Path Logic:**
-```jsx
-const generateAutoPath = (subject = 'Maths') => {
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-GB').replace(/\//g, '-');
-    // Returns: { notebook: "Maths Lab", section: "21-12-2024", title: "Research" }
-    return { notebook: `${subject} Lab`, section: dateStr, title: 'Research Session' };
-};
-```
+#### [MODIFY] [nginx.conf](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/frontend/web/nginx.conf)
 
-**Save Payload:**
-```jsx
-const savePayload = {
-    autoPath: generateAutoPath(activeSubject),
-    equation: currentExpression,
-    solution: currentResult,
-    variables: Object.fromEntries(wsVariables.map(v => [v.symbol, v.value])),
-    researchResults: searchResults,
-    sources: sources
-};
+Add header to proxy passes:
+```nginx
+proxy_set_header X-Internal-Secret "ilai-internal-2024";
 ```
 
 ---
 
-## 3. Backend: Persistent Save Endpoint
+## 3. Redis Cooling-Off Jail System
 
-### [NEW] LabPersistentSaveController.java
+#### [NEW] [rate_limiter.py](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/services/muse-compute-engine/rate_limiter.py)
 
-**Path:** `services/muse-notes-service/src/main/java/com/muse/notes/controller/`
+Redis-based violation tracking:
+```python
+class RateLimitJail:
+    async def record_violation(user_id: str) -> dict
+    async def check_jailed(user_id: str) -> dict | None
+    async def get_jail_duration(offense_count: int) -> int
+```
 
-**Endpoint:** `POST /api/notes/labs/persistent-save`
+Jail duration escalation:
+- 1st offense: 1 hour
+- 2nd offense: 24 hours
+- 3rd+ offense: 7 days
 
-**Logic:**
-1. Extract `userId` from JWT
-2. Find or create Notebook (e.g., "Maths Lab")
-3. Find or create Section (e.g., "21-12-2024")
-4. Create Note with structured content
-5. Tag as "lab-research" for pgvector search
-6. Capture variable registry state
+#### [MODIFY] [main.py](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/services/muse-compute-engine/main.py)
 
-### [NEW] LabPersistentSaveRequest.java
+Add middleware to check jail status before processing:
+```python
+@app.middleware("http")
+async def jail_check_middleware(request, call_next):
+    # Check if user is jailed
+    # Return 403 with retry_after if jailed
+```
 
-```java
-public class LabPersistentSaveRequest {
-    private AutoPath autoPath;
-    private String equation;
-    private String solution;
-    private Map<String, Object> variables;
-    private String researchResults;
-    private List<Source> sources;
-    
-    public static class AutoPath {
-        private String notebook;
-        private String section;
-        private String title;
-    }
+---
+
+## 4. Frontend Cooling-Off Modal
+
+#### [NEW] [CoolingOffModal.jsx](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/frontend/web/src/components/CoolingOffModal.jsx)
+
+- Display countdown timer
+- Show reason for suspension
+- Explain resource protection
+
+#### [MODIFY] [ResearchLab.jsx](file:///c:/Users/prasanth/Desktop/muse-ilai/ilai-001/frontend/web/src/pages/Labs/ResearchLab.jsx)
+
+Handle 429/403 responses:
+```jsx
+if (response.status === 429 || response.data?.jail) {
+    setShowCoolingModal(true);
+    setJailInfo(response.data);
 }
 ```
 
 ---
 
-## 4. Directory Handling Flow
+## Verification Plan
 
-```mermaid
-flowchart TD
-    A[POST /labs/persistent-save] --> B{Notebook exists?}
-    B -->|No| C[Create Notebook: 'Maths Lab']
-    B -->|Yes| D{Section exists?}
-    C --> D
-    D -->|No| E[Create Section: '21-12-2024']
-    D -->|Yes| F[Create Note]
-    E --> F
-    F --> G[Tag: lab-research]
-    G --> H[Capture Variables]
-    H --> I[Return note ID]
+### Test Script
+```bash
+# Fire 20 requests rapidly - should see 429 after ~5
+for i in {1..20}; do
+  curl -X POST http://localhost/api/solver/solve \
+    -H "Content-Type: application/json" \
+    -d '{"expression": "1+1"}' &
+done
+wait
 ```
 
----
-
-## 5. File Changes Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `ResearchLab.jsx` | MODIFY | Add Enter handler, Save button, auto-path |
-| `LabPersistentSaveController.java` | NEW | `/labs/persistent-save` endpoint |
-| `LabPersistentSaveRequest.java` | NEW | Request DTO |
-| `NotebookService.java` | MODIFY | Add `findOrCreateByName()` |
-| `SectionService.java` | MODIFY | Add `findOrCreateByName()` |
-
----
-
-## 6. Variable Sync Capture
-
-The save payload includes the current variable registry state:
-
-```json
-{
-    "variables": {
-        "x": 5,
-        "v": 9.8,
-        "m": 2.5
-    }
-}
-```
-
-This is stored in the Note's `metadata` field as JSON, making it "live" - when reopened, variables can be restored.
-
----
-
-## Implementation Order
-
-1. [ ] Backend: Create `LabPersistentSaveRequest` DTO
-2. [ ] Backend: Create `LabPersistentSaveController`
-3. [ ] Backend: Add `findOrCreateByName` to services
-4. [ ] Frontend: Add Save button to ResearchLab
-5. [ ] Frontend: Implement auto-path generator
-6. [ ] Frontend: Connect save to backend API
-7. [ ] Test end-to-end flow
+### Expected Behavior
+1. First 5 requests: Succeed (burst allowance)
+2. Requests 6-10: 429 Too Many Requests
+3. After 5 violations: User jailed for 1 hour

@@ -298,7 +298,8 @@ class AgentGraph:
     
     async def _extract_injectable_variables(self, state: AgentState) -> AgentState:
         """
-        Use LLM to extract any scientific constants/values that can be injected to Labs
+        Use LLM to extract any scientific constants/values that can be injected to Labs.
+        Automatically injects recognized physical constants via WebSocket broadcast.
         """
         if not state.results:
             return state
@@ -311,8 +312,18 @@ class AgentGraph:
             Results:
             {self._format_results_for_llm(state.results[:5])}
             
-            Return a JSON array of objects with: symbol, value, unit, description
-            Example: [{{"symbol": "c", "value": "299792458", "unit": "m/s", "description": "Speed of light"}}]
+            IMPORTANT: Look specifically for these physical constants:
+            - c (speed of light)
+            - G (gravitational constant)
+            - h (Planck constant)
+            - e (elementary charge)
+            - k_B (Boltzmann constant)
+            - N_A (Avogadro number)
+            - R (gas constant)
+            - g (standard gravity)
+            
+            Return a JSON array of objects with: symbol, value, unit, description, is_constant (true if it's a known constant)
+            Example: [{{"symbol": "c", "value": "299792458", "unit": "m/s", "description": "Speed of light", "is_constant": true}}]
             
             If no extractable values, return: []
             """
@@ -325,6 +336,7 @@ class AgentGraph:
             # Try to parse the response
             import json
             import re
+            import httpx
             
             # Find JSON array in response
             json_match = re.search(r'\[.*\]', response, re.DOTALL)
@@ -334,6 +346,27 @@ class AgentGraph:
                     state.lab_data = {}
                 state.lab_data["variables"] = variables
                 state.thinking_log.append(f"Extracted {len(variables)} injectable variables")
+                
+                # Auto-inject recognized physical constants
+                compute_url = os.getenv("COMPUTE_ENGINE_URL", "http://muse-compute-engine:8000")
+                user_id = state.lab_data.get("user_id")
+                
+                if user_id:
+                    for var in variables:
+                        if var.get("is_constant") and var.get("symbol"):
+                            try:
+                                async with httpx.AsyncClient() as client:
+                                    await client.post(
+                                        f"{compute_url}/api/constants/inject",
+                                        json={
+                                            "symbol": var["symbol"],
+                                            "user_id": user_id
+                                        },
+                                        timeout=5.0
+                                    )
+                                    state.thinking_log.append(f"Injected constant: {var['symbol']}")
+                            except Exception as e:
+                                print(f"Constant injection error: {e}")
                 
         except Exception as e:
             print(f"Variable extraction error: {e}")

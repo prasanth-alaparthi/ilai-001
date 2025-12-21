@@ -132,7 +132,39 @@ const labsService = {
     async executeCode(language, code) {
         const response = await computeClient.post('/api/code/execute', { language, code });
         return response.data;
+    },
+
+    // ==================== UNIFIED SOLVER ====================
+
+    /**
+     * Unified solver - calls /api/solver/solve endpoint
+     * @param {string} expression - Math/Physics/Chemistry expression
+     * @param {object} variables - Current variable registry
+     * @param {string} userId - User ID for variable persistence
+     * @param {string} subject - 'math' | 'physics' | 'chemistry' (optional)
+     */
+    async solve(expression, variables = {}, userId = null, subject = null) {
+        const response = await computeClient.post('/api/solver/solve', {
+            expression,
+            variables,
+            user_id: userId,
+            subject
+        });
+        return response.data;
+    },
+
+    // ==================== GENERIC POST ====================
+
+    /**
+     * Generic POST request to compute engine
+     * @param {string} endpoint - API endpoint (e.g., '/solver/solve')
+     * @param {object} data - Request body
+     */
+    async post(endpoint, data) {
+        const response = await computeClient.post(`/api${endpoint}`, data);
+        return response;
     }
 };
 
 export default labsService;
+

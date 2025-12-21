@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from contextlib import asynccontextmanager
@@ -7,17 +8,23 @@ import sympy as sp
 import traceback
 import os
 
+# Internal API Secret for gateway verification
+INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "ilai-internal-2024")
+
 # Local imports
 try:
     from repository import VariableRepository, VariableCreate, VariableUpdate, init_schema, close_pool
     from websocket_handler import manager
     from kernels import is_smiles, analyze_molecule, has_units, parse_with_units, check_dimensional_consistency
     from sandbox import run_sandboxed_python, DOCKER_AVAILABLE, SANDBOX_CONFIG
+    from rate_limiter import jail, RateLimitJail
     DB_AVAILABLE = True
+    JAIL_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Some modules not available: {e}")
     DB_AVAILABLE = False
     DOCKER_AVAILABLE = False
+    JAIL_AVAILABLE = False
 
 
 @asynccontextmanager
@@ -34,6 +41,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if DB_AVAILABLE:
         await close_pool()
+    if JAIL_AVAILABLE:
+        await jail.close()
 
 
 app = FastAPI(
@@ -41,6 +50,58 @@ app = FastAPI(
     version="3.0",
     lifespan=lifespan
 )
+
+
+# ==================== MIDDLEWARE ====================
+
+@app.middleware("http")
+async def jail_check_middleware(request: Request, call_next):
+    """
+    Check if user is jailed before processing request.
+    Also verifies internal secret for protected endpoints.
+    """
+    # Skip for health checks and non-API routes
+    if request.url.path in ["/health", "/docs", "/openapi.json", "/"]:
+        return await call_next(request)
+    
+    # Verify internal secret for API endpoints
+    if request.url.path.startswith("/api/"):
+        internal_secret = request.headers.get("X-Internal-Secret")
+        # Only enforce in production (when secret is set via env)
+        if os.getenv("ENFORCE_INTERNAL_SECRET", "false").lower() == "true":
+            if internal_secret != INTERNAL_API_SECRET:
+                return JSONResponse(
+                    status_code=403,
+                    content={"error": "Invalid internal secret", "code": "FORBIDDEN"}
+                )
+    
+    # Check jail status if user_id in request
+    if JAIL_AVAILABLE:
+        # Try to get user_id from various sources
+        user_id = None
+        
+        # Check query params
+        user_id = request.query_params.get("user_id")
+        
+        # For POST requests, we can't easily read body here
+        # So we'll check via X-User-Id header
+        if not user_id:
+            user_id = request.headers.get("X-User-Id")
+        
+        if user_id:
+            jail_info = await jail.check_jailed(user_id)
+            if jail_info and jail_info.get("jailed"):
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": "Account temporarily suspended",
+                        "code": "JAILED",
+                        "jail": jail_info
+                    }
+                )
+    
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -133,25 +194,91 @@ async def solve_physics(request: PhysicsRequest):
         return {"success": False, "error": str(e)}
 
 
-# ==================== CORE SOLVER (Calculus + Algebra) ====================
+# ==================== CORE SOLVER (Calculus + Algebra + Physics + Chemistry) ====================
 
 class SolverRequest(BaseModel):
     expression: str
     variables: Optional[Dict[str, Any]] = None
+    user_id: Optional[str] = None  # For variable persistence
+    subject: Optional[str] = None  # 'math' | 'physics' | 'chemistry'
 
 @app.post("/api/solver/solve")
 async def solve_expression(request: SolverRequest):
     """
     Unified solver for math expressions.
-    Handles: calculus (diff, integrate), algebra, variable substitution
-    Strips trailing = for auto-solve functionality
+    Routes to specialized kernels based on subject:
+    - physics: Pint unit-aware calculations
+    - chemistry: RDKit molecular analysis
+    - math (default): SymPy symbolic math
     """
     try:
-        # Clean expression - remove trailing = for evaluation
         expr_str = request.expression.strip()
         if expr_str.endswith('='):
             expr_str = expr_str[:-1].strip()
         
+        # ==================== PHYSICS KERNEL (Pint) ====================
+        if request.subject == "physics" or has_units(expr_str):
+            result = parse_with_units(expr_str)
+            
+            if result.get("success") and request.user_id and DB_AVAILABLE:
+                # Persist physics result to Variable Registry
+                try:
+                    for var in result.get("injectable_variables", []):
+                        var_data = VariableCreate(
+                            symbol=var["symbol"],
+                            value=str(var["value"]),
+                            unit=var.get("unit"),
+                            subject="physics",
+                            source="solver"
+                        )
+                        saved_var = await VariableRepository.upsert(request.user_id, var_data)
+                        await manager.broadcast_variable_update(request.user_id, {
+                            "id": saved_var.id,
+                            "symbol": saved_var.symbol,
+                            "value": saved_var.value,
+                            "unit": saved_var.unit,
+                            "subject": "physics",
+                            "source": "solver"
+                        })
+                except Exception as e:
+                    result["warning"] = f"Variable sync failed: {e}"
+            
+            return result
+        
+        # ==================== CHEMISTRY KERNEL (RDKit) ====================
+        if request.subject == "chemistry" or is_smiles(expr_str):
+            # Check if it's a common molecule name
+            from kernels.chemistry import get_smiles_for_name, COMMON_MOLECULES
+            smiles = get_smiles_for_name(expr_str) or expr_str
+            
+            result = analyze_molecule(smiles)
+            
+            if result.get("success") and request.user_id and DB_AVAILABLE:
+                # Persist molecular properties to Variable Registry
+                try:
+                    for var in result.get("injectable_variables", []):
+                        var_data = VariableCreate(
+                            symbol=var["symbol"],
+                            value=str(var["value"]),
+                            unit=var.get("unit"),
+                            subject="chemistry",
+                            source="solver"
+                        )
+                        saved_var = await VariableRepository.upsert(request.user_id, var_data)
+                        await manager.broadcast_variable_update(request.user_id, {
+                            "id": saved_var.id,
+                            "symbol": saved_var.symbol,
+                            "value": saved_var.value,
+                            "unit": saved_var.unit,
+                            "subject": "chemistry",
+                            "source": "solver"
+                        })
+                except Exception as e:
+                    result["warning"] = f"Variable sync failed: {e}"
+            
+            return result
+        
+        # ==================== MATH KERNEL (SymPy) ====================
         # Replace LaTeX-style commands with SymPy equivalents
         expr_str = expr_str.replace('^', '**')
         expr_str = expr_str.replace('×', '*')
@@ -173,9 +300,64 @@ async def solve_expression(request: SolverRequest):
         result = None
         steps = []
         derivation_latex = ""
+        assigned_variable = None  # Track if this is an assignment
+        
+        # Check for variable assignment (e.g., "x = 5" or "mass = 9.8")
+        import re
+        assign_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$', expr_str)
+        
+        if assign_match:
+            var_name = assign_match.group(1)
+            value_expr = assign_match.group(2)
+            steps.append(f"Variable assignment: {var_name} = {value_expr}")
+            
+            # Evaluate the value expression
+            try:
+                result = sp.sympify(value_expr, locals=local_dict)
+                # Try numeric evaluation
+                try:
+                    numeric = float(result.evalf())
+                    if abs(numeric - round(numeric)) < 1e-10:
+                        result = int(round(numeric))
+                    else:
+                        result = numeric
+                except:
+                    pass
+                
+                steps.append(f"Value: {result}")
+                derivation_latex = f"{var_name} = {result}"
+                assigned_variable = {"symbol": var_name, "value": str(result)}
+                
+                # Persist to Postgres and broadcast via WebSocket
+                if DB_AVAILABLE and request.user_id:
+                    try:
+                        var_data = VariableCreate(
+                            symbol=var_name,
+                            value=str(result),
+                            unit=None,
+                            subject="math",
+                            source="solver"
+                        )
+                        saved_var = await VariableRepository.upsert(request.user_id, var_data)
+                        
+                        # Broadcast to connected clients
+                        await manager.broadcast_variable_update(request.user_id, {
+                            "id": saved_var.id,
+                            "symbol": saved_var.symbol,
+                            "value": saved_var.value,
+                            "unit": saved_var.unit,
+                            "subject": saved_var.subject,
+                            "source": saved_var.source
+                        })
+                        steps.append(f"Variable persisted to registry")
+                    except Exception as e:
+                        steps.append(f"Warning: Could not persist variable: {e}")
+                
+            except Exception as e:
+                return {"success": False, "error": f"Cannot evaluate: {e}"}
         
         # Check for calculus operations
-        if 'diff(' in expr_str or 'derivative(' in expr_str:
+        elif 'diff(' in expr_str or 'derivative(' in expr_str:
             # Derivative: diff(x**2, x) -> 2x
             steps.append(f"Input: {expr_str}")
             result = sp.sympify(expr_str, locals=local_dict)
@@ -228,7 +410,7 @@ async def solve_expression(request: SolverRequest):
             except:
                 derivation_latex = f"{expr_str} = {sp.latex(result)}"
         
-        return {
+        response = {
             "success": True,
             "result": str(result),
             "result_latex": sp.latex(result) if hasattr(result, '__class__') and result.__class__.__module__.startswith('sympy') else str(result),
@@ -236,6 +418,12 @@ async def solve_expression(request: SolverRequest):
             "steps": steps,
             "type": "symbolic" if isinstance(result, sp.Basic) else "numeric"
         }
+        
+        # Include assigned variable info if this was an assignment
+        if assigned_variable:
+            response["assigned_variable"] = assigned_variable
+        
+        return response
         
     except Exception as e:
         import traceback
@@ -972,4 +1160,91 @@ async def sandbox_status():
         "config": SANDBOX_CONFIG if DOCKER_AVAILABLE else None,
         "fallback_mode": not DOCKER_AVAILABLE
     }
+
+
+# ==================== PHYSICAL CONSTANTS API ====================
+
+from kernels.physics import PHYSICS_CONSTANTS, get_constant
+
+@app.get("/api/constants")
+async def list_constants():
+    """List all available physical constants"""
+    return {
+        "success": True,
+        "constants": [
+            {
+                "symbol": symbol,
+                "value": data[0],
+                "unit": data[1],
+                "description": data[2]
+            }
+            for symbol, data in PHYSICS_CONSTANTS.items()
+        ]
+    }
+
+
+@app.get("/api/constants/{symbol}")
+async def get_physical_constant(symbol: str):
+    """Get a specific physical constant"""
+    const = get_constant(symbol)
+    if const:
+        return {
+            "success": True,
+            "symbol": symbol,
+            "value": const[0],
+            "unit": const[1],
+            "description": const[2]
+        }
+    return {"success": False, "error": f"Unknown constant: {symbol}"}
+
+
+class InjectConstantRequest(BaseModel):
+    symbol: str
+    user_id: str
+
+@app.post("/api/constants/inject")
+async def inject_constant(request: InjectConstantRequest):
+    """
+    Inject a physical constant into user's Variable Registry.
+    Used by Neuro-Search when it finds a constant reference.
+    """
+    const = get_constant(request.symbol)
+    if not const:
+        return {"success": False, "error": f"Unknown constant: {request.symbol}"}
+    
+    if not DB_AVAILABLE:
+        return {"success": False, "error": "Database not available"}
+    
+    try:
+        var_data = VariableCreate(
+            symbol=request.symbol,
+            value=const[0],
+            unit=const[1],
+            subject="physics",
+            source="constant"
+        )
+        saved_var = await VariableRepository.upsert(request.user_id, var_data)
+        
+        # Broadcast injection to all connected clients
+        await manager.broadcast_injection(request.user_id, {
+            "id": saved_var.id,
+            "symbol": saved_var.symbol,
+            "value": saved_var.value,
+            "unit": saved_var.unit,
+            "subject": "physics",
+            "source": "constant",
+            "description": const[2]
+        }, source="neuro-search")
+        
+        return {
+            "success": True,
+            "injected": {
+                "symbol": request.symbol,
+                "value": const[0],
+                "unit": const[1],
+                "description": const[2]
+            }
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 

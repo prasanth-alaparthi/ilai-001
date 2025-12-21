@@ -23,6 +23,7 @@ import labsService from '../../services/labsService';
 import { notesService } from '../../services/notesService';
 import { useVariableSync } from '../../hooks/useVariableSync';
 import { useUser } from '../../state/UserContext';
+import CoolingOffModal from '../../components/CoolingOffModal';
 
 // Math.js configuration
 const math = create(all);
@@ -76,8 +77,23 @@ const MathField = ({ value, onChange, onSubmit, placeholder }) => {
             }
         };
 
+        const handleKeyDown = (e) => {
+            // Submit on Enter key
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const latex = e.target.value;
+                if (latex.trim()) {
+                    onSubmitRef.current?.(latex);
+                }
+            }
+        };
+
         el.addEventListener('input', handleInput);
-        return () => el.removeEventListener('input', handleInput);
+        el.addEventListener('keydown', handleKeyDown);
+        return () => {
+            el.removeEventListener('input', handleInput);
+            el.removeEventListener('keydown', handleKeyDown);
+        };
     }, []);
 
     return (
@@ -215,6 +231,11 @@ const ResearchLab = () => {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [activeSubject, setActiveSubject] = useState('Maths');
 
+    // Rate Limiting / Jail State
+    const [showCoolingModal, setShowCoolingModal] = useState(false);
+    const [jailInfo, setJailInfo] = useState(null);
+    const [violationInfo, setViolationInfo] = useState(null);
+
     // Get variables as simple object for calculations
     const variables = getVariablesForCalc();
 
@@ -260,7 +281,8 @@ const ResearchLab = () => {
         try {
             const response = await labsService.post('/solver/solve', {
                 expression,
-                variables: variables
+                variables: variables,
+                user_id: userId  // Include user_id for variable persistence
             });
             const data = response.data;
             if (data.success) {
@@ -273,7 +295,21 @@ const ResearchLab = () => {
                 return { error: data.error };
             }
         } catch (err) {
-            return { error: err.response?.data?.error || err.message };
+            const status = err.response?.status;
+            const errorData = err.response?.data;
+
+            // Handle rate limiting (429) or jail (403)
+            if (status === 429 || (status === 403 && errorData?.code === 'JAILED')) {
+                if (errorData?.jail) {
+                    setJailInfo(errorData.jail);
+                } else {
+                    setViolationInfo({ remaining: 5 });
+                }
+                setShowCoolingModal(true);
+                return { error: 'Rate limit exceeded. Please wait before trying again.' };
+            }
+
+            return { error: errorData?.error || err.message };
         } finally {
             setIsProSolving(false);
         }
@@ -730,6 +766,18 @@ const ResearchLab = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Cooling Off Modal */}
+            <CoolingOffModal
+                isOpen={showCoolingModal}
+                onClose={() => {
+                    setShowCoolingModal(false);
+                    setJailInfo(null);
+                    setViolationInfo(null);
+                }}
+                jailInfo={jailInfo}
+                violationInfo={violationInfo}
+            />
         </div>
     );
 };
