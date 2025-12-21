@@ -282,9 +282,9 @@ const ResearchLab = () => {
         setIsProSolving(true);
         try {
             const response = await labsService.post('/solver/solve', {
-                expression,
-                variables: variables,
-                user_id: userId  // Include user_id for variable persistence
+                expression: expression || '',
+                variables: variables || {},
+                user_id: userId || null  // Ensure null, not undefined
             });
             const data = response.data;
             if (data.success) {
