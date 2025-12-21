@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import './styles/mobile.css';
 
 @tailwind base;
@@ -8,54 +8,69 @@
 
 @layer base {
     :root {
-        /* Light Mode Defaults */
-        --color-background: 250 250 250;
-        /* #fafafa */
+        /* Morning Mist Palette - Feminine & Soft */
+        --blush-primary: #FDF0F0;
+        --lavender-muted: #E6E6FA;
+        --pearl-white: #FFFFFF;
+        --rose-quartz: #F8C3CD;
+        --lilac-soft: #D8BFD8;
+        --cream-warm: #FFF8F0;
+        --fog-light: #F5F5F5;
+        --dove-gray: #E0E0E0;
+        --slate-soft: #708090;
+        --charcoal-warm: #4A4A4A;
+
+        /* Gradients */
+        --gradient-sunrise: linear-gradient(135deg, #FDF0F0 0%, #E6E6FA 50%, #F8C3CD 100%);
+        --gradient-breathing: linear-gradient(-45deg, #FDF0F0, #E6E6FA, #F8C3CD, #D8BFD8);
+
+        /* Shadows - Soft & Diffused */
+        --shadow-soft: 0 4px 20px rgba(248, 195, 205, 0.15);
+        --shadow-lifted: 0 8px 32px rgba(216, 191, 216, 0.2);
+        --shadow-bloom: 0 0 40px rgba(230, 230, 250, 0.3);
+
+        /* Border Radius - Organic Roundness */
+        --radius-card: 2rem;
+        --radius-button: 2.5rem;
+        --radius-input: 1.5rem;
+        --radius-modal: 3rem;
+
+        /* Typography */
+        --font-heading: 'Outfit', 'Quicksand', sans-serif;
+        --font-body: 'Inter', 'Segoe UI', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+
+        /* Legacy support - map to new palette */
+        --color-background: 253 240 240;
+        /* blush-primary */
         --color-surface: 255 255 255;
-        /* #ffffff */
-        --color-primary: 9 9 11;
-        /* #09090b (zinc-950) - Darker for better contrast */
-        --color-secondary: 82 82 91;
-        /* #52525b (zinc-600) - Darker for better readability */
-        --color-border: 0 0 0;
-        /* #000000 (Applied as border/10 in config) */
-
-        --color-accent-blue: 37 99 235;
-        /* blue-600 - Darker blue for light mode contrast */
-        --color-accent-green: 21 128 61;
-        /* green-700 */
-        --color-accent-glow: 59 130 246;
-        /* blue-500 */
-    }
-
-    .dark {
-        /* Dark Mode Overrides */
-        --color-background: 9 9 11;
-        /* #09090b (zinc-950) - Deeper black for OLED/LCD contrast */
-        --color-surface: 24 24 27;
-        /* #18181b (zinc-900) - Distinct surface */
-        --color-primary: 250 250 250;
-        /* #fafafa */
-        --color-secondary: 212 212 216;
-        /* #d4d4d8 (zinc-300) - Lighter for better dark mode contrast */
-        --color-border: 255 255 255;
-
-        --color-accent-blue: 96 165 250;
-        /* blue-400 */
-        --color-accent-green: 74 222 128;
-        /* green-400 */
-        --color-accent-glow: 96 165 250;
-        /* blue-400 */
+        /* pearl-white */
+        --color-primary: 74 74 74;
+        /* charcoal-warm */
+        --color-secondary: 112 128 144;
+        /* slate-soft */
+        --color-border: 216 191 216;
+        /* lilac-soft */
+        --color-accent-blue: 248 195 205;
+        /* rose-quartz */
+        --color-accent-green: 216 191 216;
+        /* lilac-soft */
+        --color-accent-glow: 230 230 250;
+        /* lavender-muted */
     }
 
     html {
         font-size: 16px;
-        /* Prevent separate scaling on mobile */
         -webkit-text-size-adjust: 100%;
     }
 
     body {
-        @apply bg-background text-primary antialiased font-sans selection:bg-accent-glow selection:text-white transition-colors duration-300;
+        font-family: var(--font-body);
+        background: var(--blush-primary);
+        color: var(--charcoal-warm);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     h1,
@@ -64,38 +79,116 @@
     h4,
     h5,
     h6 {
-        @apply font-serif tracking-tight;
+        font-family: var(--font-heading);
+        font-weight: 500;
+        color: var(--charcoal-warm);
+        letter-spacing: -0.02em;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        font-weight: 600;
+    }
+
+    h2 {
+        font-size: 2rem;
+        font-weight: 500;
+    }
+
+    h3 {
+        font-size: 1.5rem;
+        font-weight: 500;
     }
 }
 
 @layer components {
 
-    /* Standard Card & Popup Utilities - Consolidating styles */
-    .card {
-        @apply bg-surface border border-border/10 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+    /* Emotive Card - Soft hover and bloom effects */
+    .emotive-card {
+        background: var(--pearl-white);
+        border-radius: var(--radius-card);
+        padding: 2rem;
+        box-shadow: var(--shadow-soft);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(216, 191, 216, 0.2);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .popup {
-        @apply bg-surface/95 backdrop-blur-xl border border-border/20 shadow-xl rounded-xl z-50;
+    .emotive-card:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-lifted);
+        filter: drop-shadow(var(--shadow-bloom));
+        background: var(--cream-warm);
     }
 
-    /* Glassmorphism Utilities - Refined for better contrast */
-    .glass-card {
-        @apply bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg transition-all duration-300 hover:border-accent-glow/30;
-    }
-
+    /* Glassmorphism - Frosted silk effect */
     .glass-panel {
-        @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-black/5 dark:border-white/5;
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(216, 191, 216, 0.3);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-soft);
     }
 
-    /* Form Elements */
-    .input-minimal {
-        @apply bg-transparent border-b border-secondary/30 px-0 py-2 focus:outline-none focus:border-primary transition-colors duration-300 w-full font-light text-primary placeholder:text-secondary/50;
+    .glass-sidebar {
+        background: rgba(253, 240, 240, 0.85);
+        backdrop-filter: blur(30px) saturate(200%);
+        border-right: 1px solid rgba(248, 195, 205, 0.2);
     }
 
-    /* Buttons */
-    .btn-primary {
-        @apply bg-primary text-background px-6 py-2.5 rounded-full font-medium tracking-wide hover:opacity-90 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 active:scale-95;
+    .glass-modal {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(40px) saturate(180%);
+        border-radius: var(--radius-modal);
+        box-shadow: 0 8px 40px rgba(216, 191, 216, 0.3);
+    }
+
+    /* Soft Buttons - Alive aesthetic */
+    .btn-alive {
+        background: linear-gradient(135deg, #F8C3CD, #E6E6FA);
+        border: none;
+        border-radius: var(--radius-button);
+        color: var(--charcoal-warm);
+        font-weight: 500;
+        padding: 0.875rem 2rem;
+        box-shadow: var(--shadow-soft);
+        transition: all 0.3s ease;
+        font-family: var(--font-heading);
+    }
+
+    .btn-alive:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lifted);
+        background: linear-gradient(135deg, #FFD1DC, #E6E6FA);
+    }
+
+    /* Soft Input Fields */
+    .input-alive {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1.5px solid rgba(216, 191, 216, 0.3);
+        border-radius: var(--radius-input);
+        padding: 1rem 1.5rem;
+        font-family: var(--font-body);
+        color: var(--charcoal-warm);
+        transition: all 0.3s ease;
+    }
+
+    .input-alive:focus {
+        outline: none;
+        border-color: var(--rose-quartz);
+        box-shadow: 0 0 0 4px rgba(248, 195, 205, 0.1);
+        background: white;
+    }
+
+    /* Legacy Card Support */
+    .card {
+        background: var(--pearl-white);
+        border: 1px solid rgba(216, 191, 216, 0.2);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-soft);
+        transition: all 0.3s ease;
     }
 
     .btn-ghost {
