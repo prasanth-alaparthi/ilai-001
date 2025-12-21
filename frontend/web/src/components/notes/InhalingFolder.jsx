@@ -7,14 +7,17 @@ import { motion } from 'framer-motion';
 export const InhalingFolder = ({ isInhaling, children, onClick }) => {
     return (
         <motion.div
+            style={{
+                willChange: isInhaling ? 'filter, transform' : 'auto', // GPU acceleration hint
+            }}
             animate={isInhaling ? {
                 scale: [1, 1.03, 1, 1.03, 1],
-                boxShadow: [
-                    '0 0 0px rgba(248, 195, 205, 0)',
-                    '0 0 25px rgba(248, 195, 205, 0.6)',
-                    '0 0 0px rgba(248, 195, 205, 0)',
-                    '0 0 25px rgba(248, 195, 205, 0.6)',
-                    '0 0 0px rgba(248, 195, 205, 0)',
+                filter: [
+                    'drop-shadow(0 0 0px rgba(248, 195, 205, 0))',
+                    'drop-shadow(0 0 25px rgba(248, 195, 205, 0.6))',
+                    'drop-shadow(0 0 0px rgba(248, 195, 205, 0))',
+                    'drop-shadow(0 0 25px rgba(248, 195, 205, 0.6))',
+                    'drop-shadow(0 0 0px rgba(248, 195, 205, 0))',
                 ],
                 backgroundColor: [
                     'transparent',

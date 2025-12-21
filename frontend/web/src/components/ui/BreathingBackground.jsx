@@ -10,6 +10,7 @@ export const BreathingBackground = () => {
             className="fixed inset-0 -z-10"
             style={{
                 background: 'radial-gradient(circle at 20% 50%, #FDF0F0 0%, #E6E6FA 50%, #F8C3CD 100%)',
+                willChange: 'background', // GPU acceleration hint
             }}
             animate={{
                 background: [

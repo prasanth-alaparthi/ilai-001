@@ -230,4 +230,59 @@
     .animate-electric-pulse {
         animation: electric-pulse 2s infinite ease-in-out !important;
     }
+
+    /* Mobile-First Responsive Breakpoints */
+    @media (max-width: 640px) {
+        :root {
+            /* Slightly smaller radii on mobile for better screen space usage */
+            --radius-card: 1.5rem;
+            --radius-button: 2rem;
+            --radius-input: 1rem;
+            --radius-modal: 2.5rem;
+        }
+
+        .emotive-card {
+            padding: 1.5rem;
+            /* Reduce padding for small screens */
+        }
+
+        .btn-alive {
+            padding: 0.75rem 1.5rem;
+            /* Adjust button sizing */
+            font-size: 0.95rem;
+        }
+
+        .input-alive {
+            padding: 0.875rem 1.25rem;
+            /* Optimize input sizing */
+        }
+
+        .glass-panel {
+            padding: 1.25rem;
+        }
+    }
+
+    /* Touch Target Optimization */
+    @media (hover: none) and (pointer: coarse) {
+
+        button,
+        a,
+        [role="button"],
+        .btn-alive,
+        .emotive-card {
+            min-height: 44px;
+            /* iOS/Android touch target minimum */
+            min-width: 44px;
+        }
+
+        /* Disable hover states on touch devices */
+        .emotive-card:hover {
+            transform: none;
+        }
+
+        /* Show active state instead */
+        .emotive-card:active {
+            transform: scale(0.98);
+        }
+    }
 }
