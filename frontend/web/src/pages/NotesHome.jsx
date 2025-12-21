@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Folder, ChevronRight, ChevronDown, ChevronLeft,
-  Star, Sidebar, Share2, Clock, Mic, Link as LinkIcon,
+  Star, Sidebar as SidebarIcon, Share2, Clock, Mic, Link as LinkIcon,
   Trash2, Search, Grid, List, Cpu, AlertCircle, Database,
   Edit2, Trash, FileText, MoreHorizontal, Sparkles, FolderPlus,
   Copy, Download, LayoutGrid, AlertTriangle
@@ -595,7 +595,7 @@ export default function NotesHome() {
               className="p-2 -ml-2 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors"
               aria-label="Toggle sidebar"
             >
-              <Sidebar size={20} />
+              <SidebarIcon size={20} />
             </button>
             {viewMode === "editor" && (
               <div className="flex items-center gap-1 sm:gap-2 text-sm text-secondary min-w-0">
@@ -661,7 +661,7 @@ export default function NotesHome() {
                       onClick={() => setSidebarOpen(true)}
                       className="mt-4 btn-primary flex items-center gap-2 text-sm"
                     >
-                      <Sidebar size={16} /> Open Sidebar
+                      <SidebarIcon size={16} /> Open Sidebar
                     </button>
                   )}
                 </div>

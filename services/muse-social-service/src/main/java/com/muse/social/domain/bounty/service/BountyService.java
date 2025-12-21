@@ -48,7 +48,6 @@ public class BountyService {
     private final ReputationService reputationService;
     private final FeatureFlagService featureFlags;
     private final NotesServiceClient notesClient;
-    private final NoteShareOrchestrator noteShareOrchestrator;
     private final BountySolveOrchestrator bountySolveOrchestrator;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -216,16 +215,18 @@ public class BountyService {
         bountyRepo.save(bounty);
 
         // ORCHESTRATE SOLVE logic (Reputation + D2F Bridge)
+        int rewardPoints = calculateSolverReward(bounty);
         bountySolveOrchestrator.orchestrateSolve(
                 bounty,
                 attempt.getUserId(),
                 bounty.getCreatorId(),
-                attempt.getSolutionNoteId());
+                attempt.getSolutionNoteId(),
+                rewardPoints);
 
         publishEvent("bounty_solved", bounty);
 
         log.info("Bounty {} solved by user {} (awarded {} pts)",
-                bountyId, attempt.getUserId(), totalPoints);
+                bountyId, attempt.getUserId(), rewardPoints);
 
         return bounty;
     }

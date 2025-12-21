@@ -22,17 +22,3 @@ public class WarRoomMessage {
     private VariableUpdateDto variableUpdate;
     private List<VariableUpdateDto> variables;
 }
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class VariableUpdateDto {
-    private String symbol;
-    private String value;
-    private String unit;
-    private Map<String, Long> vectorClock;
-    private Long updatedBy;
-    private String source;
-    private boolean verified;
-}
