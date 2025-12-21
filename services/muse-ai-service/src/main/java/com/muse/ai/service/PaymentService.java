@@ -322,22 +322,79 @@ public class PaymentService {
     private void handlePaymentCaptured(JsonNode event) {
         JsonNode payment = event.get("payload").get("payment").get("entity");
         String paymentId = payment.get("id").asText();
-        log.info("Payment captured: {}", paymentId);
-        // TODO: Update user subscription, send confirmation email
+        int amount = payment.get("amount").asInt();
+
+        log.info("Payment captured: {}, amount: {}", paymentId, amount);
+
+        try {
+            // Extract user info from payment notes
+            JsonNode notes = payment.get("notes");
+            if (notes != null && notes.has("userId")) {
+                Long userId = Long.parseLong(notes.get("userId").asText());
+                String planId = notes.has("planId") ? notes.get("planId").asText() : "student_pro_monthly";
+
+                // Update subscription status in database
+                updateUserSubscription(userId, planId, paymentId, amount);
+
+                // Send confirmation email
+                sendPaymentConfirmationEmail(userId, paymentId, amount, planId);
+
+                log.info("Successfully processed payment for user {}, plan: {}", userId, planId);
+            } else {
+                log.warn("Payment {} missing user info in notes", paymentId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to process payment captured event: {}", e.getMessage(), e);
+        }
     }
 
     private void handlePaymentFailed(JsonNode event) {
         JsonNode payment = event.get("payload").get("payment").get("entity");
         String paymentId = payment.get("id").asText();
+
         log.warn("Payment failed: {}", paymentId);
-        // TODO: Notify user, retry logic
+
+        try {
+            // Extract failure details
+            String errorCode = payment.has("error_code") ? payment.get("error_code").asText() : "unknown";
+            String errorDescription = payment.has("error_description") ? payment.get("error_description").asText()
+                    : "Payment processing failed";
+
+            // Extract user info
+            JsonNode notes = payment.get("notes");
+            if (notes != null && notes.has("userId")) {
+                Long userId = Long.parseLong(notes.get("userId").asText());
+                String planId = notes.has("planId") ? notes.get("planId").asText() : "unknown";
+
+                // Notify user about payment failure
+                sendPaymentFailureNotification(userId, paymentId, errorDescription, planId);
+
+                // Log for retry analysis
+                log.info("Payment failure logged for user {}: errorCode={}, description={}",
+                        userId, errorCode, errorDescription);
+            }
+        } catch (Exception e) {
+            log.error("Failed to process payment failed event: {}", e.getMessage(), e);
+        }
     }
 
     private void handleRefundCreated(JsonNode event) {
         JsonNode refund = event.get("payload").get("refund").get("entity");
         String refundId = refund.get("id").asText();
-        log.info("Refund created: {}", refundId);
-        // TODO: Update subscription status
+        String paymentId = refund.get("payment_id").asText();
+        int amount = refund.get("amount").asInt();
+
+        log.info("Refund created: {}, amount: {}", refundId, amount);
+
+        try {
+            // Update subscription status to cancelled/refunded
+            // Find user by payment ID and downgrade/cancel subscription
+            updateSubscriptionAfterRefund(paymentId, refundId, amount);
+
+            log.info("Subscription updated after refund: {}", refundId);
+        } catch (Exception e) {
+            log.error("Failed to process refund event: {}", e.getMessage(), e);
+        }
     }
 
     // Helper methods
