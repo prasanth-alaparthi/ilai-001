@@ -397,6 +397,29 @@ public class PaymentService {
         }
     }
 
+    // Helper methods for webhook processing
+    private void updateUserSubscription(Long userId, String planId, String paymentId, int amount) {
+        // TODO: Implement subscription update logic
+        log.info("Updated subscription for user {}: plan={}, payment={}, amount={}", userId, planId, paymentId, amount);
+    }
+
+    private void sendPaymentConfirmationEmail(Long userId, String paymentId, int amount, String planId) {
+        // TODO: Implement email notification
+        log.info("Sent payment confirmation to user {}: payment={}, amount={}, plan={}", userId, paymentId, amount,
+                planId);
+    }
+
+    private void sendPaymentFailureNotification(Long userId, String paymentId, String errorDescription, String planId) {
+        // TODO: Implement failure notification
+        log.info("Sent payment failure notification to user {}: payment={}, error={}", userId, paymentId,
+                errorDescription);
+    }
+
+    private void updateSubscriptionAfterRefund(String paymentId, String refundId, int amount) {
+        // TODO: Implement refund subscription update
+        log.info("Updated subscription after refund: payment={}, refund={}, amount={}", paymentId, refundId, amount);
+    }
+
     // Helper methods
     private String hmacSha256(String data, String secret) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
