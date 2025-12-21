@@ -24,6 +24,8 @@ import { notesService } from '../../services/notesService';
 import { useVariableSync } from '../../hooks/useVariableSync';
 import { useUser } from '../../state/UserContext';
 import CoolingOffModal from '../../components/CoolingOffModal';
+import Visualizer from '../../components/Labs/Visualizer';
+import MoleculeViewer from '../../components/Labs/MoleculeViewer';
 
 // Math.js configuration
 const math = create(all);
@@ -577,6 +579,26 @@ const ResearchLab = () => {
                                                         </span>
                                                     )}
                                                 </div>
+                                            )}
+
+                                            {/* Visualizer for function plots */}
+                                            {exp.result && exp.input && exp.input.includes('x') && (
+                                                <Visualizer
+                                                    expression={exp.input}
+                                                    result={String(exp.result)}
+                                                    derivation={exp.derivation}
+                                                    className="mt-3"
+                                                />
+                                            )}
+
+                                            {/* MoleculeViewer for SMILES/Chemistry */}
+                                            {exp.result && typeof exp.result === 'object' && exp.result.formula && (
+                                                <MoleculeViewer
+                                                    smiles={exp.input}
+                                                    formula={exp.result.formula}
+                                                    molecularWeight={exp.result.molecular_weight}
+                                                    className="mt-3"
+                                                />
                                             )}
                                         </div>
                                     ))}

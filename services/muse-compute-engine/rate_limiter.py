@@ -8,11 +8,15 @@ import time
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+# Redis is optional - graceful fallback if not installed
+REDIS_AVAILABLE = False
+_redis_module = None
+
 try:
-    import redis.asyncio as redis
+    import redis.asyncio as _redis_module
     REDIS_AVAILABLE = True
 except ImportError:
-    REDIS_AVAILABLE = False
+    pass
 
 # Redis connection
 REDIS_URL = os.getenv("REDIS_URL", "redis://muse-redis:6379/0")
@@ -35,16 +39,16 @@ class RateLimitJail:
     """
     
     def __init__(self):
-        self._redis: Optional[redis.Redis] = None
+        self._redis: Optional[Any] = None
     
-    async def get_redis(self) -> Optional[redis.Redis]:
+    async def get_redis(self) -> Optional[Any]:
         """Get or create Redis connection"""
-        if not REDIS_AVAILABLE:
+        if not REDIS_AVAILABLE or _redis_module is None:
             return None
         
         if self._redis is None:
             try:
-                self._redis = redis.from_url(REDIS_URL, decode_responses=True)
+                self._redis = _redis_module.from_url(REDIS_URL, decode_responses=True)
                 await self._redis.ping()
             except Exception as e:
                 print(f"Redis connection failed: {e}")
