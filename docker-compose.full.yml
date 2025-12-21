@@ -46,9 +46,7 @@ services:
 
   # --- AI Service (Central AI Orchestration) ---
   muse-ai-service:
-    build:
-      context: ./services/muse-ai-service
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-ai:latest
     container_name: muse-ai-service
     depends_on:
       postgres:
@@ -88,9 +86,7 @@ services:
 
   # --- Auth Service ---
   muse-auth-service:
-    build:
-      context: ./services/muse-auth-service
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-auth:latest
     container_name: muse-auth-service
     depends_on:
       postgres:
@@ -130,9 +126,7 @@ services:
 
   # --- Notes Service ---
   muse-notes-service:
-    build:
-      context: ./services/muse-notes-service
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-notes:latest
     container_name: muse-notes-service
     depends_on:
       postgres:
@@ -171,9 +165,7 @@ services:
 
   # --- Academic Service ---
   muse-academic-service:
-    build:
-      context: ./services/muse-academic-service
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-academic:latest
     container_name: muse-academic-service
     depends_on:
       postgres:
@@ -204,9 +196,7 @@ services:
 
   # --- Social Service (Chat + Feed merged) ---
   muse-social-service:
-    build:
-      context: ./services/muse-social-service
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-social:latest
     container_name: muse-social-service
     depends_on:
       postgres:
@@ -260,30 +250,26 @@ services:
 
 
   # --- Quantum Computing Service (Python/Qiskit) ---
-  muse-quantum-service:
-    build:
-      context: ./services/muse-quantum-service
-      dockerfile: Dockerfile
-    container_name: muse-quantum-service
-    environment:
-      - PYTHONUNBUFFERED=1
-    ports:
-      - "8092:8092"
-    networks:
-      - muse-network
-    restart: always
-    healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8092/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+  # muse-quantum-service:
+  #   image: ghcr.io/prasanth-alaparthi/ilai-quantum:latest
+  #   container_name: muse-quantum-service
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   ports:
+  #     - "8092:8092"
+  #   networks:
+  #     - muse-network
+  #   restart: always
+  #   healthcheck:
+  #     test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8092/health" ]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 15s
 
   # --- Universal Compute Engine (Labs backend - Python/FastAPI) ---
   muse-compute-engine:
-    build:
-      context: ./services/muse-compute-engine
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-labs:latest
     container_name: muse-compute-engine
     environment:
       - PYTHONUNBUFFERED=1
@@ -300,36 +286,32 @@ services:
       start_period: 15s
 
   # --- Agentic RAG Service (LangGraph + Tavily + Vision) ---
-  muse-agentic-rag:
-    build:
-      context: ./services/muse-agentic-rag
-      dockerfile: Dockerfile
-    container_name: muse-agentic-rag
-    environment:
-      - PYTHONUNBUFFERED=1
-      - TAVILY_API_KEY=${TAVILY_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - NOTES_SERVICE_URL=http://muse-notes-service:8082
-    ports:
-      - "8001:8001"
-    networks:
-      - muse-network
-    restart: always
-    depends_on:
-      - muse-notes-service
-    healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8001/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+  # muse-agentic-rag:
+  #   image: ghcr.io/prasanth-alaparthi/ilai-agentic-rag:latest
+  #   container_name: muse-agentic-rag
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - TAVILY_API_KEY=${TAVILY_API_KEY}
+  #     - GEMINI_API_KEY=${GEMINI_API_KEY}
+  #     - GROQ_API_KEY=${GROQ_API_KEY:-}
+  #     - NOTES_SERVICE_URL=http://muse-notes-service:8082
+  #   ports:
+  #     - "8001:8001"
+  #   networks:
+  #     - muse-network
+  #   restart: always
+  #   depends_on:
+  #     - muse-notes-service
+  #   healthcheck:
+  #     test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8001/health" ]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 30s
 
   # --- Frontend ---
   muse-frontend:
-    build:
-      context: ./frontend/web
-      dockerfile: Dockerfile
+    image: ghcr.io/prasanth-alaparthi/ilai-frontend:latest
     container_name: muse-frontend
     depends_on:
       muse-auth-service:

@@ -134,23 +134,23 @@ services:
     networks:
       - ilai-network
 
-  agentic-rag:
-    image: ghcr.io/prasanth-alaparthi/ilai-agentic-rag:latest
-    container_name: ilai-agentic-rag
-    depends_on:
-      muse-postgres:
-        condition: service_healthy
-    ports:
-      - "8001:8001"
-    environment:
-      DATABASE_URL: postgresql://ilai_admin:password_change_me@muse-postgres:5432/ilai_db
-      COMPUTE_ENGINE_URL: http://compute-engine:8000
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-    networks:
-      - ilai-network
+  # agentic-rag:
+  #   image: ghcr.io/prasanth-alaparthi/ilai-agentic-rag:latest
+  #   container_name: ilai-agentic-rag
+  #   depends_on:
+  #     muse-postgres:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8001:8001"
+  #   environment:
+  #     DATABASE_URL: postgresql://ilai_admin:password_change_me@muse-postgres:5432/ilai_db
+  #     COMPUTE_ENGINE_URL: http://compute-engine:8000
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 768M
+  #   networks:
+  #     - ilai-network
 
   # --- UI ---
   frontend:
