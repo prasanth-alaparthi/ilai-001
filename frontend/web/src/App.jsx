@@ -72,9 +72,13 @@ const ClubDetail = lazy(() => import('./pages/Clubs/ClubDetail'));
 const Notebook = lazy(() => import('./pages/Notebook'));
 const TrashPage = lazy(() => import('./pages/TrashPage'));
 
+// Alive Design System Components
+import { BreathingBackground } from './components/ui/BreathingBackground';
+import { AuraLoader } from './components/ui/AuraLoader';
+
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-background">
-    <div className="text-lg text-secondary animate-pulse">Loading...</div>
+  <div className="flex items-center justify-center h-screen">
+    <AuraLoader size={100} />
   </div>
 );
 
@@ -85,122 +89,127 @@ import { BillingProvider } from './state/BillingContext';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <UserProvider>
-        <ParentalProvider>
-          <AIAssistantProvider>
-            <PersonalizationProvider>
-              <BillingProvider>
-                <ErrorBoundary>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      {/* Public routes */}
-                      <Route path="/login" element={<AuthPage />} />
-                      <Route path="/verify-email" element={<VerifyEmailPage />} />
-                      <Route path="/pending-verification" element={<PendingVerificationPage />} />
-                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                      <Route path="/reset-password" element={<ResetPasswordPage />} />
-                      <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+    <>
+      {/* Living Background - 60s breathing gradient */}
+      <BreathingBackground />
 
-                      {/* Protected routes */}
-                      <Route
-                        path="/"
-                        element={
-                          <ProtectedRoute>
-                            <ModernLayout>
-                              <Outlet />
-                            </ModernLayout>
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route index element={<HomePage />} />
-                        <Route path="home" element={<HomePage />} />
-                        <Route path="create" element={<CreatePage />} />
-                        <Route path="feed" element={<FeedPage />} />
-                        <Route path="feed/customize" element={<FeedCustomization />} />
-                        <Route path="social" element={<NeuroFeed />} />
-                        <Route path="social/profile" element={<SocialProfile />} />
-                        <Route path="social/profile/:userId" element={<SocialProfile />} />
-                        <Route path="bounties" element={<BountyBoard />} />
-                        <Route path="notes" element={<NotesHome />} />
-                        <Route path="notes/trash" element={<TrashPage />} />
-                        <Route path="notes/:id/edit" element={<NoteEditPage />} />
-                        <Route path="journal" element={<JournalPage />} />
-                        <Route path="library" element={<Library />} />
-                        <Route path="chat" element={<Chat />} />
-                        <Route path="flashcards" element={<FlashcardsPage />} />
-                        <Route path="profile/:username" element={<ProfilePage />} />
-                        <Route path="account" element={<MyAccount />} />
-                        <Route path="parent-settings" element={<ParentSettings />} />
-                        <Route path="/notes/:id/view" element={<NoteViewerFull />} />
-                        <Route path="leaderboard" element={<Leaderboard />} />
-                        <Route path="quiz" element={<Quiz />} />
-                        <Route path="groups" element={<StudyGroups />} />
-                        <Route path="groups/:groupId" element={<GroupDetail />} />
-                        <Route path="saved" element={<SavedPosts />} />
-                        <Route path="assignments/:id" element={<AssignmentDetail />} />
-                        <Route path="grading/:assignmentId" element={<GradingView />} />
+      <ThemeProvider>
+        <UserProvider>
+          <ParentalProvider>
+            <AIAssistantProvider>
+              <PersonalizationProvider>
+                <BillingProvider>
+                  <ErrorBoundary>
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
+                        {/* Public routes */}
+                        <Route path="/login" element={<AuthPage />} />
+                        <Route path="/verify-email" element={<VerifyEmailPage />} />
+                        <Route path="/pending-verification" element={<PendingVerificationPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                        <Route path="/reset-password" element={<ResetPasswordPage />} />
+                        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
-                        {/* Dashboards */}
-                        <Route path="parent-dashboard" element={
-                          <RoleRoute allowedRoles={['PARENT']}>
-                            <ParentDashboard />
-                          </RoleRoute>
-                        } />
-                        <Route path="teacher-dashboard" element={
-                          <RoleRoute allowedRoles={['TEACHER']}>
-                            <TeacherDashboard />
-                          </RoleRoute>
-                        } />
-                        <Route path="admin-dashboard" element={
-                          <RoleRoute allowedRoles={['ADMIN', 'INSTITUTION_ADMIN']}>
-                            <AdminDashboard />
-                          </RoleRoute>
-                        } />
+                        {/* Protected routes */}
+                        <Route
+                          path="/"
+                          element={
+                            <ProtectedRoute>
+                              <ModernLayout>
+                                <Outlet />
+                              </ModernLayout>
+                            </ProtectedRoute>
+                          }
+                        >
+                          <Route index element={<HomePage />} />
+                          <Route path="home" element={<HomePage />} />
+                          <Route path="create" element={<CreatePage />} />
+                          <Route path="feed" element={<FeedPage />} />
+                          <Route path="feed/customize" element={<FeedCustomization />} />
+                          <Route path="social" element={<NeuroFeed />} />
+                          <Route path="social/profile" element={<SocialProfile />} />
+                          <Route path="social/profile/:userId" element={<SocialProfile />} />
+                          <Route path="bounties" element={<BountyBoard />} />
+                          <Route path="notes" element={<NotesHome />} />
+                          <Route path="notes/trash" element={<TrashPage />} />
+                          <Route path="notes/:id/edit" element={<NoteEditPage />} />
+                          <Route path="journal" element={<JournalPage />} />
+                          <Route path="library" element={<Library />} />
+                          <Route path="chat" element={<Chat />} />
+                          <Route path="flashcards" element={<FlashcardsPage />} />
+                          <Route path="profile/:username" element={<ProfilePage />} />
+                          <Route path="account" element={<MyAccount />} />
+                          <Route path="parent-settings" element={<ParentSettings />} />
+                          <Route path="/notes/:id/view" element={<NoteViewerFull />} />
+                          <Route path="leaderboard" element={<Leaderboard />} />
+                          <Route path="quiz" element={<Quiz />} />
+                          <Route path="groups" element={<StudyGroups />} />
+                          <Route path="groups/:groupId" element={<GroupDetail />} />
+                          <Route path="saved" element={<SavedPosts />} />
+                          <Route path="assignments/:id" element={<AssignmentDetail />} />
+                          <Route path="grading/:assignmentId" element={<GradingView />} />
 
-                        <Route path="video-call" element={<VideoCall />} />
-                        <Route path="calendar" element={<CalendarPage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                        <Route path="activity" element={<ActivityPage />} />
-                        <Route path="search" element={<SearchPage />} />
-                        <Route path="agents" element={<AgentDashboard />} />
-                        <Route path="research" element={<DeepResearch />} />
-                        <Route path="study-search" element={<StudySearchPage />} />
-                        <Route path="engine" element={<UniversalEngine />} />
+                          {/* Dashboards */}
+                          <Route path="parent-dashboard" element={
+                            <RoleRoute allowedRoles={['PARENT']}>
+                              <ParentDashboard />
+                            </RoleRoute>
+                          } />
+                          <Route path="teacher-dashboard" element={
+                            <RoleRoute allowedRoles={['TEACHER']}>
+                              <TeacherDashboard />
+                            </RoleRoute>
+                          } />
+                          <Route path="admin-dashboard" element={
+                            <RoleRoute allowedRoles={['ADMIN', 'INSTITUTION_ADMIN']}>
+                              <AdminDashboard />
+                            </RoleRoute>
+                          } />
 
-                        {/* Billing */}
-                        <Route path="pricing" element={<Pricing />} />
-                        <Route path="checkout/:planId" element={<Checkout />} />
+                          <Route path="video-call" element={<VideoCall />} />
+                          <Route path="calendar" element={<CalendarPage />} />
+                          <Route path="settings" element={<SettingsPage />} />
+                          <Route path="activity" element={<ActivityPage />} />
+                          <Route path="search" element={<SearchPage />} />
+                          <Route path="agents" element={<AgentDashboard />} />
+                          <Route path="research" element={<DeepResearch />} />
+                          <Route path="study-search" element={<StudySearchPage />} />
+                          <Route path="engine" element={<UniversalEngine />} />
 
-                        {/* Labs Module */}
-                        <Route path="labs" element={<LabsLayout />}>
-                          <Route index element={<LabsDashboard />} />
-                          <Route path="research" element={<ResearchLab />} />
-                          <Route path="view/:id" element={<LabWorkspace />} />
+                          {/* Billing */}
+                          <Route path="pricing" element={<Pricing />} />
+                          <Route path="checkout/:planId" element={<Checkout />} />
+
+                          {/* Labs Module */}
+                          <Route path="labs" element={<LabsLayout />}>
+                            <Route index element={<LabsDashboard />} />
+                            <Route path="research" element={<ResearchLab />} />
+                            <Route path="view/:id" element={<LabWorkspace />} />
+                          </Route>
+
+                          {/* Classroom Module */}
+                          <Route path="classroom" element={<ClassroomDashboard />} />
+                          <Route path="classroom/:id/live" element={<OnlineClassRoom />} />
+
+                          {/* Clubs Module */}
+                          <Route path="clubs" element={<ClubsDashboard />} />
+                          <Route path="clubs/:id" element={<ClubDetail />} />
+
+                          {/* AI Notebook Module */}
+                          <Route path="notebook" element={<Notebook />} />
                         </Route>
 
-                        {/* Classroom Module */}
-                        <Route path="classroom" element={<ClassroomDashboard />} />
-                        <Route path="classroom/:id/live" element={<OnlineClassRoom />} />
-
-                        {/* Clubs Module */}
-                        <Route path="clubs" element={<ClubsDashboard />} />
-                        <Route path="clubs/:id" element={<ClubDetail />} />
-
-                        {/* AI Notebook Module */}
-                        <Route path="notebook" element={<Notebook />} />
-                      </Route>
-
-                      {/* 404 */}
-                      <Route path="*" element={<div className="p-6">404 — Page Not Found</div>} />
-                    </Routes>
-                  </Suspense>
-                </ErrorBoundary>
-              </BillingProvider>
-            </PersonalizationProvider>
-          </AIAssistantProvider>
-        </ParentalProvider>
-      </UserProvider>
-    </ThemeProvider>
+                        {/* 404 */}
+                        <Route path="*" element={<div className="p-6">404 — Page Not Found</div>} />
+                      </Routes>
+                    </Suspense>
+                  </ErrorBoundary>
+                </BillingProvider>
+              </PersonalizationProvider>
+            </AIAssistantProvider>
+          </ParentalProvider>
+        </UserProvider>
+      </ThemeProvider>
+    </>
   );
 }

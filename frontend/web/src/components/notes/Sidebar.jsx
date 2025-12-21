@@ -5,6 +5,8 @@ import {
     ChevronRight, Edit2, Trash, Trash2, Sidebar as SidebarIcon
 } from 'lucide-react';
 import { useStompClient } from '../../hooks/useStompClient';
+import { useSidebarStore } from '../../store/sidebarStore';
+import { InhalingFolder } from './InhalingFolder';
 import SectionTree from './SectionTree';
 import { useNavigate } from 'react-router-dom';
 
@@ -30,38 +32,33 @@ const Sidebar = ({
     setShowCreateChapter,
     handleRenameChapter,
     handleDeleteChapter,
-    fetchNotebooks // Renamed from loadNotebooks for user spec
+    fetchNotebooks
 }) => {
     const navigate = useNavigate();
     const { stompClient } = useStompClient();
-    const [newlyAddedFolderId, setNewlyAddedFolderId] = useState(null);
+    const { highlightedFolderId, isInhaling, triggerInhale, clearHighlight } = useSidebarStore();
 
-    // WebSocket Subscription for Real-time Updates
+    // WebSocket Subscription for Real-time Updates with Breathing Animation
     useEffect(() => {
-        if (!stompClient) return;
+        if (!stompClient?.connected) return;
 
         const subscription = stompClient.subscribe('/user/topic/sidebar', (message) => {
             const payload = JSON.parse(message.body);
-            console.log('Real-time Sidebar Message:', payload);
 
-            if (payload.type === 'REFRESH_FOLDERS') {
-                // 1. Trigger Re-fetch
+            if (payload.type === 'REFRESH_FOLDERS' || payload.action === 'REFRESH_SIDEBAR') {
+                // Trigger re-fetch
                 if (fetchNotebooks) fetchNotebooks();
 
-                // 2. Visual Feedback
-                if (payload.folderId) {
-                    setNewlyAddedFolderId(payload.folderId);
-                    // Clear highlight after 10 seconds
-                    setTimeout(() => setNewlyAddedFolderId(null), 10000);
+                // Trigger inhaling animation on new folder
+                if (payload.folderId || payload.highlightFolderId) {
+                    const folderId = payload.folderId || payload.highlightFolderId;
+                    triggerInhale(folderId);
                 }
-
-                // 3. Optional: Toast (Simulated since no global toast)
-                console.log(' Scholar shared a solution! Sidebar refreshed.');
             }
         });
 
-        return () => subscription.unsubscribe();
-    }, [stompClient, fetchNotebooks]);
+        return () => subscription?.unsubscribe();
+    }, [stompClient, fetchNotebooks, triggerInhale]);
 
     return (
         <motion.div
@@ -72,97 +69,134 @@ const Sidebar = ({
                 x: isOpen ? 0 : (isMobile ? -280 : -20)
             }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className={`h-full border-r border-black/5 dark:border-white/10 bg-white/90 dark:bg-surface/95 backdrop-blur-xl flex-shrink-0 flex flex-col overflow-hidden ${isMobile ? 'fixed left-0 top-0 z-50 shadow-2xl' : 'relative'
+            className={`h-full glass-sidebar flex-shrink-0 flex flex-col overflow-hidden ${isMobile ? 'fixed left-0 top-0 z-50 shadow-2xl' : 'relative'
                 }`}
         >
-            <div className="p-5 space-y-5 border-b border-black/5 dark:border-white/10">
+            <div className="p-5 space-y-5 border-b border-lilac-soft/20">
                 {/* Search */}
                 <form onSubmit={handleSearch} className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary w-4 h-4 group-focus-within:text-primary transition-colors" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-soft" />
                     <input
                         type="text"
-                        placeholder="Search notes..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent-glow/50 transition-all placeholder:text-secondary/50"
+                        placeholder="Search notes..."
+                        className="input-alive w-full pl-10 text-sm"
                     />
                 </form>
 
-                {/* Notebooks Header */}
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-secondary">Notebooks</h2>
-                    <div className="flex items-center gap-1">
-                        <button onClick={handleSeedData} className="p-1.5 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors" title="Seed Data"><Database size={14} /></button>
-                        <button onClick={() => setShowCreateNotebook(true)} className="p-1.5 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors" title="New Notebook"><Plus size={16} /></button>
-                    </div>
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                    <button
+                        className="btn-alive flex-1 text-sm py-2"
+                        onClick={() => setShowCreateNotebook(true)}
+                    >
+                        <Plus className="w-4 h-4 inline mr-1" />
+                        New Notebook
+                    </button>
                 </div>
             </div>
 
-            {/* Notebook List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                {error && <div className="text-red-400 text-xs px-2 py-1 bg-red-500/10 rounded-lg mb-2">{error}</div>}
-                {notebooks.map(notebook => (
-                    <div key={notebook.id} className="space-y-1">
-                        <button
-                            onClick={() => toggleNotebook(notebook.id)}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors group ${expandedNotebook === notebook.id ? 'bg-white/5 text-primary' : 'text-secondary hover:text-primary hover:bg-white/5'
-                                }`}
-                        >
-                            <span className="text-opacity-80 transition-colors" style={{ color: notebook.color }}>
-                                <Folder size={16} fill={expandedNotebook === notebook.id ? "currentColor" : "none"} />
-                            </span>
-                            <span className="flex-1 text-left truncate font-medium">{notebook.title}</span>
-                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => handleRenameNotebook(e, notebook)} className="p-1 text-secondary hover:text-primary"><Edit2 size={12} /></button>
-                                <button onClick={(e) => handleDeleteNotebook(e, notebook)} className="p-1 text-secondary hover:text-red-400"><Trash size={12} /></button>
-                            </div>
-                            {expandedNotebook === notebook.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </button>
-
-                        <AnimatePresence>
-                            {expandedNotebook === notebook.id && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden ml-4 border-l border-white/10 pl-2"
-                                >
-                                    <SectionTree
-                                        sections={sections[notebook.id] || []}
-                                        selectedId={selectedChapter?.id}
-                                        onSelect={selectChapter}
-                                        highlightedId={newlyAddedFolderId}
-                                        onCreateSection={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }}
-                                        onCreateSubSection={(parentId) => {
-                                            const title = prompt("Enter sub-section name:");
-                                            if (!title) return;
-                                            // Call parent handler (needs to be exposed or logic moved)
-                                            // For now we'll assume it's passed or handled via onCreateSubSection prop if it existed
-                                        }}
-                                        onRenameSection={handleRenameChapter}
-                                        onDeleteSection={handleDeleteChapter}
-                                        emptyMessage="No chapters yet"
-                                    />
-                                    <button onClick={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-secondary/50 hover:text-primary transition-colors mt-1">
-                                        <Plus size={12} /> Add Section
-                                    </button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+            {/* Notebooks List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {error && (
+                    <div className="glass-panel p-3 text-sm text-red-500 rounded-2xl">
+                        {error}
                     </div>
-                ))}
+                )}
+
+                <AnimatePresence>
+                    {notebooks?.map((notebook) => (
+                        <InhalingFolder
+                            key={notebook.id}
+                            isInhaling={highlightedFolderId === notebook.id && isInhaling}
+                            onClick={() => {
+                                toggleNotebook(notebook.id);
+                                if (highlightedFolderId === notebook.id) {
+                                    clearHighlight();
+                                }
+                            }}
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-1"
+                            >
+                                {/* Notebook Header */}
+                                <div className="flex items-center gap-2 p-2 hover:bg-cream-warm/30 rounded-2xl transition-colors group cursor-pointer">
+                                    {expandedNotebook === notebook.id ? (
+                                        <ChevronDown className="w-4 h-4 text-slate-soft" />
+                                    ) : (
+                                        <ChevronRight className="w-4 h-4 text-slate-soft" />
+                                    )}
+                                    <Folder className="w-4 h-4 text-rose-quartz" />
+                                    <span className="flex-1 text-sm font-heading text-charcoal-warm truncate">
+                                        {notebook.name}
+                                    </span>
+                                    <div className="opacity-0 group-hover:opacity-100 flex gap-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRenameNotebook(notebook.id);
+                                            }}
+                                            className="p-1 hover:bg-lavender-muted/30 rounded-lg"
+                                        >
+                                            <Edit2 className="w-3 h-3 text-slate-soft" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteNotebook(notebook.id);
+                                            }}
+                                            className="p-1 hover:bg-rose-quartz/30 rounded-lg"
+                                        >
+                                            <Trash2 className="w-3 h-3 text-slate-soft" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Sections/Chapters */}
+                                <AnimatePresence>
+                                    {expandedNotebook === notebook.id && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="ml-4 pl-4 border-l border-lilac-soft/30"
+                                        >
+                                            <SectionTree
+                                                notebooks={notebooks}
+                                                sections={sections}
+                                                selectedChapterId={selectedChapter}
+                                                onSelectSection={selectChapter}
+                                                expandedNotebookId={expandedNotebook}
+                                                onAddSection={() => {
+                                                    setNotebookForChapter(notebook.id);
+                                                    setShowCreateChapter(true);
+                                                }}
+                                                onRenameSection={handleRenameChapter}
+                                                onDeleteSection={handleDeleteChapter}
+                                            />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </motion.div>
+                        </InhalingFolder>
+                    ))}
+                </AnimatePresence>
             </div>
 
-            {/* Trash Link */}
-            <div className="mt-4 pt-4 border-t border-white/5">
+            {/* Mobile Close Button */}
+            {isMobile && isOpen && (
                 <button
-                    onClick={() => navigate('/notes/trash')}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-secondary/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    onClick={() => setIsOpen(false)}
+                    className="absolute top-4 right-4 p-2 bg-pearl-white/90 rounded-full shadow-soft"
                 >
-                    <Trash2 size={16} />
-                    <span>Trash</span>
+                    <SidebarIcon className="w-5 h-5 text-charcoal-warm" />
                 </button>
-            </div>
+            )}
         </motion.div>
     );
 };
