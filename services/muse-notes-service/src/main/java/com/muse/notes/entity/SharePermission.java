@@ -13,8 +13,8 @@ import java.time.Instant;
  * Supports sharing with specific users and permission levels.
  */
 @Entity
-@Table(name = "share_permissions",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"resource_type", "resource_id", "shared_with_username"}))
+@Table(name = "share_permissions", uniqueConstraints = @UniqueConstraint(columnNames = { "resource_type", "resource_id",
+        "shared_with_id" }))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,8 +32,14 @@ public class SharePermission {
     @Column(name = "resource_id", nullable = false)
     private Long resourceId;
 
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     @Column(name = "owner_username", nullable = false)
     private String ownerUsername;
+
+    @Column(name = "shared_with_id")
+    private Long sharedWithId;
 
     @Column(name = "shared_with_username", nullable = false)
     private String sharedWithUsername;
@@ -74,9 +80,9 @@ public class SharePermission {
     }
 
     public enum PermissionLevel {
-        VIEWER,   // Can only view
+        VIEWER, // Can only view
         COMMENTER, // Can view and add comments
-        EDITOR,   // Can edit content
-        OWNER     // Full access (for transferred ownership)
+        EDITOR, // Can edit content
+        OWNER // Full access (for transferred ownership)
     }
 }

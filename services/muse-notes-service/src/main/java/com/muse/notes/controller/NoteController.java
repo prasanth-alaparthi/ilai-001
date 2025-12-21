@@ -38,11 +38,12 @@ public class NoteController extends BaseController {
     @GetMapping("/notes")
     public ResponseEntity<?> list(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<Note> notes = service.listNotes(username);
+        List<Note> notes = service.listNotes(userId);
 
         List<Map<String, Object>> dto = notes.stream().map(n -> {
             Map<String, Object> m = new HashMap<>();
@@ -57,13 +58,14 @@ public class NoteController extends BaseController {
     }
 
     @GetMapping("/sections/{sectionId}/notes")
-    public ResponseEntity<?> listBySection(@PathVariable Long sectionId, Authentication auth) {
+    public ResponseEntity<?> listInSection(@PathVariable Long sectionId, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<Note> notes = service.listNotesInSection(sectionId, username);
+        List<Note> notes = service.listNotesInSection(sectionId, userId);
 
         List<Map<String, Object>> dto = notes.stream().map(n -> {
             Map<String, Object> m = new HashMap<>();
@@ -78,9 +80,10 @@ public class NoteController extends BaseController {
     }
 
     @PostMapping("/notes")
-    public ResponseEntity<?> create(@RequestBody Map<String, Object> payload, Authentication auth) {
+    public ResponseEntity<Map<String, Object>> create(@RequestBody Map<String, Object> payload, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
@@ -108,7 +111,7 @@ public class NoteController extends BaseController {
         }
 
         try {
-            Note note = service.createNote(username, title, contentNode);
+            Note note = service.createNote(userId, username, title, contentNode);
             logger.info("Note created successfully. ID: {}", note.getId());
 
             Map<String, Object> m = new HashMap<>();
@@ -128,7 +131,8 @@ public class NoteController extends BaseController {
     public ResponseEntity<?> create(@PathVariable Long sectionId, @RequestBody Map<String, Object> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
@@ -150,7 +154,7 @@ public class NoteController extends BaseController {
                     .body(Map.of("message", "Invalid content format", "error", e.getMessage()));
         }
 
-        Optional<Note> created = service.createInSection(sectionId, username, title, contentNode);
+        Optional<Note> created = service.createInSection(sectionId, userId, username, title, contentNode);
 
         if (created.isEmpty()) {
             logger.warn("Section not found for note creation: {}", sectionId);
@@ -170,17 +174,17 @@ public class NoteController extends BaseController {
     }
 
     @PutMapping("/notes/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id,
-            @RequestBody Map<String, Object> payload,
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        logger.info("UPDATE NOTE REQUEST: ID: {}, Username: {}", id, username);
+        logger.info("UPDATE NOTE REQUEST: ID: {}, Username: {}, UserId: {}", id, username, userId);
 
-        if (!service.canEdit(id, username)) {
+        if (!service.canEdit(id, userId)) {
             logger.warn("Permission denied for editing note: {}", id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to edit this note."));
@@ -191,14 +195,8 @@ public class NoteController extends BaseController {
         try {
             Object contentObj = payload.get("content");
             if (contentObj == null) {
-                // If content is missing in payload, it might mean we shouldn't update it, or
-                // set it to empty
-                // Assuming null content in update payload means "keep existing" or "empty"?
-                // Standard behavior for map puts often implies replacement.
-                // Let's assume the frontend sends the whole object. If strict null, we treat as
-                // json null.
                 logger.warn("Content object is null for note update");
-                contentNode = null; // Let service handle null to mean "no change" if appropriate, or empty
+                contentNode = null;
             } else {
                 contentNode = objectMapper.valueToTree(contentObj);
             }
@@ -208,7 +206,7 @@ public class NoteController extends BaseController {
                     .body(Map.of("message", "Invalid content format", "error", e.getMessage()));
         }
 
-        Optional<Note> updated = service.updateNote(id, username, title, contentNode);
+        Optional<Note> updated = service.updateNote(id, userId, title, contentNode);
         if (updated.isPresent()) {
             Note n = updated.get();
             logger.info("Note updated successfully: {}", id);
@@ -227,10 +225,11 @@ public class NoteController extends BaseController {
     @DeleteMapping("/notes/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        boolean deleted = service.deleteNote(id, username);
+        boolean deleted = service.deleteNote(id, userId);
         if (deleted) {
             return ResponseEntity.noContent().build();
         }
@@ -240,9 +239,10 @@ public class NoteController extends BaseController {
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(NoteController.class);
 
     @GetMapping("/notes/{id}")
-    public ResponseEntity<?> getOne(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<?> getNote(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
@@ -253,13 +253,13 @@ public class NoteController extends BaseController {
             return ResponseEntity.status(404).body(Map.of("message", "Note not found"));
         }
 
-        if (!service.canView(id, username)) {
-            logger.warn("GET /notes/{}: Access denied for user {}", id, username);
+        if (!service.canView(id, userId)) {
+            logger.warn("GET /notes/{}: Access denied for user ID {}", id, userId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
 
-        Optional<Note> opt = service.getNote(id, username);
+        Optional<Note> opt = service.getNote(id, userId);
         if (opt.isPresent()) {
             Note n = opt.get();
             Map<String, Object> m = new HashMap<>();
@@ -276,11 +276,12 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/search")
     public ResponseEntity<?> search(@RequestParam String q, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<Note> notes = service.searchNotes(username, q);
+        List<Note> notes = service.searchNotes(userId, q);
 
         List<Map<String, Object>> dto = notes.stream().map(n -> {
             Map<String, Object> m = new HashMap<>();
@@ -298,11 +299,12 @@ public class NoteController extends BaseController {
     public Mono<ResponseEntity<?>> semanticSearch(@RequestParam String q, @RequestParam(defaultValue = "5") int limit,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return Mono.just(ResponseEntity.status(401).body(Map.of("message", "Not authenticated")));
         }
 
-        return service.semanticSearch(username, q, limit)
+        return service.semanticSearch(userId, q, limit)
                 .map(notes -> {
                     List<Map<String, Object>> dto = notes.stream().map(n -> {
                         Map<String, Object> m = new HashMap<>();
@@ -320,22 +322,24 @@ public class NoteController extends BaseController {
     public Mono<ResponseEntity<?>> askNotes(@RequestBody com.muse.notes.dto.AskQuestionRequest request,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return Mono.just(ResponseEntity.status(401).body(Map.of("message", "Not authenticated")));
         }
 
-        return service.askNotes(username, request.getQuestion())
+        return service.askNotes(userId, request.getQuestion())
                 .map(ResponseEntity::ok);
     }
 
     @GetMapping("/notes/pinned")
     public ResponseEntity<?> getPinnedNotes(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<Note> notes = service.getPinnedNotes(username);
+        List<Note> notes = service.getPinnedNotes(userId);
 
         List<Map<String, Object>> dto = notes.stream().map(n -> {
             Map<String, Object> m = new HashMap<>();
@@ -352,11 +356,12 @@ public class NoteController extends BaseController {
     @PostMapping("/notes/{id}/toggle-pin")
     public ResponseEntity<?> togglePin(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        Optional<Note> updated = service.togglePin(id, username);
+        Optional<Note> updated = service.togglePin(id, userId);
         if (updated.isPresent()) {
             Note n = updated.get();
             Map<String, Object> m = new HashMap<>();
@@ -371,18 +376,28 @@ public class NoteController extends BaseController {
     }
 
     @PostMapping("/notes/{id}/share")
-    public ResponseEntity<?> shareNote(@PathVariable Long id, @RequestBody Map<String, String> payload,
+    public ResponseEntity<?> shareNote(@PathVariable Long id, @RequestBody Map<String, Object> payload,
             Authentication auth) {
         String ownerUsername = currentUsername(auth);
-        if (ownerUsername == null) {
+        Long ownerUserId = currentUserId(auth);
+        if (ownerUserId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        String sharedWithUsername = payload.get("username");
-        NotePermission.PermissionLevel permissionLevel = NotePermission.PermissionLevel
-                .valueOf(payload.get("permissionLevel"));
+        String sharedWithUsername = (String) payload.get("username");
+        Object swuId = payload.get("userId");
+        Long sharedWithUserId = null;
+        if (swuId instanceof Number) {
+            sharedWithUserId = ((Number) swuId).longValue();
+        } else if (swuId instanceof String) {
+            sharedWithUserId = Long.parseLong((String) swuId);
+        }
 
-        Optional<NotePermission> permission = service.shareNote(id, ownerUsername, sharedWithUsername, permissionLevel);
+        NotePermission.PermissionLevel permissionLevel = NotePermission.PermissionLevel
+                .valueOf((String) payload.get("permissionLevel"));
+
+        Optional<NotePermission> permission = service.shareNote(id, ownerUserId, sharedWithUserId, sharedWithUsername,
+                permissionLevel);
 
         if (permission.isPresent()) {
             return ResponseEntity.ok(Map.of("message", "Note shared successfully."));
@@ -394,16 +409,17 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/{id}/clean-text")
     public ResponseEntity<?> getCleanText(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canView(id, username)) {
+        if (!service.canView(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
 
-        Optional<Note> opt = service.getNote(id, username);
+        Optional<Note> opt = service.getNote(id, userId);
         if (opt.isPresent()) {
             Note n = opt.get();
             StringBuilder textContent = new StringBuilder();
@@ -430,27 +446,29 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/{id}/versions")
     public ResponseEntity<?> getNoteVersions(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canView(id, username)) {
+        if (!service.canView(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
 
-        List<NoteVersion> versions = service.getNoteVersions(id, username);
+        List<NoteVersion> versions = service.getNoteVersions(id, userId);
         return ResponseEntity.ok(versions);
     }
 
     @PostMapping("/notes/versions/{versionId}/restore")
     public ResponseEntity<?> restoreNoteVersion(@PathVariable Long versionId, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        Optional<Note> restoredNote = service.restoreNoteVersion(versionId, username);
+        Optional<Note> restoredNote = service.restoreNoteVersion(versionId, userId);
         if (restoredNote.isPresent()) {
             return ResponseEntity.ok(Map.of("message", "Note restored successfully."));
         } else {
@@ -462,86 +480,93 @@ public class NoteController extends BaseController {
     @PostMapping("/notes/reorder")
     public ResponseEntity<?> reorderNotes(@RequestBody List<Long> noteIds, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        service.updateNoteOrder(noteIds, username);
+        service.updateNoteOrder(noteIds, userId);
         return ResponseEntity.ok(Map.of("message", "Notes reordered successfully."));
     }
 
     @GetMapping("/notes/count")
     public ResponseEntity<?> countNotes(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        long count = service.countNotesForUser(username);
+        long count = service.countNotesForUser(userId);
         return ResponseEntity.ok(Map.of("count", count));
     }
 
     @GetMapping("/notes/{id}/backlinks")
     public ResponseEntity<?> getBacklinks(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canView(id, username)) {
+        if (!service.canView(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
 
-        List<NoteLink> backlinks = service.getBacklinks(id, username);
+        List<NoteLink> backlinks = service.getBacklinks(id, userId);
         return ResponseEntity.ok(backlinks);
     }
 
     @GetMapping("/notes/{id}/links")
     public ResponseEntity<?> getAllLinks(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canView(id, username)) {
+        if (!service.canView(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
 
-        return ResponseEntity.ok(service.getAllLinks(id, username));
+        return ResponseEntity.ok(service.getAllLinks(id, userId));
     }
 
     @GetMapping("/notes/graph")
     public ResponseEntity<?> getUserGraph(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        return ResponseEntity.ok(service.getUserGraph(username));
+        return ResponseEntity.ok(service.getUserGraph(userId));
     }
 
     @GetMapping("/notes/broken-links")
     public ResponseEntity<?> getBrokenLinks(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        return ResponseEntity.ok(service.getBrokenLinks(username));
+        return ResponseEntity.ok(service.getBrokenLinks(userId));
     }
 
     @PostMapping("/notes/{id}/links/{targetId}")
     public ResponseEntity<?> createManualLink(@PathVariable Long id, @PathVariable Long targetId,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canEdit(id, username)) {
+        if (!service.canEdit(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to edit this note."));
         }
 
-        return service.createManualLink(id, targetId, username)
+        return service.createManualLink(id, targetId, userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -550,16 +575,17 @@ public class NoteController extends BaseController {
     public ResponseEntity<?> removeManualLink(@PathVariable Long id, @PathVariable Long targetId,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canEdit(id, username)) {
+        if (!service.canEdit(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to edit this note."));
         }
 
-        if (service.removeManualLink(id, targetId, username)) {
+        if (service.removeManualLink(id, targetId, userId)) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
@@ -568,11 +594,12 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/{id}/suggestions")
     public ResponseEntity<?> getNoteSuggestions(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canView(id, username)) {
+        if (!service.canView(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
@@ -585,11 +612,12 @@ public class NoteController extends BaseController {
     public ResponseEntity<?> linkNoteToCalendar(@PathVariable Long id, @RequestBody Map<String, String> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canEdit(id, username)) {
+        if (!service.canEdit(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to edit this note."));
         }
@@ -597,7 +625,7 @@ public class NoteController extends BaseController {
         String calendarEventId = payload.get("calendarEventId");
         String calendarProvider = payload.get("calendarProvider");
 
-        Optional<NoteCalendarLink> link = service.linkNoteToCalendar(id, username, calendarEventId, calendarProvider);
+        Optional<NoteCalendarLink> link = service.linkNoteToCalendar(id, userId, calendarEventId, calendarProvider);
         if (link.isPresent()) {
             return ResponseEntity.ok(Map.of("message", "Note linked to calendar successfully."));
         } else {
@@ -608,27 +636,29 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/{id}/calendar-links")
     public ResponseEntity<?> getCalendarLinks(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (!service.canView(id, username)) {
+        if (!service.canView(id, userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "You do not have permission to view this note."));
         }
 
-        List<NoteCalendarLink> links = service.getCalendarLinksForNote(id, username);
+        List<NoteCalendarLink> links = service.getCalendarLinksForNote(id, userId);
         return ResponseEntity.ok(links);
     }
 
     @DeleteMapping("/notes/calendar-links/{linkId}")
     public ResponseEntity<?> unlinkNoteFromCalendar(@PathVariable Long linkId, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (service.unlinkNoteFromCalendar(linkId, username)) {
+        if (service.unlinkNoteFromCalendar(linkId, userId)) {
             return ResponseEntity.ok(Map.of("message", "Note unlinked from calendar successfully."));
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -641,10 +671,11 @@ public class NoteController extends BaseController {
     @PostMapping("/notes/{id}/trash")
     public ResponseEntity<?> moveToTrash(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        if (service.moveToTrash(id, username)) {
+        if (service.moveToTrash(id, userId)) {
             return ResponseEntity.ok(Map.of("message", "Note moved to trash"));
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Note not found"));
@@ -653,10 +684,11 @@ public class NoteController extends BaseController {
     @PostMapping("/notes/{id}/restore")
     public ResponseEntity<?> restoreFromTrash(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        if (service.restoreFromTrash(id, username)) {
+        if (service.restoreFromTrash(id, userId)) {
             return ResponseEntity.ok(Map.of("message", "Note restored from trash"));
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Note not found or not in trash"));
@@ -665,19 +697,21 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/trash")
     public ResponseEntity<?> getTrash(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        return ResponseEntity.ok(service.getTrash(username));
+        return ResponseEntity.ok(service.getTrash(userId));
     }
 
     @DeleteMapping("/notes/trash")
     public ResponseEntity<?> emptyTrash(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        int count = service.emptyTrash(username);
+        int count = service.emptyTrash(userId);
         return ResponseEntity.ok(Map.of("message", count + " notes permanently deleted"));
     }
 
@@ -687,14 +721,15 @@ public class NoteController extends BaseController {
     public ResponseEntity<?> updateTags(@PathVariable Long id, @RequestBody Map<String, Object> body,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
         @SuppressWarnings("unchecked")
         java.util.List<String> tagList = (java.util.List<String>) body.get("tags");
         String[] tags = tagList != null ? tagList.toArray(new String[0]) : new String[0];
 
-        return service.updateTags(id, username, tags)
+        return service.updateTags(id, userId, tags)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -702,10 +737,11 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/by-tag/{tag}")
     public ResponseEntity<?> getNotesByTag(@PathVariable String tag, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        return ResponseEntity.ok(service.getNotesByTag(username, tag));
+        return ResponseEntity.ok(service.getNotesByTag(userId, tag));
     }
 
     // ==================== Duplicate ====================
@@ -713,10 +749,11 @@ public class NoteController extends BaseController {
     @PostMapping("/notes/{id}/duplicate")
     public ResponseEntity<?> duplicateNote(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        return service.duplicateNote(id, username)
+        return service.duplicateNote(id, userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -724,10 +761,11 @@ public class NoteController extends BaseController {
     @GetMapping("/notes/preview")
     public ResponseEntity<?> getPreviewByTitle(@RequestParam String title, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null)
+        Long userId = currentUserId(auth);
+        if (userId == null)
             return ResponseEntity.status(401).build();
 
-        Optional<Note> noteOpt = service.findByTitle(username, title);
+        Optional<Note> noteOpt = service.findByTitle(userId, title);
         if (noteOpt.isEmpty())
             return ResponseEntity.notFound().build();
 

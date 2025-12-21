@@ -21,6 +21,12 @@ public class Template {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "owner_username")
+    private String ownerUsername;
+
     @Column(nullable = false)
     private String name;
 

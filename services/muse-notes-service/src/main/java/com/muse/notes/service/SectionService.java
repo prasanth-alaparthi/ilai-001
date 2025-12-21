@@ -26,13 +26,13 @@ public class SectionService {
     }
 
     // List all sections (flat, for backwards compatibility)
-    public List<Section> listSections(Long notebookId, String username) {
-        return repo.findByNotebookIdAndNotebookOwnerUsernameOrderByOrderIndexAsc(notebookId, username);
+    public List<Section> listSections(Long notebookId, Long userId) {
+        return repo.findByNotebookIdAndNotebookUserIdOrderByOrderIndexAsc(notebookId, userId);
     }
 
     // List only root sections (parent = null)
-    public List<Section> listRootSections(Long notebookId, String username) {
-        return repo.findRootSectionsByNotebookId(notebookId, username);
+    public List<Section> listRootSections(Long notebookId, Long userId) {
+        return repo.findRootSectionsByNotebookIdAndUserId(notebookId, userId);
     }
 
     // Get children of a section
@@ -41,8 +41,8 @@ public class SectionService {
     }
 
     // Create a root section
-    public Optional<Section> createSection(Long notebookId, String username, String title) {
-        return notebookRepo.findByIdAndOwnerUsername(notebookId, username).map(notebook -> {
+    public Optional<Section> createSection(Long notebookId, Long userId, String title) {
+        return notebookRepo.findByIdAndUserId(notebookId, userId).map(notebook -> {
             Instant now = Instant.now();
             int nextOrderIndex = repo.findMaxOrderIndexByNotebookId(notebookId) + 1;
 
@@ -58,8 +58,8 @@ public class SectionService {
     }
 
     // Create a sub-section (nested under a parent)
-    public Optional<Section> createSubSection(Long parentId, String username, String title) {
-        return repo.findByIdAndNotebookOwnerUsername(parentId, username).map(parent -> {
+    public Optional<Section> createSubSection(Long parentId, Long userId, String title) {
+        return repo.findByIdAndNotebookUserId(parentId, userId).map(parent -> {
             Instant now = Instant.now();
             int nextOrderIndex = repo.findMaxOrderIndexByParentId(parentId) + 1;
 
@@ -75,15 +75,15 @@ public class SectionService {
     }
 
     // Move a section to a new parent (or to root if parentId is null)
-    public Optional<Section> moveSection(Long sectionId, Long newParentId, String username) {
-        return repo.findByIdAndNotebookOwnerUsername(sectionId, username).map(section -> {
+    public Optional<Section> moveSection(Long sectionId, Long newParentId, Long userId) {
+        return repo.findByIdAndNotebookUserId(sectionId, userId).map(section -> {
             if (newParentId == null) {
                 // Move to root
                 section.setParent(null);
                 section.setOrderIndex(repo.findMaxOrderIndexByNotebookId(section.getNotebook().getId()) + 1);
             } else {
                 // Move under new parent
-                return repo.findByIdAndNotebookOwnerUsername(newParentId, username).map(newParent -> {
+                return repo.findByIdAndNotebookUserId(newParentId, userId).map(newParent -> {
                     // Prevent circular reference
                     if (isDescendantOf(newParent, section)) {
                         throw new IllegalArgumentException("Cannot move a section into its own descendant");
@@ -110,7 +110,7 @@ public class SectionService {
     }
 
     @Transactional
-    public void updateOrder(List<Long> sectionIds, String username) {
+    public void updateOrder(List<Long> sectionIds, Long userId) {
         List<Section> sections = repo.findAllById(sectionIds);
         Map<Long, Section> sectionMap = sections.stream()
                 .collect(Collectors.toMap(Section::getId, Function.identity()));
@@ -118,7 +118,7 @@ public class SectionService {
         for (int i = 0; i < sectionIds.size(); i++) {
             Long id = sectionIds.get(i);
             Section section = sectionMap.get(id);
-            if (section != null && section.getNotebook().getOwnerUsername().equals(username)) {
+            if (section != null && section.getNotebook().getUserId().equals(userId)) {
                 section.setOrderIndex(i);
             }
         }
@@ -126,8 +126,8 @@ public class SectionService {
     }
 
     // Delete a section and all its children
-    public boolean deleteSection(Long sectionId, String username) {
-        return repo.findByIdAndNotebookOwnerUsername(sectionId, username).map(section -> {
+    public boolean deleteSection(Long sectionId, Long userId) {
+        return repo.findByIdAndNotebookUserId(sectionId, userId).map(section -> {
             repo.delete(section); // Cascade will delete children
             return true;
         }).orElse(false);
@@ -137,8 +137,8 @@ public class SectionService {
      * Find a section by name within a notebook, or create it if it doesn't exist.
      * Used by Lab Persistent Save for auto-pathing.
      */
-    public Section findOrCreateByName(Long notebookId, String username, String title) {
+    public Section findOrCreateByName(Long notebookId, Long userId, String username, String title) {
         return repo.findByNotebookIdAndTitle(notebookId, title)
-                .orElseGet(() -> createSection(notebookId, username, title).orElse(null));
+                .orElseGet(() -> createSection(notebookId, userId, title).orElse(null));
     }
 }

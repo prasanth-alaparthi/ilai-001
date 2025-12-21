@@ -10,10 +10,13 @@ import com.muse.notes.entity.Section;
 import com.muse.notes.service.NoteService;
 import com.muse.notes.service.NotebookService;
 import com.muse.notes.service.SectionService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,23 +27,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/notes/labs")
-public class LabPersistentSaveController {
+@RequiredArgsConstructor
+@Slf4j
+public class LabPersistentSaveController extends BaseController {
 
         private final NotebookService notebookService;
         private final SectionService sectionService;
         private final NoteService noteService;
         private final ObjectMapper objectMapper;
-
-        public LabPersistentSaveController(
-                        NotebookService notebookService,
-                        SectionService sectionService,
-                        NoteService noteService,
-                        ObjectMapper objectMapper) {
-                this.notebookService = notebookService;
-                this.sectionService = sectionService;
-                this.noteService = noteService;
-                this.objectMapper = objectMapper;
-        }
 
         /**
          * Persistent save endpoint for Lab research sessions.
@@ -55,7 +49,11 @@ public class LabPersistentSaveController {
                         @RequestBody LabPersistentSaveRequest request,
                         Authentication auth) {
 
-                String username = auth.getName();
+                String username = currentUsername(auth);
+                Long userId = currentUserId(auth);
+                if (userId == null) {
+                        return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+                }
                 LabPersistentSaveRequest.AutoPath autoPath = request.getAutoPath();
 
                 if (autoPath == null) {
@@ -70,14 +68,15 @@ public class LabPersistentSaveController {
                                         : (request.getSubject() != null ? request.getSubject() + " Lab"
                                                         : "Research Lab");
 
-                        Notebook notebook = notebookService.findOrCreateByName(username, notebookName);
+                        Notebook notebook = notebookService.findOrCreateByName(userId, username, notebookName);
 
                         // Step 2: Find or create Section (date-based)
                         String sectionName = autoPath.getSection() != null ? autoPath.getSection()
                                         : java.time.LocalDate.now().format(
                                                         java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
 
-                        Section section = sectionService.findOrCreateByName(notebook.getId(), username, sectionName);
+                        Section section = sectionService.findOrCreateByName(notebook.getId(), userId, username,
+                                        sectionName);
 
                         if (section == null) {
                                 return ResponseEntity.internalServerError().body(Map.of(
@@ -111,8 +110,9 @@ public class LabPersistentSaveController {
                         summaryBuilder.append("Source: ResearchLab");
 
                         // Step 5: Create the note using NoteService.createInSection
-                        var savedNoteOpt = noteService.createInSection(
+                        Optional<Note> savedNoteOpt = noteService.createInSection(
                                         section.getId(),
+                                        userId,
                                         username,
                                         noteTitle,
                                         noteContent);

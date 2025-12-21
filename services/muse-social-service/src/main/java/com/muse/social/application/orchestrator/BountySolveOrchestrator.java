@@ -1,12 +1,12 @@
 package com.muse.social.application.orchestrator;
 
+import com.muse.social.billing.service.FeatureFlagService;
 import com.muse.social.domain.bounty.entity.Bounty;
 import com.muse.social.domain.reputation.service.ReputationService;
 import com.muse.social.infrastructure.client.AuthServiceClient;
 import com.muse.social.infrastructure.client.NotesServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
  * BountySolveOrchestrator - The Production Bridge.
  * 
  * Handles bounty solve with:
- * 1. Redis tier verification
+ * 1. Hardened tier verification via FeatureFlagService
  * 2. Reputation point awarding
  * 3. WebClient retry logic for note injection
  * 4. Compensation (rollback) if injection fails
@@ -32,7 +32,7 @@ public class BountySolveOrchestrator {
         private final ReputationService reputationService;
         private final AuthServiceClient authClient;
         private final NotesServiceClient notesClient;
-        private final StringRedisTemplate redisTemplate;
+        private final FeatureFlagService featureFlagService;
 
         /**
          * Orchestrate the bounty solve with tier verification and compensation logic.
@@ -46,7 +46,8 @@ public class BountySolveOrchestrator {
 
                 try {
                         // Step 1: Verify solver tier (must be General or higher)
-                        String solverTier = getTierFromRedis(solverId);
+                        // Uses hardened FeatureFlagService with Redis fallback to PostgreSQL
+                        String solverTier = featureFlagService.getUserTier(solverId);
                         if ("free".equalsIgnoreCase(solverTier)) {
                                 throw new InsufficientTierException("Bounty solving requires General tier (₹199+)");
                         }
@@ -69,7 +70,7 @@ public class BountySolveOrchestrator {
                         // Step 4: Inject note with retry and compensation (non-blocking)
                         CompletableFuture<Void> future = new CompletableFuture<>();
 
-                        notesClient.injectSharedNote(creatorId, solutionNoteId, folderPath, solverUsername)
+                        notesClient.injectSharedNote(creatorId, solutionNoteId, folderPath, solverId)
                                         .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
                                                         .maxBackoff(Duration.ofSeconds(10))
                                                         .doBeforeRetry(signal -> log.warn(
@@ -104,19 +105,6 @@ public class BountySolveOrchestrator {
                         log.error("Orchestration failed for bounty {}", bounty.getId(), e);
                         return CompletableFuture.failedFuture(
                                         new OrchestrationException("Failed to orchestrate bounty solve", e));
-                }
-        }
-
-        /**
-         * Get user tier from Redis with <3ms performance.
-         */
-        private String getTierFromRedis(Long userId) {
-                try {
-                        String tier = redisTemplate.opsForValue().get("user:" + userId + ":tier");
-                        return tier != null ? tier : "free";
-                } catch (Exception e) {
-                        log.warn("Redis tier lookup failed for user {}, defaulting to 'free'", userId, e);
-                        return "free";
                 }
         }
 

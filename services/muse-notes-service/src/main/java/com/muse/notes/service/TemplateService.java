@@ -15,7 +15,12 @@ public class TemplateService {
 
     private final TemplateRepository templateRepository;
 
-    public List<Template> getAllTemplates() {
-        return templateRepository.findAll();
+    public List<Template> getAllTemplates(Long userId) {
+        if (userId == null) {
+            return templateRepository.findAll().stream()
+                    .filter(t -> t.getUserId() == null)
+                    .toList();
+        }
+        return templateRepository.findByUserIdOrUserIdIsNull(userId);
     }
 }

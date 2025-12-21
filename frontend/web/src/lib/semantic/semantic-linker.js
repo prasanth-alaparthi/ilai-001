@@ -9,6 +9,7 @@
 
 import { pipeline, env } from '@xenova/transformers';
 import { openDB } from 'idb';
+import { devLog } from '../../utils/devLog';
 
 // Configure Transformers.js for browser
 env.allowLocalModels = false;
@@ -35,7 +36,7 @@ async function initEmbedder() {
     }
 
     isLoading = true;
-    console.log('[Semantic] Loading embedding model...');
+    devLog('[Semantic] Loading embedding model...');
 
     loadPromise = pipeline(
         'feature-extraction',
@@ -43,14 +44,14 @@ async function initEmbedder() {
         {
             progress_callback: (progress) => {
                 if (progress.status === 'progress') {
-                    console.log(`[Semantic] Loading: ${Math.round(progress.progress)}%`);
+                    devLog(`[Semantic] Loading: ${Math.round(progress.progress)}%`);
                 }
             }
         }
     ).then((model) => {
         embedder = model;
         isLoading = false;
-        console.log('[Semantic] Model loaded successfully');
+        devLog('[Semantic] Model loaded successfully');
         return embedder;
     });
 
@@ -107,7 +108,7 @@ export async function storeNoteEmbedding(noteId, title, content) {
         updatedAt: Date.now(),
     });
 
-    console.log(`[Semantic] Stored embedding for note ${noteId}`);
+    devLog(`[Semantic] Stored embedding for note ${noteId}`);
 }
 
 /**
@@ -135,7 +136,7 @@ export async function findRelatedNotes(noteId, content, limit = 5) {
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, limit);
 
-    console.log(`[Semantic] Found ${results.length} related notes`);
+    devLog(`[Semantic] Found ${results.length} related notes`);
     return results;
 }
 
@@ -146,7 +147,7 @@ export async function findRelatedNotes(noteId, content, limit = 5) {
 export async function deleteNoteEmbedding(noteId) {
     const db = await getDB();
     await db.delete(STORE_NAME, noteId);
-    console.log(`[Semantic] Deleted embedding for note ${noteId}`);
+    devLog(`[Semantic] Deleted embedding for note ${noteId}`);
 }
 
 /**

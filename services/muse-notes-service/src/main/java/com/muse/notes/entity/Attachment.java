@@ -21,6 +21,9 @@ public class Attachment {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(nullable = false)
     private String ownerUsername;
 

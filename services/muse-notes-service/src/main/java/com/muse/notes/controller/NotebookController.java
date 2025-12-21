@@ -29,11 +29,12 @@ public class NotebookController extends BaseController {
     @GetMapping
     public ResponseEntity<?> list(Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<Notebook> notebooks = notebookService.listNotebooks(username);
+        List<Notebook> notebooks = notebookService.listNotebooks(userId);
 
         List<Map<String, Object>> dto = notebooks.stream().map(n -> {
             Map<String, Object> m = new HashMap<>();
@@ -50,13 +51,14 @@ public class NotebookController extends BaseController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, String> payload, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         String title = payload.get("title");
         String color = payload.get("color");
-        Notebook created = notebookService.createNotebook(username, title, color);
+        Notebook created = notebookService.createNotebook(userId, username, title, color);
 
         Map<String, Object> m = new HashMap<>();
         m.put("id", created.getId());
@@ -72,14 +74,15 @@ public class NotebookController extends BaseController {
             @RequestBody Map<String, String> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         String title = payload.get("title");
         String color = payload.get("color");
 
-        Optional<Notebook> updated = notebookService.updateNotebook(id, username, title, color);
+        Optional<Notebook> updated = notebookService.updateNotebook(id, userId, title, color);
         if (updated.isPresent()) {
             Notebook n = updated.get();
             Map<String, Object> m = new HashMap<>();
@@ -96,10 +99,11 @@ public class NotebookController extends BaseController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        boolean deleted = notebookService.deleteNotebook(id, username);
+        boolean deleted = notebookService.deleteNotebook(id, userId);
         if (deleted) {
             return ResponseEntity.noContent().build();
         }
@@ -111,13 +115,14 @@ public class NotebookController extends BaseController {
             @RequestParam(required = false) Boolean hierarchical,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         // If hierarchical=true, return only root sections with children nested
         if (Boolean.TRUE.equals(hierarchical)) {
-            List<Section> rootSections = sectionService.listRootSections(notebookId, username);
+            List<Section> rootSections = sectionService.listRootSections(notebookId, userId);
             List<Map<String, Object>> dto = rootSections.stream()
                     .map(this::sectionToDto)
                     .collect(Collectors.toList());
@@ -125,7 +130,7 @@ public class NotebookController extends BaseController {
         }
 
         // Default: flat list for backwards compatibility
-        List<Section> sections = sectionService.listSections(notebookId, username);
+        List<Section> sections = sectionService.listSections(notebookId, userId);
         List<Map<String, Object>> dto = sections.stream().map(s -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
@@ -159,7 +164,8 @@ public class NotebookController extends BaseController {
     @GetMapping("/sections/{sectionId}/children")
     public ResponseEntity<?> getChildren(@PathVariable Long sectionId, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
@@ -180,12 +186,13 @@ public class NotebookController extends BaseController {
     public ResponseEntity<?> createSection(@PathVariable Long notebookId, @RequestBody Map<String, String> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         String title = payload.get("title");
-        Optional<Section> created = sectionService.createSection(notebookId, username, title);
+        Optional<Section> created = sectionService.createSection(notebookId, userId, title);
 
         if (created.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("message", "Notebook not found"));
@@ -206,12 +213,13 @@ public class NotebookController extends BaseController {
     public ResponseEntity<?> createSubSection(@PathVariable Long parentId, @RequestBody Map<String, String> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         String title = payload.get("title");
-        Optional<Section> created = sectionService.createSubSection(parentId, username, title);
+        Optional<Section> created = sectionService.createSubSection(parentId, userId, title);
 
         if (created.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("message", "Parent section not found"));
@@ -232,13 +240,14 @@ public class NotebookController extends BaseController {
     public ResponseEntity<?> moveSection(@PathVariable Long sectionId, @RequestBody Map<String, Long> payload,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         Long newParentId = payload.get("parentId"); // null = move to root
         try {
-            Optional<Section> moved = sectionService.moveSection(sectionId, newParentId, username);
+            Optional<Section> moved = sectionService.moveSection(sectionId, newParentId, userId);
             if (moved.isEmpty()) {
                 return ResponseEntity.status(404).body(Map.of("message", "Section not found"));
             }
@@ -252,10 +261,11 @@ public class NotebookController extends BaseController {
     @DeleteMapping("/sections/{sectionId}")
     public ResponseEntity<?> deleteSection(@PathVariable Long sectionId, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        boolean deleted = sectionService.deleteSection(sectionId, username);
+        boolean deleted = sectionService.deleteSection(sectionId, userId);
         if (deleted) {
             return ResponseEntity.noContent().build();
         }
@@ -265,10 +275,11 @@ public class NotebookController extends BaseController {
     @PostMapping("/reorder")
     public ResponseEntity<?> reorderNotebooks(@RequestBody List<Long> notebookIds, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        notebookService.updateOrder(notebookIds, username);
+        notebookService.updateOrder(notebookIds, userId);
         return ResponseEntity.ok(Map.of("message", "Notebooks reordered successfully."));
     }
 
@@ -276,10 +287,11 @@ public class NotebookController extends BaseController {
     public ResponseEntity<?> reorderSections(@PathVariable Long notebookId, @RequestBody List<Long> sectionIds,
             Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
-        sectionService.updateOrder(sectionIds, username);
+        sectionService.updateOrder(sectionIds, userId);
         return ResponseEntity.ok(Map.of("message", "Sections reordered successfully."));
     }
 }

@@ -22,9 +22,21 @@ public interface BountyRepository extends JpaRepository<Bounty, Long> {
 
     @Query("SELECT b FROM Bounty b WHERE b.status = :status AND " +
             "(LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-            "LOWER(b.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+            "LOWER(b.description) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "ORDER BY b.createdAt DESC")
     Page<Bounty> searchBounties(String query, String status, Pageable pageable);
 
-    @Query("SELECT b FROM Bounty b WHERE b.status = 'open' ORDER BY b.viewCount DESC, b.rewardPoints DESC")
+    @Query("SELECT b FROM Bounty b WHERE b.status = 'open' " +
+            "ORDER BY b.viewCount DESC, b.rewardPoints DESC")
     Page<Bounty> findTrending(Pageable pageable);
+
+    @Query("SELECT b FROM Bounty b WHERE b.status = 'open' " +
+            "AND b.rewardPoints >= :minReward ORDER BY b.rewardPoints DESC")
+    Page<Bounty> findHighReward(Integer minReward, Pageable pageable);
+
+    long countByStatus(String status);
+
+    long countByCreatorId(Long creatorId);
+
+    long countBySolverId(Long solverId);
 }

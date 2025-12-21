@@ -18,4 +18,20 @@ public abstract class BaseController {
         }
         return principal.toString();
     }
+
+    protected Long currentUserId(Authentication auth) {
+        if (auth == null || auth.getPrincipal() == null) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Jwt) {
+            Object userId = ((Jwt) principal).getClaim("userId");
+            if (userId instanceof Number) {
+                return ((Number) userId).longValue();
+            } else if (userId instanceof String) {
+                return Long.parseLong((String) userId);
+            }
+        }
+        return null;
+    }
 }

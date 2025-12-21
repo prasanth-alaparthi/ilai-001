@@ -1,6 +1,9 @@
 -- V3__add_vector_embedding.sql
 -- Adds a vector column for semantic search and an IVFFlat index
 
+-- 0. Ensure pgvector extension is enabled
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- 1. Add the vector column to the notes table
 -- The size of the vector (e.g., 768 for Gemini's embedding-001) is important.
 ALTER TABLE notes ADD COLUMN embedding vector(768);

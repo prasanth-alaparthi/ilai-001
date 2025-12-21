@@ -87,10 +87,14 @@ public class FeatureFlagService {
     public String getUserTier(Long userId) {
         String cacheKey = TIER_CACHE_PREFIX + userId;
 
-        // Try Redis cache first (sub-millisecond)
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            return cached.toString();
+        try {
+            // Try Redis cache first (sub-millisecond)
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                return cached.toString();
+            }
+        } catch (Exception e) {
+            log.error("Redis connection failed in getUserTier: {}. Falling back to PostgreSQL.", e.getMessage());
         }
 
         // Fall back to PostgreSQL
@@ -98,8 +102,12 @@ public class FeatureFlagService {
                 .map(UserSubscription::getTier)
                 .orElse("free");
 
-        // Cache the result
-        redisTemplate.opsForValue().set(cacheKey, tier, CACHE_TTL);
+        try {
+            // Cache the result
+            redisTemplate.opsForValue().set(cacheKey, tier, CACHE_TTL);
+        } catch (Exception e) {
+            log.warn("Failed to cache tier in Redis: {}", e.getMessage());
+        }
 
         return tier;
     }
@@ -127,14 +135,18 @@ public class FeatureFlagService {
         String tierKey = TIER_CACHE_PREFIX + userId;
         String featuresKey = FEATURES_CACHE_PREFIX + userId;
 
-        // Update tier cache
-        redisTemplate.opsForValue().set(tierKey, tier, CACHE_TTL);
+        try {
+            // Update tier cache
+            redisTemplate.opsForValue().set(tierKey, tier, CACHE_TTL);
 
-        // Update features cache
-        redisTemplate.delete(featuresKey);
-        if (!features.isEmpty()) {
-            redisTemplate.opsForSet().add(featuresKey, features.toArray(new String[0]));
-            redisTemplate.expire(featuresKey, CACHE_TTL);
+            // Update features cache
+            redisTemplate.delete(featuresKey);
+            if (!features.isEmpty()) {
+                redisTemplate.opsForSet().add(featuresKey, features.toArray(new String[0]));
+                redisTemplate.expire(featuresKey, CACHE_TTL);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update Redis cache in enableTierFeatures: {}", e.getMessage());
         }
 
         log.info("Enabled {} features for user {} (tier: {})",
@@ -151,21 +163,29 @@ public class FeatureFlagService {
     public boolean hasFeature(Long userId, String feature) {
         String featuresKey = FEATURES_CACHE_PREFIX + userId;
 
-        // Check Redis set
-        Boolean isMember = redisTemplate.opsForSet().isMember(featuresKey, feature);
+        try {
+            // Check Redis set
+            Boolean isMember = redisTemplate.opsForSet().isMember(featuresKey, feature);
 
-        if (isMember != null && isMember) {
-            return true;
+            if (isMember != null && isMember) {
+                return true;
+            }
+        } catch (Exception e) {
+            log.error("Redis connection failed in hasFeature: {}. Falling back to tier lookup.", e.getMessage());
         }
 
         // Cache miss - reload from tier
         String tier = getUserTier(userId);
         List<String> features = TIER_FEATURES.getOrDefault(tier, TIER_FEATURES.get("free"));
 
-        // Rebuild cache
-        if (!features.isEmpty()) {
-            redisTemplate.opsForSet().add(featuresKey, features.toArray(new String[0]));
-            redisTemplate.expire(featuresKey, CACHE_TTL);
+        try {
+            // Rebuild cache
+            if (!features.isEmpty()) {
+                redisTemplate.opsForSet().add(featuresKey, features.toArray(new String[0]));
+                redisTemplate.expire(featuresKey, CACHE_TTL);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to rebuild feature cache in Redis: {}", e.getMessage());
         }
 
         return features.contains(feature);
@@ -183,24 +203,33 @@ public class FeatureFlagService {
      */
     public Set<String> getUserFeatures(Long userId) {
         String featuresKey = FEATURES_CACHE_PREFIX + userId;
-        Set<Object> cached = redisTemplate.opsForSet().members(featuresKey);
 
-        if (cached != null && !cached.isEmpty()) {
-            Set<String> result = new HashSet<>();
-            for (Object f : cached) {
-                result.add(f.toString());
+        try {
+            Set<Object> cached = redisTemplate.opsForSet().members(featuresKey);
+
+            if (cached != null && !cached.isEmpty()) {
+                Set<String> result = new HashSet<>();
+                for (Object f : cached) {
+                    result.add(f.toString());
+                }
+                return result;
             }
-            return result;
+        } catch (Exception e) {
+            log.error("Redis connection failed in getUserFeatures: {}. Falling back to tier lookup.", e.getMessage());
         }
 
         // Cache miss - load from tier
         String tier = getUserTier(userId);
         List<String> features = TIER_FEATURES.getOrDefault(tier, TIER_FEATURES.get("free"));
 
-        // Cache and return
-        if (!features.isEmpty()) {
-            redisTemplate.opsForSet().add(featuresKey, features.toArray(new String[0]));
-            redisTemplate.expire(featuresKey, CACHE_TTL);
+        try {
+            // Cache and return
+            if (!features.isEmpty()) {
+                redisTemplate.opsForSet().add(featuresKey, features.toArray(new String[0]));
+                redisTemplate.expire(featuresKey, CACHE_TTL);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to cache features in Redis: {}", e.getMessage());
         }
 
         return new HashSet<>(features);
@@ -244,8 +273,12 @@ public class FeatureFlagService {
      * Call this when subscription changes.
      */
     public void invalidateUserCache(Long userId) {
-        redisTemplate.delete(TIER_CACHE_PREFIX + userId);
-        redisTemplate.delete(FEATURES_CACHE_PREFIX + userId);
+        try {
+            redisTemplate.delete(TIER_CACHE_PREFIX + userId);
+            redisTemplate.delete(FEATURES_CACHE_PREFIX + userId);
+        } catch (Exception e) {
+            log.error("Failed to invalidate Redis cache for user {}: {}", userId, e.getMessage());
+        }
         log.debug("Invalidated feature cache for user {}", userId);
     }
 

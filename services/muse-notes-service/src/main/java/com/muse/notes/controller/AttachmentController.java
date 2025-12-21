@@ -28,13 +28,15 @@ public class AttachmentController extends BaseController {
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
         String storageFilename = storageService.store(file);
 
         Attachment attachment = Attachment.builder()
+                .userId(userId)
                 .ownerUsername(username)
                 .originalFilename(file.getOriginalFilename())
                 .storageFilename(storageFilename)
@@ -51,13 +53,14 @@ public class AttachmentController extends BaseController {
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable UUID id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).build();
         }
 
         return attachmentRepository.findById(id)
                 .map(attachment -> {
-                    if (!attachment.getOwnerUsername().equals(username)) {
+                    if (attachment.getUserId() != null && !attachment.getUserId().equals(userId)) {
                         return ResponseEntity.status(403).<Resource>build();
                     }
                     Resource file = storageService.loadAsResource(attachment.getStorageFilename());

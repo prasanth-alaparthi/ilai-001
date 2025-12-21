@@ -25,11 +25,12 @@ public class ShareController extends BaseController {
     @PostMapping
     public ResponseEntity<?> share(@RequestBody ShareRequest request, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        if (username.equals(request.targetUsername())) {
+        if (userId.equals(request.targetUserId())) {
             return ResponseEntity.badRequest().body(Map.of("message", "Cannot share with yourself"));
         }
 
@@ -40,7 +41,9 @@ public class ShareController extends BaseController {
             return shareService.shareResource(
                     resourceType,
                     request.resourceId(),
+                    userId,
                     username,
+                    request.targetUserId(),
                     request.targetUsername(),
                     permission,
                     request.message()).map(
@@ -63,12 +66,12 @@ public class ShareController extends BaseController {
      */
     @GetMapping("/with-me")
     public ResponseEntity<?> getSharedWithMe(Authentication auth) {
-        String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<SharePermission> shares = shareService.getSharedWithMe(username);
+        List<SharePermission> shares = shareService.getSharedWithMe(userId);
         return ResponseEntity.ok(shares.stream().map(this::toDto).toList());
     }
 
@@ -77,12 +80,12 @@ public class ShareController extends BaseController {
      */
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingInvitations(Authentication auth) {
-        String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<SharePermission> pending = shareService.getPendingInvitations(username);
+        List<SharePermission> pending = shareService.getPendingInvitations(userId);
         return ResponseEntity.ok(pending.stream().map(this::toDto).toList());
     }
 
@@ -91,12 +94,12 @@ public class ShareController extends BaseController {
      */
     @GetMapping("/my-shares")
     public ResponseEntity<?> getMyShares(Authentication auth) {
-        String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        List<SharePermission> shares = shareService.getMyShares(username);
+        List<SharePermission> shares = shareService.getMyShares(userId);
         return ResponseEntity.ok(shares.stream().map(this::toDto).toList());
     }
 
@@ -105,12 +108,12 @@ public class ShareController extends BaseController {
      */
     @PostMapping("/{shareId}/accept")
     public ResponseEntity<?> acceptShare(@PathVariable Long shareId, Authentication auth) {
-        String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        return shareService.acceptShare(shareId, username)
+        return shareService.acceptShare(shareId, userId)
                 .map(s -> ResponseEntity.ok(Map.of("message", "Share accepted", "share", toDto(s))))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -120,12 +123,12 @@ public class ShareController extends BaseController {
      */
     @DeleteMapping("/{shareId}")
     public ResponseEntity<?> removeShare(@PathVariable Long shareId, Authentication auth) {
-        String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        boolean removed = shareService.removeShare(shareId, username);
+        boolean removed = shareService.removeShare(shareId, userId);
         if (removed) {
             return ResponseEntity.ok(Map.of("message", "Share removed"));
         }
@@ -150,6 +153,7 @@ public class ShareController extends BaseController {
             String resourceType,
             Long resourceId,
             String targetUsername,
+            Long targetUserId,
             String permissionLevel,
             String message) {
     }

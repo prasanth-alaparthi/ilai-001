@@ -22,15 +22,16 @@ public class NotebookService {
         this.repo = repo;
     }
 
-    public List<Notebook> listNotebooks(String username) {
-        return repo.findByOwnerUsernameOrderByOrderIndexAsc(username);
+    public List<Notebook> listNotebooks(Long userId) {
+        return repo.findByUserIdOrderByOrderIndexAsc(userId);
     }
 
-    public Notebook createNotebook(String username, String title, String color) {
+    public Notebook createNotebook(Long userId, String username, String title, String color) {
         Instant now = Instant.now();
-        int nextOrderIndex = repo.findMaxOrderIndexByOwnerUsername(username) + 1;
+        int nextOrderIndex = repo.findMaxOrderIndexByUserId(userId) + 1;
 
         Notebook nb = new Notebook();
+        nb.setUserId(userId);
         nb.setOwnerUsername(username);
         nb.setTitle((title == null || title.isBlank()) ? "Untitled" : title);
         nb.setColor(color);
@@ -40,8 +41,8 @@ public class NotebookService {
         return repo.save(nb);
     }
 
-    public Optional<Notebook> updateNotebook(Long id, String username, String title, String color) {
-        return repo.findByIdAndOwnerUsername(id, username).map(nb -> {
+    public Optional<Notebook> updateNotebook(Long id, Long userId, String title, String color) {
+        return repo.findByIdAndUserId(id, userId).map(nb -> {
             if (title != null && !title.isBlank()) {
                 nb.setTitle(title);
             }
@@ -53,15 +54,15 @@ public class NotebookService {
         });
     }
 
-    public boolean deleteNotebook(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username).map(nb -> {
+    public boolean deleteNotebook(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId).map(nb -> {
             repo.delete(nb);
             return true;
         }).orElse(false);
     }
 
     @Transactional
-    public void updateOrder(List<Long> notebookIds, String username) {
+    public void updateOrder(List<Long> notebookIds, Long userId) {
         List<Notebook> notebooks = repo.findAllById(notebookIds);
         Map<Long, Notebook> notebookMap = notebooks.stream()
                 .collect(Collectors.toMap(Notebook::getId, Function.identity()));
@@ -69,12 +70,8 @@ public class NotebookService {
         for (int i = 0; i < notebookIds.size(); i++) {
             Long id = notebookIds.get(i);
             Notebook notebook = notebookMap.get(id);
-            if (notebook != null && notebook.getOwnerUsername().equals(username)) {
+            if (notebook != null && notebook.getUserId().equals(userId)) {
                 notebook.setOrderIndex(i);
-            } else {
-                // Handle error: either notebook not found or user is not the owner
-                // For simplicity, we'll just ignore it in this case.
-                // In a real app, you might throw an exception.
             }
         }
         repo.saveAll(notebooks);
@@ -84,8 +81,8 @@ public class NotebookService {
      * Find a notebook by name or create it if it doesn't exist.
      * Used by Lab Persistent Save for auto-pathing.
      */
-    public Notebook findOrCreateByName(String username, String title) {
-        return repo.findByOwnerUsernameAndTitle(username, title)
-                .orElseGet(() -> createNotebook(username, title, "#6366f1"));
+    public Notebook findOrCreateByName(Long userId, String username, String title) {
+        return repo.findByUserIdAndTitle(userId, title)
+                .orElseGet(() -> createNotebook(userId, username, title, "#6366f1"));
     }
 }

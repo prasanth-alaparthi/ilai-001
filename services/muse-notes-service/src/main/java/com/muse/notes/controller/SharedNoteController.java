@@ -22,7 +22,7 @@ public class SharedNoteController extends BaseController {
     private final String appBase;
 
     public SharedNoteController(SharedNoteRepository sharedRepo, NoteRepository noteRepo,
-                                @Value("${APP_BASE_URL:http://localhost:3000}") String appBase) {
+            @Value("${APP_BASE_URL:http://localhost:3000}") String appBase) {
         this.sharedRepo = sharedRepo;
         this.noteRepo = noteRepo;
         this.appBase = appBase;
@@ -31,12 +31,14 @@ public class SharedNoteController extends BaseController {
     @PostMapping("/share/{id}")
     public ResponseEntity<?> share(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        var maybe = noteRepo.findByIdAndOwnerUsername(id, username);
-        if (maybe.isEmpty()) return ResponseEntity.notFound().build();
+        var maybe = noteRepo.findByIdAndUserId(id, userId);
+        if (maybe.isEmpty())
+            return ResponseEntity.notFound().build();
 
         String token = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         SharedNote s = new SharedNote();
@@ -54,19 +56,20 @@ public class SharedNoteController extends BaseController {
     @GetMapping("/shared/{token}")
     public ResponseEntity<?> getShared(@PathVariable String token) {
         var sOpt = sharedRepo.findByToken(token);
-        if (sOpt.isEmpty()) return ResponseEntity.notFound().build();
+        if (sOpt.isEmpty())
+            return ResponseEntity.notFound().build();
         var s = sOpt.get();
         if (s.getExpiresAt() != null && s.getExpiresAt().isBefore(Instant.now())) {
             return ResponseEntity.status(410).body(Map.of("error", "Link expired"));
         }
         var noteOpt = noteRepo.findById(s.getNoteId());
-        if (noteOpt.isEmpty()) return ResponseEntity.notFound().build();
+        if (noteOpt.isEmpty())
+            return ResponseEntity.notFound().build();
         Note n = noteOpt.get();
         return ResponseEntity.ok(Map.of(
                 "id", n.getId(),
                 "title", n.getTitle(),
                 "content", n.getContent(),
-                "authorName", n.getAuthorName()
-        ));
+                "authorName", n.getAuthorName()));
     }
 }

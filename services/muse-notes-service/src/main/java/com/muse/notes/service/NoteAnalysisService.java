@@ -66,7 +66,7 @@ public class NoteAnalysisService {
 
     private void generateSuggestions(Note note, float[] embedding) {
         String embeddingString = Arrays.toString(embedding);
-        List<Note> similarNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 10);
+        List<Note> similarNotes = repo.searchByEmbedding(note.getUserId(), embeddingString, 10);
 
         for (Note similar : similarNotes) {
             if (!similar.getId().equals(note.getId())) {

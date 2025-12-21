@@ -65,16 +65,17 @@ public class NoteService {
         this.noteAnalysisService = noteAnalysisService;
     }
 
-    private Section getOrCreateDefaultSection(String username) {
+    private Section getOrCreateDefaultSection(Long userId, String username) {
         Instant now = Instant.now();
 
         Notebook notebook = notebookRepo
-                .findByOwnerUsernameOrderByOrderIndexAsc(username)
+                .findByUserIdOrderByOrderIndexAsc(userId)
                 .stream()
                 .findFirst()
                 .orElseGet(() -> {
-                    int nextOrderIndex = notebookRepo.findMaxOrderIndexByOwnerUsername(username) + 1;
+                    int nextOrderIndex = notebookRepo.findMaxOrderIndexByUserId(userId) + 1;
                     Notebook nb = new Notebook();
+                    nb.setUserId(userId);
                     nb.setOwnerUsername(username);
                     nb.setTitle("My notes");
                     nb.setColor("#6366f1");
@@ -99,20 +100,21 @@ public class NoteService {
                 });
     }
 
-    public List<Note> listNotes(String username) {
-        return repo.findByOwnerUsernameOrderByOrderIndexAsc(username);
+    public List<Note> listNotes(Long userId) {
+        return repo.findByUserIdOrderByOrderIndexAsc(userId);
     }
 
-    public List<Note> listNotesInSection(Long sectionId, String username) {
-        return repo.findBySectionIdAndOwnerUsernameOrderByOrderIndexAsc(sectionId, username);
+    public List<Note> listNotesInSection(Long sectionId, Long userId) {
+        return repo.findBySectionIdAndUserIdOrderByOrderIndexAsc(sectionId, userId);
     }
 
-    public Note createNote(String username, String title, JsonNode content) {
+    public Note createNote(Long userId, String username, String title, JsonNode content) {
         Instant now = Instant.now();
-        Section defaultSection = getOrCreateDefaultSection(username);
+        Section defaultSection = getOrCreateDefaultSection(userId, username);
         int nextOrderIndex = repo.findMaxOrderIndexBySectionId(defaultSection.getId()) + 1;
 
         Note n = new Note();
+        n.setUserId(userId);
         n.setOwnerUsername(username);
         n.setSection(defaultSection);
         n.setTitle((title == null || title.isBlank()) ? "Untitled" : title);
@@ -127,12 +129,14 @@ public class NoteService {
         return savedNote;
     }
 
-    public Optional<Note> createInSection(Long sectionId, String username, String title, JsonNode content) {
-        return sectionRepo.findByIdAndNotebookOwnerUsername(sectionId, username)
+    public Optional<Note> createInSection(Long sectionId, Long userId, String username, String title,
+            JsonNode content) {
+        return sectionRepo.findByIdAndNotebookUserId(sectionId, userId)
                 .map(sec -> {
                     Instant now = Instant.now();
                     int nextOrderIndex = repo.findMaxOrderIndexBySectionId(sectionId) + 1;
                     Note n = new Note();
+                    n.setUserId(userId);
                     n.setOwnerUsername(username);
                     n.setSection(sec);
                     n.setTitle((title == null || title.isBlank()) ? "Untitled" : title);
@@ -154,12 +158,12 @@ public class NoteService {
      * Update a note - SIMPLIFIED for reliable persistence
      * Async operations (embeddings, analysis) run AFTER save completes
      */
-    @CacheEvict(value = "notes", key = "#id + '_' + #username")
-    public Optional<Note> updateNote(Long id, String username, String title, JsonNode content) {
-        log.info("updateNote called: id={}, username={}, title={}, contentLength={}",
-                id, username, title, content != null ? content.toString().length() : "null");
+    @CacheEvict(value = "notes", key = "#id + '_' + #userId")
+    public Optional<Note> updateNote(Long id, Long userId, String title, JsonNode content) {
+        log.info("updateNote called: id={}, userId={}, title={}, contentLength={}",
+                id, userId, title, content != null ? content.toString().length() : "null");
 
-        Optional<Note> result = repo.findByIdAndOwnerUsername(id, username).map(n -> {
+        Optional<Note> result = repo.findByIdAndUserId(id, userId).map(n -> {
             log.info("Found note to update: id={}, currentTitle={}", n.getId(), n.getTitle());
 
             String oldTitle = n.getTitle();
@@ -192,7 +196,7 @@ public class NoteService {
             log.info("Note FLUSHED to DB: id={}, updatedAt={}", savedNote.getId(), savedNote.getUpdatedAt());
 
             if (titleChanged) {
-                propagateTitleChangeAsync(username, oldTitle, title);
+                propagateTitleChangeAsync(userId, oldTitle, title);
             }
 
             return savedNote;
@@ -211,17 +215,15 @@ public class NoteService {
         return result;
     }
 
-    private void propagateTitleChangeAsync(String username, String oldTitle, String newTitle) {
+    private void propagateTitleChangeAsync(Long userId, String oldTitle, String newTitle) {
         CompletableFuture.runAsync(() -> {
             try {
                 // Regex to find [[oldTitle]] or [[oldTitle|Alias]]
-                // Pattern matches [[, then exactly oldTitle, then optionally | followed by
-                // anything until ]], then ]]
                 String escapedOldTitle = java.util.regex.Pattern.quote(oldTitle);
                 String patternString = "\\[\\[" + escapedOldTitle + "(\\|.*?)?\\]\\]";
                 java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(patternString);
 
-                List<Note> allNotes = repo.findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(username);
+                List<Note> allNotes = repo.findByUserIdAndDeletedAtIsNullOrderByOrderIndexAsc(userId);
                 for (Note note : allNotes) {
                     if (note.getContent() == null)
                         continue;
@@ -229,7 +231,6 @@ public class NoteService {
                     java.util.regex.Matcher matcher = pattern.matcher(contentString);
 
                     if (matcher.find()) {
-                        // Use appendReplacement logic to handle multiple occurrences
                         StringBuilder sb = new StringBuilder();
                         matcher.reset();
                         while (matcher.find()) {
@@ -245,7 +246,7 @@ public class NoteService {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Failed to propagate title change for user {}", username, e);
+                log.warn("Failed to propagate title change for user {}", userId, e);
             }
         });
     }
@@ -283,13 +284,13 @@ public class NoteService {
                 embedding -> {
                     try {
                         String embeddingString = Arrays.toString(embedding);
-                        List<Note> relatedNotes = repo.searchByEmbedding(note.getOwnerUsername(), embeddingString, 10);
+                        List<Note> relatedNotes = repo.searchByEmbedding(note.getUserId(), embeddingString, 10);
 
                         // Extract manual links from JSON content (TipTap structured links)
                         Set<Long> manualLinkIds = extractManualLinkIds(note.getContent());
 
                         // Extract Wiki Links [[Title]] from content
-                        Set<Long> wikiLinkIds = extractWikiLinkIds(note.getOwnerUsername(), noteText);
+                        Set<Long> wikiLinkIds = extractWikiLinkIds(note.getUserId(), noteText);
                         manualLinkIds.addAll(wikiLinkIds);
 
                         linkRepo.deleteBySourceNoteId(note.getId());
@@ -327,7 +328,7 @@ public class NoteService {
                 error -> log.warn("Failed to get embedding for note {}", note.getId(), error));
     }
 
-    private Set<Long> extractWikiLinkIds(String username, String text) {
+    private Set<Long> extractWikiLinkIds(Long userId, String text) {
         Set<Long> ids = new HashSet<>();
         if (text == null || text.isBlank())
             return ids;
@@ -338,7 +339,7 @@ public class NoteService {
 
         while (matcher.find()) {
             String title = matcher.group(1).trim();
-            repo.findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(username, title)
+            repo.findByUserIdAndTitleIgnoreCaseAndDeletedAtIsNull(userId, title)
                     .ifPresent(n -> ids.add(n.getId()));
         }
         return ids;
@@ -377,9 +378,9 @@ public class NoteService {
         return ids;
     }
 
-    @CacheEvict(value = "notes", key = "#id + '_' + #username")
-    public boolean deleteNote(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username).map(n -> {
+    @CacheEvict(value = "notes", key = "#id + '_' + #userId")
+    public boolean deleteNote(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId).map(n -> {
             // Clean up all related entities before deleting to prevent orphaned data
             linkRepo.deleteBySourceNoteId(id); // Links FROM this note
             linkRepo.deleteByLinkedNoteId(id); // Links TO this note (backlinks)
@@ -394,74 +395,76 @@ public class NoteService {
         }).orElse(false);
     }
 
-    @Cacheable(value = "notes", key = "#id + '_' + #username")
-    public Optional<Note> getNote(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username);
+    @Cacheable(value = "notes", key = "#id + '_' + #userId")
+    public Optional<Note> getNote(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId);
     }
 
-    public List<Note> searchNotes(String username, String query) {
+    public List<Note> searchNotes(Long userId, String query) {
         String tsQuery = query.trim().replaceAll("\\s+", "&");
-        return repo.searchByQuery(username, tsQuery);
+        return repo.searchByQuery(userId, tsQuery);
     }
 
-    public Mono<List<Note>> semanticSearch(String username, String query, int limit) {
+    public Mono<List<Note>> semanticSearch(Long userId, String query, int limit) {
         return embeddingService.getEmbedding(query)
                 .map(embedding -> {
                     String embeddingString = Arrays.toString(embedding);
-                    return repo.searchByEmbedding(username, embeddingString, limit);
+                    return repo.searchByEmbedding(userId, embeddingString, limit);
                 });
     }
 
-    public List<Note> getPinnedNotes(String username) {
-        return repo.findByOwnerUsernameAndIsPinnedTrueOrderByUpdatedAtDesc(username);
+    public List<Note> getPinnedNotes(Long userId) {
+        return repo.findByUserIdAndIsPinnedTrueOrderByUpdatedAtDesc(userId);
     }
 
-    public Optional<Note> togglePin(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username).map(n -> {
+    public Optional<Note> togglePin(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId).map(n -> {
             n.setPinned(!n.isPinned());
             n.setUpdatedAt(Instant.now());
             return repo.save(n);
         });
     }
 
-    public Optional<NotePermission> shareNote(Long noteId, String ownerUsername, String sharedWithUsername,
+    public Optional<NotePermission> shareNote(Long noteId, Long ownerUserId, Long sharedWithUserId,
+            String sharedWithUsername,
             NotePermission.PermissionLevel permissionLevel) {
-        return repo.findByIdAndOwnerUsername(noteId, ownerUsername)
+        return repo.findByIdAndUserId(noteId, ownerUserId)
                 .map(note -> {
-                    NotePermission permission = permissionRepo.findByNoteIdAndUsername(noteId, sharedWithUsername)
+                    NotePermission permission = permissionRepo.findByNoteIdAndUserId(noteId, sharedWithUserId)
                             .orElse(new NotePermission());
                     permission.setNote(note);
+                    permission.setUserId(sharedWithUserId);
                     permission.setUsername(sharedWithUsername);
                     permission.setPermissionLevel(permissionLevel);
                     return permissionRepo.save(permission);
                 });
     }
 
-    public boolean canView(Long noteId, String username) {
+    public boolean canView(Long noteId, Long userId) {
         return repo.findById(noteId)
-                .map(note -> note.getOwnerUsername().equals(username) ||
-                        permissionRepo.findByNoteIdAndUsername(noteId, username).isPresent())
+                .map(note -> note.getUserId().equals(userId) ||
+                        permissionRepo.findByNoteIdAndUserId(noteId, userId).isPresent())
                 .orElse(false);
     }
 
-    public boolean canEdit(Long noteId, String username) {
+    public boolean canEdit(Long noteId, Long userId) {
         return repo.findById(noteId)
-                .map(note -> note.getOwnerUsername().equals(username) ||
-                        permissionRepo.findByNoteIdAndUsername(noteId, username)
+                .map(note -> note.getUserId().equals(userId) ||
+                        permissionRepo.findByNoteIdAndUserId(noteId, userId)
                                 .map(p -> p.getPermissionLevel() == NotePermission.PermissionLevel.EDITOR)
                                 .orElse(false))
                 .orElse(false);
     }
 
-    public List<NoteVersion> getNoteVersions(Long noteId, String username) {
-        return repo.findByIdAndOwnerUsername(noteId, username)
+    public List<NoteVersion> getNoteVersions(Long noteId, Long userId) {
+        return repo.findByIdAndUserId(noteId, userId)
                 .map(note -> versionRepo.findByNoteIdOrderByCreatedAtDesc(noteId))
                 .orElse(List.of());
     }
 
-    public Optional<Note> restoreNoteVersion(Long versionId, String username) {
+    public Optional<Note> restoreNoteVersion(Long versionId, Long userId) {
         return versionRepo.findById(versionId)
-                .flatMap(version -> repo.findByIdAndOwnerUsername(version.getNote().getId(), username)
+                .flatMap(version -> repo.findByIdAndUserId(version.getNote().getId(), userId)
                         .map(note -> {
                             note.setTitle(version.getTitle());
                             note.setContent(version.getContent());
@@ -471,7 +474,7 @@ public class NoteService {
     }
 
     @Transactional
-    public void updateNoteOrder(List<Long> noteIds, String username) {
+    public void updateNoteOrder(List<Long> noteIds, Long userId) {
         List<Note> notes = repo.findAllById(noteIds);
         Map<Long, Note> noteMap = notes.stream()
                 .collect(Collectors.toMap(Note::getId, Function.identity()));
@@ -479,23 +482,23 @@ public class NoteService {
         for (int i = 0; i < noteIds.size(); i++) {
             Long id = noteIds.get(i);
             Note note = noteMap.get(id);
-            if (note != null && note.getOwnerUsername().equals(username)) {
+            if (note != null && note.getUserId().equals(userId)) {
                 note.setOrderIndex(i);
             }
         }
         repo.saveAll(notes);
     }
 
-    @Cacheable(value = "note_backlinks", key = "#noteId + '_' + #username")
-    public List<NoteLink> getBacklinks(Long noteId, String username) {
-        return repo.findByIdAndOwnerUsername(noteId, username)
+    @Cacheable(value = "note_backlinks", key = "#noteId + '_' + #userId")
+    public List<NoteLink> getBacklinks(Long noteId, Long userId) {
+        return repo.findByIdAndUserId(noteId, userId)
                 .map(note -> linkRepo.findByLinkedNoteIdOrderByRelevanceScoreDesc(noteId))
                 .orElse(List.of());
     }
 
-    @Cacheable(value = "note_links_all", key = "#noteId + '_' + #username")
-    public Map<String, List<NoteLinkDto>> getAllLinks(Long noteId, String username) {
-        return repo.findByIdAndOwnerUsername(noteId, username)
+    @Cacheable(value = "note_links_all", key = "#noteId + '_' + #userId")
+    public Map<String, List<NoteLinkDto>> getAllLinks(Long noteId, Long userId) {
+        return repo.findByIdAndUserId(noteId, userId)
                 .map(note -> {
                     Map<String, List<NoteLinkDto>> links = new HashMap<>();
                     List<NoteLink> outgoing = linkRepo.findBySourceNoteIdOrderByRelevanceScoreDesc(noteId);
@@ -532,8 +535,8 @@ public class NoteService {
     }
 
     @Transactional
-    public Optional<NoteLink> createManualLink(Long sourceId, Long targetId, String username) {
-        return repo.findByIdAndOwnerUsername(sourceId, username)
+    public Optional<NoteLink> createManualLink(Long sourceId, Long targetId, Long userId) {
+        return repo.findByIdAndUserId(sourceId, userId)
                 .flatMap(source -> repo.findById(targetId)
                         .map(target -> {
                             NoteLink link = NoteLink.builder()
@@ -546,24 +549,24 @@ public class NoteService {
     }
 
     @Transactional
-    public boolean removeManualLink(Long sourceId, Long targetId, String username) {
-        return repo.findByIdAndOwnerUsername(sourceId, username).map(n -> {
+    public boolean removeManualLink(Long sourceId, Long targetId, Long userId) {
+        return repo.findByIdAndUserId(sourceId, userId).map(n -> {
             linkRepo.deleteBySourceNoteIdAndLinkedNoteId(sourceId, targetId);
             return true;
         }).orElse(false);
     }
 
-    public long countNotesForUser(String username) {
-        return repo.countByOwnerUsername(username);
+    public long countNotesForUser(Long userId) {
+        return repo.countByUserId(userId);
     }
 
     public List<NoteSuggestion> getNoteSuggestions(Long noteId) {
         return suggestionRepo.findByNoteIdOrderByCreatedAtDesc(noteId);
     }
 
-    public Optional<NoteCalendarLink> linkNoteToCalendar(Long noteId, String username, String calendarEventId,
+    public Optional<NoteCalendarLink> linkNoteToCalendar(Long noteId, Long userId, String calendarEventId,
             String calendarProvider) {
-        return repo.findByIdAndOwnerUsername(noteId, username)
+        return repo.findByIdAndUserId(noteId, userId)
                 .map(note -> {
                     NoteCalendarLink link = calendarLinkRepo
                             .findByNoteIdAndCalendarEventIdAndCalendarProvider(noteId, calendarEventId,
@@ -576,12 +579,12 @@ public class NoteService {
                 });
     }
 
-    public Mono<com.muse.notes.dto.AskQuestionResponse> askNotes(String username, String question) {
+    public Mono<com.muse.notes.dto.AskQuestionResponse> askNotes(Long userId, String question) {
         return embeddingService.getEmbedding(question)
                 .flatMap(embedding -> {
                     String embeddingString = Arrays.toString(embedding);
                     // Search for top 5 relevant notes
-                    List<Note> relevantNotes = repo.searchByEmbedding(username, embeddingString, 5);
+                    List<Note> relevantNotes = repo.searchByEmbedding(userId, embeddingString, 5);
 
                     StringBuilder contextBuilder = new StringBuilder();
                     contextBuilder.append(
@@ -636,15 +639,15 @@ public class NoteService {
         return sb.toString().trim();
     }
 
-    public List<NoteCalendarLink> getCalendarLinksForNote(Long noteId, String username) {
-        return repo.findByIdAndOwnerUsername(noteId, username)
+    public List<NoteCalendarLink> getCalendarLinksForNote(Long noteId, Long userId) {
+        return repo.findByIdAndUserId(noteId, userId)
                 .map(note -> calendarLinkRepo.findByNoteId(noteId))
                 .orElse(List.of());
     }
 
-    public boolean unlinkNoteFromCalendar(Long linkId, String username) {
+    public boolean unlinkNoteFromCalendar(Long linkId, Long userId) {
         return calendarLinkRepo.findById(linkId)
-                .filter(link -> link.getNote().getOwnerUsername().equals(username))
+                .filter(link -> link.getNote().getUserId().equals(userId))
                 .map(link -> {
                     calendarLinkRepo.delete(link);
                     return true;
@@ -652,8 +655,8 @@ public class NoteService {
                 .orElse(false);
     }
 
-    public List<Map<String, Object>> getBrokenLinks(String username) {
-        List<Note> notes = repo.findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(username);
+    public List<Map<String, Object>> getBrokenLinks(Long userId) {
+        List<Note> notes = repo.findByUserIdAndDeletedAtIsNullOrderByOrderIndexAsc(userId);
         List<Map<String, Object>> broken = new ArrayList<>();
 
         for (Note note : notes) {
@@ -663,7 +666,7 @@ public class NoteService {
 
             while (matcher.find()) {
                 String title = matcher.group(1).trim();
-                if (repo.findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(username, title).isEmpty()) {
+                if (repo.findByUserIdAndTitleIgnoreCaseAndDeletedAtIsNull(userId, title).isEmpty()) {
                     Map<String, Object> item = new HashMap<>();
                     item.put("sourceNoteId", note.getId());
                     item.put("sourceNoteTitle", note.getTitle());
@@ -679,9 +682,9 @@ public class NoteService {
         return repo.existsById(id);
     }
 
-    public Map<String, Object> getUserGraph(String username) {
-        List<Note> notes = repo.findByOwnerUsernameAndDeletedAtIsNullOrderByOrderIndexAsc(username);
-        List<NoteLink> links = linkRepo.findAllBySourceUser(username);
+    public Map<String, Object> getUserGraph(Long userId) {
+        List<Note> notes = repo.findByUserIdAndDeletedAtIsNullOrderByOrderIndexAsc(userId);
+        List<NoteLink> links = linkRepo.findAllBySourceUser(userId);
 
         Set<Long> validNoteIds = notes.stream().map(Note::getId).collect(Collectors.toSet());
 
@@ -712,9 +715,9 @@ public class NoteService {
 
     // ==================== Trash / Soft Delete ====================
 
-    @CacheEvict(value = "notes", key = "#id + '_' + #username")
-    public boolean moveToTrash(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username).map(note -> {
+    @CacheEvict(value = "notes", key = "#id + '_' + #userId")
+    public boolean moveToTrash(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId).map(note -> {
             note.setDeletedAt(Instant.now());
             repo.save(note);
             log.info("Moved note {} to trash", id);
@@ -722,9 +725,9 @@ public class NoteService {
         }).orElse(false);
     }
 
-    @CacheEvict(value = "notes", key = "#id + '_' + #username")
-    public boolean restoreFromTrash(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username).map(note -> {
+    @CacheEvict(value = "notes", key = "#id + '_' + #userId")
+    public boolean restoreFromTrash(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId).map(note -> {
             if (note.getDeletedAt() == null)
                 return false;
             note.setDeletedAt(null);
@@ -734,45 +737,46 @@ public class NoteService {
         }).orElse(false);
     }
 
-    public List<Note> getTrash(String username) {
-        return repo.findByOwnerUsernameAndDeletedAtIsNotNullOrderByDeletedAtDesc(username);
+    public List<Note> getTrash(Long userId) {
+        return repo.findByUserIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId);
     }
 
     @Transactional
-    public int emptyTrash(String username) {
-        List<Note> trashed = repo.findByOwnerUsernameAndDeletedAtIsNotNullOrderByDeletedAtDesc(username);
+    public int emptyTrash(Long userId) {
+        List<Note> trashed = repo.findByUserIdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userId);
         int count = 0;
         for (Note note : trashed) {
-            deleteNote(note.getId(), username); // Properly cleans up all related data
+            deleteNote(note.getId(), userId); // Properly cleans up all related data
             count++;
         }
-        log.info("Emptied trash for user {}: {} notes permanently deleted", username, count);
+        log.info("Emptied trash for user {}: {} notes permanently deleted", userId, count);
         return count;
     }
 
     // ==================== Tags ====================
 
-    public Optional<Note> updateTags(Long id, String username, String[] tags) {
-        return repo.findByIdAndOwnerUsername(id, username).map(note -> {
+    public Optional<Note> updateTags(Long id, Long userId, String[] tags) {
+        return repo.findByIdAndUserId(id, userId).map(note -> {
             note.setTags(tags);
             note.setUpdatedAt(Instant.now());
             return repo.save(note);
         });
     }
 
-    public List<Note> getNotesByTag(String username, String tag) {
-        return repo.findByOwnerUsernameAndTag(username, tag);
+    public List<Note> getNotesByTag(Long userId, String tag) {
+        return repo.findByUserIdAndTag(userId, tag);
     }
 
     // ==================== Duplicate ====================
 
-    public Optional<Note> duplicateNote(Long id, String username) {
-        return repo.findByIdAndOwnerUsername(id, username).map(original -> {
+    public Optional<Note> duplicateNote(Long id, Long userId) {
+        return repo.findByIdAndUserId(id, userId).map(original -> {
             Instant now = Instant.now();
             Note copy = new Note();
             copy.setTitle(original.getTitle() + " (Copy)");
             copy.setContent(original.getContent());
-            copy.setOwnerUsername(username);
+            copy.setUserId(userId);
+            copy.setOwnerUsername(original.getOwnerUsername());
             copy.setSection(original.getSection());
             copy.setExcerpt(original.getExcerpt());
             copy.setTags(original.getTags() != null ? original.getTags().clone() : null);
@@ -786,7 +790,7 @@ public class NoteService {
         });
     }
 
-    public Optional<Note> findByTitle(String username, String title) {
-        return repo.findByOwnerUsernameAndTitleIgnoreCaseAndDeletedAtIsNull(username, title);
+    public Optional<Note> findByTitle(Long userId, String title) {
+        return repo.findByUserIdAndTitleIgnoreCaseAndDeletedAtIsNull(userId, title);
     }
 }

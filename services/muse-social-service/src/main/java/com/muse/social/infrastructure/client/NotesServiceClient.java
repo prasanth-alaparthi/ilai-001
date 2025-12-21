@@ -105,6 +105,16 @@ public class NotesServiceClient {
      * @param sourceUserId   User sharing the note
      * @return true if successful
      */
+    /**
+     * Inject a shared note into a target folder.
+     * Creates a reference/link to the note in the target user's folder.
+     * 
+     * @param targetUserId   User receiving the share
+     * @param sourceNoteId   Note being shared
+     * @param targetFolderId Folder to inject into
+     * @param sourceUserId   User sharing the note
+     * @return true if successful
+     */
     @CircuitBreaker(name = "notesService", fallbackMethod = "injectNoteFallback")
     @Retry(name = "notesService")
     public boolean injectSharedNoteToFolder(Long targetUserId, Long sourceNoteId,
@@ -113,6 +123,7 @@ public class NotesServiceClient {
             webClient.post()
                     .uri("/api/notes/share/inject")
                     .header("X-User-Id", String.valueOf(targetUserId))
+                    .header("X-Internal-Token", internalServiceToken)
                     .bodyValue(Map.of(
                             "sourceNoteId", sourceNoteId,
                             "targetFolderId", targetFolderId,
@@ -138,14 +149,14 @@ public class NotesServiceClient {
      * Inject a shared note into a target folder via internal API.
      * Part of the "Bounty-to-Folder" solve logic.
      * 
-     * @param recipientId    User receiving the note
-     * @param noteId         Note being shared
-     * @param folderName     Parent folder or sub-folder name
-     * @param senderUsername Username of the person sharing
+     * @param recipientId User receiving the note
+     * @param noteId      Note being shared
+     * @param folderName  Parent folder or sub-folder name
+     * @param senderId    ID of the person sharing
      */
-    public Mono<Void> injectSharedNote(Long recipientId, Long noteId, String folderName, String senderUsername) {
-        log.info("Requesting internal D2F injection for user {}'s note {} into recipient {}'s folder '{}'",
-                senderUsername, noteId, recipientId, folderName);
+    public Mono<Void> injectSharedNote(Long recipientId, Long noteId, String folderName, Long senderId) {
+        log.info("Requesting internal D2F injection for sender {}'s note {} into recipient {}'s folder '{}'",
+                senderId, noteId, recipientId, folderName);
 
         return webClient.post()
                 .uri("/api/internal/organize-shared")
@@ -154,7 +165,7 @@ public class NotesServiceClient {
                         "recipientId", recipientId,
                         "noteId", noteId,
                         "folderName", folderName,
-                        "senderUsername", senderUsername,
+                        "senderId", senderId,
                         "metadata", Map.of("trigger", "bounty_solve", "at", Instant.now().toString())))
                 .retrieve()
                 .bodyToMono(Void.class)
@@ -216,6 +227,7 @@ public class NotesServiceClient {
             webClient.post()
                     .uri("/api/notes/{noteId}/link", sourceNoteId)
                     .header("X-User-Id", String.valueOf(userId))
+                    .header("X-Internal-Token", internalServiceToken)
                     .bodyValue(Map.of(
                             "linkedNoteId", targetNoteId,
                             "linkType", linkType,
@@ -251,6 +263,7 @@ public class NotesServiceClient {
         return webClient.post()
                 .uri("/api/notes/{noteId}/organize", noteId)
                 .header("X-User-Id", String.valueOf(userId))
+                .header("X-Internal-Token", internalServiceToken)
                 .bodyValue(Map.of(
                         "folderName", folderName,
                         "createIfNotExists", true))
@@ -272,6 +285,7 @@ public class NotesServiceClient {
             return webClient.get()
                     .uri("/api/notes/{noteId}/metadata", noteId)
                     .header("X-User-Id", String.valueOf(userId))
+                    .header("X-Internal-Token", internalServiceToken)
                     .retrieve()
                     .bodyToMono(Map.class)
                     .timeout(timeout)

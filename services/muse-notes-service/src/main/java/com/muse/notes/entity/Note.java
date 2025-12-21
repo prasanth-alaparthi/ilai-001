@@ -30,6 +30,9 @@ public class Note implements Serializable {
     @Column(columnDefinition = "jsonb")
     private JsonNode content;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "owner_username", nullable = false)
     private String ownerUsername;
 

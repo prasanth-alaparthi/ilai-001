@@ -3,6 +3,7 @@
  * All backend communication in one place
  */
 import apiClient from '../services/apiClient';
+import { devLog } from '../utils/devLog';
 
 // Helper to normalize paginated responses to arrays
 const normalizeArray = (data) => {
@@ -106,9 +107,9 @@ export const notesApi = {
     },
 
     updateNote: async (noteId, title, content) => {
-        console.log('[API] updateNote called:', noteId, title, 'content length:', JSON.stringify(content)?.length);
+        devLog('[API] updateNote called:', noteId, title, 'content length:', JSON.stringify(content)?.length);
         const response = await apiClient.put(`/notes/${noteId}`, { title, content });
-        console.log('[API] updateNote response:', response.data?.id, response.data?.updatedAt);
+        devLog('[API] updateNote response:', response.data?.id, response.data?.updatedAt);
         return response.data;
     },
 

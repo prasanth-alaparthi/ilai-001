@@ -1,6 +1,6 @@
-package com.muse.social.bounty.dto;
+package com.muse.social.domain.bounty.dto;
 
-import com.muse.social.bounty.entity.Bounty;
+import com.muse.social.domain.bounty.entity.Bounty;
 import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;

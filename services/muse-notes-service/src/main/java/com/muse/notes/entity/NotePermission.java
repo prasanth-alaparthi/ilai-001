@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "note_permissions", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"note_id", "username"})
+        @UniqueConstraint(columnNames = { "note_id", "user_id" })
 })
 @Data
 @Builder
@@ -24,8 +24,11 @@ public class NotePermission {
     @JoinColumn(name = "note_id", nullable = false)
     private Note note;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(nullable = false)
-    private String username; // The user who the note is shared with
+    private String username; // Legacy/Display
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

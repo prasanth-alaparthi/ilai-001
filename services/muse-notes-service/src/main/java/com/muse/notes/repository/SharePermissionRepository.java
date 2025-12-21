@@ -11,40 +11,64 @@ import java.util.Optional;
 
 public interface SharePermissionRepository extends JpaRepository<SharePermission, Long> {
 
-    // Find all shares by owner
-    List<SharePermission> findByOwnerUsername(String ownerUsername);
+        // Find all shares by owner
+        List<SharePermission> findByOwnerId(Long ownerId);
 
-    // Find all shares with a user (shared with me)
-    List<SharePermission> findBySharedWithUsername(String sharedWithUsername);
+        List<SharePermission> findByOwnerUsername(String ownerUsername);
 
-    // Find all shares for a specific resource
-    List<SharePermission> findByResourceTypeAndResourceId(ResourceType resourceType, Long resourceId);
+        // Find all shares with a user (shared with me)
+        List<SharePermission> findBySharedWithId(Long sharedWithId);
 
-    // Find specific share
-    Optional<SharePermission> findByResourceTypeAndResourceIdAndSharedWithUsername(
-            ResourceType resourceType, Long resourceId, String sharedWithUsername);
+        List<SharePermission> findBySharedWithUsername(String sharedWithUsername);
 
-    // Find if user has access to a resource
-    @Query("SELECT sp FROM SharePermission sp WHERE sp.resourceType = :type AND sp.resourceId = :id " +
-            "AND (sp.ownerUsername = :username OR sp.sharedWithUsername = :username)")
-    Optional<SharePermission> findUserAccess(
-            @Param("type") ResourceType type,
-            @Param("id") Long id,
-            @Param("username") String username);
+        // Find all shares for a specific resource
+        List<SharePermission> findByResourceTypeAndResourceId(ResourceType resourceType, Long resourceId);
 
-    // Get all notebooks shared with a user
-    @Query("SELECT sp FROM SharePermission sp WHERE sp.sharedWithUsername = :username " +
-            "AND sp.resourceType = 'NOTEBOOK' AND sp.accepted = true")
-    List<SharePermission> findSharedNotebooks(@Param("username") String username);
+        // Find specific share
+        Optional<SharePermission> findByResourceTypeAndResourceIdAndSharedWithId(
+                        ResourceType resourceType, Long resourceId, Long sharedWithId);
 
-    // Get all notes shared with a user
-    @Query("SELECT sp FROM SharePermission sp WHERE sp.sharedWithUsername = :username " +
-            "AND sp.resourceType = 'NOTE' AND sp.accepted = true")
-    List<SharePermission> findSharedNotes(@Param("username") String username);
+        Optional<SharePermission> findByResourceTypeAndResourceIdAndSharedWithUsername(
+                        ResourceType resourceType, Long resourceId, String sharedWithUsername);
 
-    // Delete all shares for a resource
-    void deleteByResourceTypeAndResourceId(ResourceType resourceType, Long resourceId);
+        // Find if user has access to a resource
+        @Query("SELECT sp FROM SharePermission sp WHERE sp.resourceType = :type AND sp.resourceId = :id " +
+                        "AND (sp.ownerId = :userId OR sp.sharedWithId = :userId)")
+        Optional<SharePermission> findUserAccessById(
+                        @Param("type") ResourceType type,
+                        @Param("id") Long id,
+                        @Param("userId") Long userId);
 
-    // Count pending share invitations
-    long countBySharedWithUsernameAndAcceptedFalse(String username);
+        @Query("SELECT sp FROM SharePermission sp WHERE sp.resourceType = :type AND sp.resourceId = :id " +
+                        "AND (sp.ownerUsername = :username OR sp.sharedWithUsername = :username)")
+        Optional<SharePermission> findUserAccess(
+                        @Param("type") ResourceType type,
+                        @Param("id") Long id,
+                        @Param("username") String username);
+
+        // Get all notebooks shared with a user
+        @Query("SELECT sp FROM SharePermission sp WHERE sp.sharedWithId = :userId " +
+                        "AND sp.resourceType = 'NOTEBOOK' AND sp.accepted = true")
+        List<SharePermission> findSharedNotebooksByUserId(@Param("userId") Long userId);
+
+        @Query("SELECT sp FROM SharePermission sp WHERE sp.sharedWithUsername = :username " +
+                        "AND sp.resourceType = 'NOTEBOOK' AND sp.accepted = true")
+        List<SharePermission> findSharedNotebooks(@Param("username") String username);
+
+        // Get all notes shared with a user
+        @Query("SELECT sp FROM SharePermission sp WHERE sp.sharedWithId = :userId " +
+                        "AND sp.resourceType = 'NOTE' AND sp.accepted = true")
+        List<SharePermission> findSharedNotesByUserId(@Param("userId") Long userId);
+
+        @Query("SELECT sp FROM SharePermission sp WHERE sp.sharedWithUsername = :username " +
+                        "AND sp.resourceType = 'NOTE' AND sp.accepted = true")
+        List<SharePermission> findSharedNotes(@Param("username") String username);
+
+        // Delete all shares for a resource
+        void deleteByResourceTypeAndResourceId(ResourceType resourceType, Long resourceId);
+
+        // Count pending share invitations
+        long countBySharedWithIdAndAcceptedFalse(Long userId);
+
+        long countBySharedWithUsernameAndAcceptedFalse(String username);
 }

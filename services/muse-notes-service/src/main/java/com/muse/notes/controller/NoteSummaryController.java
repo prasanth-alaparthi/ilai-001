@@ -31,11 +31,12 @@ public class NoteSummaryController extends BaseController {
     @GetMapping("/{id}/summary")
     public ResponseEntity<?> getSummary(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        Optional<Note> n = noteRepo.findByIdAndOwnerUsername(id, username);
+        Optional<Note> n = noteRepo.findByIdAndUserId(id, userId);
         if (n.isEmpty())
             return ResponseEntity.notFound().build();
 
@@ -71,11 +72,12 @@ public class NoteSummaryController extends BaseController {
     @PostMapping("/{id}/summary/regenerate")
     public ResponseEntity<?> regenerateSummary(@PathVariable Long id, Authentication auth) {
         String username = currentUsername(auth);
-        if (username == null) {
+        Long userId = currentUserId(auth);
+        if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
         }
 
-        Optional<Note> n = noteRepo.findByIdAndOwnerUsername(id, username);
+        Optional<Note> n = noteRepo.findByIdAndUserId(id, userId);
         if (n.isEmpty())
             return ResponseEntity.notFound().build();
 
