@@ -8,26 +8,25 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * NotebookDTO - Data Transfer Object for Notebook entity.
+ * SectionDTO - Data Transfer Object for Section (Chapter) entity.
  * Used for inter-service communication.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class NotebookDTO {
+public class SectionDTO {
 
     private Long id;
-    private Long userId;
+    private Long notebookId;
     private String name;
     private String description;
-    private String color;
-    private Integer sectionCount;
+    private Integer position;
     private Integer noteCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     // Optional metadata
-    private Boolean isFavorite;
-    private Boolean isArchived;
+    private String notebookName;
+    private String color;
 }

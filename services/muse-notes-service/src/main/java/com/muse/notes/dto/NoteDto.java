@@ -1,17 +1,36 @@
 package com.muse.notes.dto;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import java.time.Instant;
+import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
+/**
+ * NoteDTO - Data Transfer Object for Note entity.
+ * Used for inter-service communication with Social Service.
+ */
 @Data
-public class NoteDto {
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class NoteDTO {
+
     private Long id;
+    private Long userId;
+    private Long sectionId;
     private String title;
-    private JsonNode content;
-    private Long authorId;
-    private String authorName;
-    private String excerpt;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private Object content; // JSON content
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime lastModified;
+
+    // Optional metadata
+    private Long notebookId;
+    private String notebookName;
+    private String sectionName;
+    private Boolean isShared;
+    private Boolean isFavorite;
+    private String[] tags;
 }

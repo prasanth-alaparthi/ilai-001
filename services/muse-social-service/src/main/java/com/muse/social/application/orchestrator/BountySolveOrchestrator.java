@@ -7,11 +7,13 @@ import com.muse.social.infrastructure.client.NotesServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * BountySolveOrchestrator - The Production Bridge.
@@ -34,8 +36,11 @@ public class BountySolveOrchestrator {
 
         /**
          * Orchestrate the bounty solve with tier verification and compensation logic.
+         * Executes asynchronously to prevent blocking thread pool.
          */
-        public void orchestrateSolve(Bounty bounty, Long solverId, Long creatorId, Long solutionNoteId,
+        @Async
+        public CompletableFuture<Void> orchestrateSolve(Bounty bounty, Long solverId, Long creatorId,
+                        Long solutionNoteId,
                         int rewardPoints) {
                 log.info("Orchestrating bounty solve for '{}' (ID: {})", bounty.getTitle(), bounty.getId());
 
@@ -61,35 +66,44 @@ public class BountySolveOrchestrator {
                         String solverUsername = authClient.getDisplayName(solverId);
                         String folderPath = "Shared Notes/From " + solverUsername;
 
-                        // Step 4: Inject note with retry and compensation
-                        Mono<Void> injectionMono = notesClient.injectSharedNote(
-                                        creatorId, solutionNoteId, folderPath, solverUsername)
+                        // Step 4: Inject note with retry and compensation (non-blocking)
+                        CompletableFuture<Void> future = new CompletableFuture<>();
+
+                        notesClient.injectSharedNote(creatorId, solutionNoteId, folderPath, solverUsername)
                                         .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
                                                         .maxBackoff(Duration.ofSeconds(10))
                                                         .doBeforeRetry(signal -> log.warn(
                                                                         "Retrying note injection (attempt {}): {}",
                                                                         signal.totalRetries() + 1,
                                                                         signal.failure().getMessage())))
-                                        .doOnError(error -> {
-                                                log.error("Note injection failed after retries, initiating compensation",
-                                                                error);
-                                                compensateFailedInjection(solverId, rewardPoints, bounty);
-                                        })
-                                        .doOnSuccess(v -> log.info(
-                                                        "Successfully injected solution note {} into creator {}'s folder",
-                                                        solutionNoteId, creatorId));
+                                        .subscribe(
+                                                        v -> {
+                                                                log.info("Successfully injected solution note {} into creator {}'s folder",
+                                                                                solutionNoteId, creatorId);
+                                                                log.info("Bounty solve orchestration complete for bounty {}",
+                                                                                bounty.getId());
+                                                                future.complete(null);
+                                                        },
+                                                        error -> {
+                                                                log.error("Note injection failed after retries, initiating compensation",
+                                                                                error);
+                                                                compensateFailedInjection(solverId, rewardPoints,
+                                                                                bounty);
+                                                                future.completeExceptionally(
+                                                                                new OrchestrationException(
+                                                                                                "Failed to orchestrate bounty solve",
+                                                                                                error));
+                                                        });
 
-                        // Block with timeout (10 seconds)
-                        injectionMono.block(Duration.ofSeconds(10));
-
-                        log.info("Bounty solve orchestration complete for bounty {}", bounty.getId());
+                        return future;
 
                 } catch (InsufficientTierException e) {
                         log.warn("Tier verification failed for solver {}: {}", solverId, e.getMessage());
-                        throw e;
+                        return CompletableFuture.failedFuture(e);
                 } catch (Exception e) {
                         log.error("Orchestration failed for bounty {}", bounty.getId(), e);
-                        throw new OrchestrationException("Failed to orchestrate bounty solve", e);
+                        return CompletableFuture.failedFuture(
+                                        new OrchestrationException("Failed to orchestrate bounty solve", e));
                 }
         }
 
