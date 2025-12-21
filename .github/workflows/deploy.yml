@@ -281,6 +281,7 @@ jobs:
   # Build Agentic RAG Service (Python)
   # ========================================
   build-agentic-rag:
+    if: false  # DISABLED: Takes 30+ minutes, optional service
     runs-on: ubuntu-latest
     permissions:
       contents: read
