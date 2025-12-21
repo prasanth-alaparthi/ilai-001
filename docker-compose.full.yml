@@ -411,61 +411,6 @@ services:
       retries: 5
       start_period: 30s
 
-  # --- Labs Compute Engine (Python) ---
-  muse-compute-engine:
-    image: ghcr.io/prasanth-alaparthi/ilai-labs:latest
-    container_name: muse-compute-engine
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-Prasanth}@postgres:5432/muse_labs
-      REDIS_URL: redis://redis:6379/0
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      INTERNAL_API_SECRET: ilai-internal-2024
-    ports:
-      - "8000:8000"
-    networks:
-      - muse-network
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  # --- Agentic RAG Service (Python) ---
-  muse-agentic-rag:
-    image: ghcr.io/prasanth-alaparthi/ilai-rag:latest
-    container_name: muse-agentic-rag
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-Prasanth}@postgres:5432/muse_rag
-      REDIS_URL: redis://redis:6379/0
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
-      COMPUTE_ENGINE_URL: http://muse-compute-engine:8000
-    ports:
-      - "8001:8001"
-    networks:
-      - muse-network
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
 networks:
   muse-network:
     driver: bridge
@@ -474,4 +419,5 @@ volumes:
   postgres_data:
   redis_data:
   keycloak_data:
+
 
