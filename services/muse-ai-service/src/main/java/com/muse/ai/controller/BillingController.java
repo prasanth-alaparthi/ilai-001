@@ -6,6 +6,7 @@ import com.muse.ai.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -89,19 +90,19 @@ public class BillingController {
     // ============ ADMIN ENDPOINTS ============
 
     @GetMapping("/admin/pending")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_admin')")
     public ResponseEntity<Page<PaymentRequest>> getPendingPayments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        // TODO: Add admin role check
         return ResponseEntity.ok(subscriptionService.getPendingPayments(page, size));
     }
 
     @PostMapping("/admin/approve/{paymentId}")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_admin')")
     public ResponseEntity<?> approvePayment(
             @PathVariable UUID paymentId,
             @AuthenticationPrincipal Jwt jwt) {
         Long adminId = Long.parseLong(jwt.getSubject());
-        // TODO: Add admin role check
         try {
             subscriptionService.approvePayment(paymentId, adminId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Payment approved"));
@@ -111,13 +112,13 @@ public class BillingController {
     }
 
     @PostMapping("/admin/reject/{paymentId}")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_admin')")
     public ResponseEntity<?> rejectPayment(
             @PathVariable UUID paymentId,
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody Map<String, String> body) {
         Long adminId = Long.parseLong(jwt.getSubject());
         String reason = body.getOrDefault("reason", "Payment verification failed");
-        // TODO: Add admin role check
         try {
             subscriptionService.rejectPayment(paymentId, adminId, reason);
             return ResponseEntity.ok(Map.of("success", true, "message", "Payment rejected"));

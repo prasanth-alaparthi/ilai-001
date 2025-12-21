@@ -131,6 +131,14 @@ public class ReputationService {
         reputationRepo.save(rep);
     }
 
+    @Transactional
+    public void decrementBountiesSolved(Long userId) {
+        UserReputation rep = getOrCreateReputation(userId);
+        int current = rep.getBountiesSolved();
+        rep.setBountiesSolved(Math.max(0, current - 1));
+        reputationRepo.save(rep);
+    }
+
     public List<UserReputation> getLeaderboard(int limit) {
         return reputationRepo.findTopUsers(PageRequest.of(0, limit));
     }

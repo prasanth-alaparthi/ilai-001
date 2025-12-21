@@ -35,16 +35,19 @@ public class NotesServiceClient {
 
     private final WebClient webClient;
     private final Duration timeout;
+    private final String internalServiceToken;
 
     public NotesServiceClient(
             WebClient.Builder webClientBuilder,
             @Value("${services.notes.url:http://muse-notes-service:8082}") String notesServiceUrl,
-            @Value("${services.notes.timeout:5000}") long timeoutMs) {
+            @Value("${services.notes.timeout:5000}") long timeoutMs,
+            @Value("${internal.service.token:CHANGE_ME_IN_PRODUCTION}") String internalServiceToken) {
         this.webClient = webClientBuilder
                 .baseUrl(notesServiceUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.timeout = Duration.ofMillis(timeoutMs);
+        this.internalServiceToken = internalServiceToken;
     }
 
     // ==================== D2F (Direct-to-Folder) Methods ====================
@@ -64,6 +67,7 @@ public class NotesServiceClient {
             Map<String, Object> response = webClient.post()
                     .uri("/api/notebooks/folders/find-or-create")
                     .header("X-User-Id", String.valueOf(userId))
+                    .header("X-Internal-Token", internalServiceToken)
                     .bodyValue(Map.of(
                             "name", folderName,
                             "parentId", parentFolderId != null ? parentFolderId : 0,
@@ -145,7 +149,7 @@ public class NotesServiceClient {
 
         return webClient.post()
                 .uri("/api/internal/organize-shared")
-                .header("X-Internal-Secret", "AI_PLATFORM_SECRET") // Example internal auth
+                .header("X-Internal-Token", internalServiceToken)
                 .bodyValue(Map.of(
                         "recipientId", recipientId,
                         "noteId", noteId,
@@ -177,6 +181,7 @@ public class NotesServiceClient {
             Map<String, Object> response = webClient.get()
                     .uri("/api/notes/{noteId}", noteId)
                     .header("X-User-Id", String.valueOf(userId))
+                    .header("X-Internal-Token", internalServiceToken)
                     .retrieve()
                     .bodyToMono(Map.class)
                     .timeout(timeout)

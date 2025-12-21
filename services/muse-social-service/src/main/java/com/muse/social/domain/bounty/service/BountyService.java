@@ -9,7 +9,7 @@ import com.muse.social.domain.reputation.service.ReputationService;
 import com.muse.social.application.orchestrator.NoteShareOrchestrator;
 import com.muse.social.application.orchestrator.BountySolveOrchestrator;
 import com.muse.social.infrastructure.client.NotesServiceClient;
-import com.muse.social.infrastructure.service.FeatureFlagService;
+import com.muse.social.billing.service.FeatureFlagService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

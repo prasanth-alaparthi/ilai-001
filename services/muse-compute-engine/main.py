@@ -7,6 +7,14 @@ from contextlib import asynccontextmanager
 import sympy as sp
 import traceback
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Internal API Secret for gateway verification
 INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "ilai-internal-2024")
@@ -21,7 +29,7 @@ try:
     DB_AVAILABLE = True
     JAIL_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Some modules not available: {e}")
+    logger.warning(f"Some modules not available: {e}")
     DB_AVAILABLE = False
     DOCKER_AVAILABLE = False
     JAIL_AVAILABLE = False
@@ -34,9 +42,9 @@ async def lifespan(app: FastAPI):
     if DB_AVAILABLE:
         try:
             await init_schema()
-            print("✓ Database schema initialized")
+            logger.info("Database schema initialized successfully")
         except Exception as e:
-            print(f"✗ Database init failed: {e}")
+            logger.error(f"Database initialization failed: {e}")
     yield
     # Shutdown
     if DB_AVAILABLE:
@@ -103,9 +111,15 @@ async def jail_check_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+# CORS Configuration
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "https://ilai.co.in,https://www.ilai.co.in,http://localhost:5173"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

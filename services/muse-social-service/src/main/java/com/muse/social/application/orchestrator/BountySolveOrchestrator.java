@@ -6,15 +6,21 @@ import com.muse.social.infrastructure.client.AuthServiceClient;
 import com.muse.social.infrastructure.client.NotesServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+import java.time.Duration;
 
 /**
- * BountySolveOrchestrator - The Bridge.
+ * BountySolveOrchestrator - The Production Bridge.
  * 
- * Handles the logic when a bounty is SOLVED:
- * 1. Award +50 points to solver.
- * 2. Fetch solver's username from auth-service.
- * 3. Trigger D2F injection of solution note into creator's folder.
+ * Handles bounty solve with:
+ * 1. Redis tier verification
+ * 2. Reputation point awarding
+ * 3. WebClient retry logic for note injection
+ * 4. Compensation (rollback) if injection fails
  */
 @Service
 @RequiredArgsConstructor
@@ -24,45 +30,116 @@ public class BountySolveOrchestrator {
         private final ReputationService reputationService;
         private final AuthServiceClient authClient;
         private final NotesServiceClient notesClient;
+        private final StringRedisTemplate redisTemplate;
 
         /**
-         * Orchestrate the bounty solve logic.
-         * 
-         * @param bounty         The solved bounty
-         * @param solverId       ID of the solver
-         * @param creatorId      ID of the bounty creator
-         * @param solutionNoteId ID of the solution note
+         * Orchestrate the bounty solve with tier verification and compensation logic.
          */
         public void orchestrateSolve(Bounty bounty, Long solverId, Long creatorId, Long solutionNoteId,
                         int rewardPoints) {
-                log.info("Orchestrating solve for bounty '{}' (ID: {})", bounty.getTitle(), bounty.getId());
+                log.info("Orchestrating bounty solve for '{}' (ID: {})", bounty.getTitle(), bounty.getId());
 
-                // 1. Reputation: Award points to the solver
-                reputationService.addPoints(
-                                solverId,
-                                rewardPoints,
-                                "Solved bounty: " + bounty.getTitle(),
-                                "bounty_solve",
-                                bounty.getId());
+                try {
+                        // Step 1: Verify solver tier (must be General or higher)
+                        String solverTier = getTierFromRedis(solverId);
+                        if ("free".equalsIgnoreCase(solverTier)) {
+                                throw new InsufficientTierException("Bounty solving requires General tier (₹199+)");
+                        }
+                        log.debug("Solver {} tier verified: {}", solverId, solverTier);
 
-                reputationService.incrementBountiesSolved(solverId);
+                        // Step 2: Award reputation points
+                        reputationService.addPoints(
+                                        solverId,
+                                        rewardPoints,
+                                        "Solved bounty: " + bounty.getTitle(),
+                                        "bounty_solve",
+                                        bounty.getId());
+                        reputationService.incrementBountiesSolved(solverId);
+                        log.info("Awarded {} points to solver {}", rewardPoints, solverId);
 
-                // 2. Auth Check: Fetch the solver's username
-                String solverUsername = authClient.getDisplayName(solverId); // Assuming display name is used as
-                                                                             // identifier here
+                        // Step 3: Fetch solver's display name
+                        String solverUsername = authClient.getDisplayName(solverId);
+                        String folderPath = "Shared Notes/From " + solverUsername;
 
-                // 3. The Bridge: Trigger D2F injection
-                // Folder Rule: Shared Notes / From [SolverUsername]
-                String folderPath = "Shared Notes/From " + solverUsername;
+                        // Step 4: Inject note with retry and compensation
+                        Mono<Void> injectionMono = notesClient.injectSharedNote(
+                                        creatorId, solutionNoteId, folderPath, solverUsername)
+                                        .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
+                                                        .maxBackoff(Duration.ofSeconds(10))
+                                                        .doBeforeRetry(signal -> log.warn(
+                                                                        "Retrying note injection (attempt {}): {}",
+                                                                        signal.totalRetries() + 1,
+                                                                        signal.failure().getMessage())))
+                                        .doOnError(error -> {
+                                                log.error("Note injection failed after retries, initiating compensation",
+                                                                error);
+                                                compensateFailedInjection(solverId, rewardPoints, bounty);
+                                        })
+                                        .doOnSuccess(v -> log.info(
+                                                        "Successfully injected solution note {} into creator {}'s folder",
+                                                        solutionNoteId, creatorId));
 
-                notesClient.injectSharedNote(creatorId, solutionNoteId, folderPath, solverUsername)
-                                .subscribe(
-                                                success -> log.info(
-                                                                "Successfully linked solution note {} to creator {}'s folder",
-                                                                solutionNoteId, creatorId),
-                                                error -> log.error("Failed to link solution note to creator folder: {}",
-                                                                error.getMessage()));
+                        // Block with timeout (10 seconds)
+                        injectionMono.block(Duration.ofSeconds(10));
 
-                log.info("Bounty solve orchestration complete for bounty {}", bounty.getId());
+                        log.info("Bounty solve orchestration complete for bounty {}", bounty.getId());
+
+                } catch (InsufficientTierException e) {
+                        log.warn("Tier verification failed for solver {}: {}", solverId, e.getMessage());
+                        throw e;
+                } catch (Exception e) {
+                        log.error("Orchestration failed for bounty {}", bounty.getId(), e);
+                        throw new OrchestrationException("Failed to orchestrate bounty solve", e);
+                }
+        }
+
+        /**
+         * Get user tier from Redis with <3ms performance.
+         */
+        private String getTierFromRedis(Long userId) {
+                try {
+                        String tier = redisTemplate.opsForValue().get("user:" + userId + ":tier");
+                        return tier != null ? tier : "free";
+                } catch (Exception e) {
+                        log.warn("Redis tier lookup failed for user {}, defaulting to 'free'", userId, e);
+                        return "free";
+                }
+        }
+
+        /**
+         * Compensation logic: Rollback reputation points if note injection fails.
+         */
+        private void compensateFailedInjection(Long solverId, int rewardPoints, Bounty bounty) {
+                try {
+                        reputationService.addPoints(
+                                        solverId,
+                                        -rewardPoints,
+                                        "Rollback: Failed note injection for bounty " + bounty.getTitle(),
+                                        "bounty_solve_rollback",
+                                        bounty.getId());
+                        reputationService.decrementBountiesSolved(solverId);
+                        log.info("Compensation complete: Rolled back {} points from solver {}", rewardPoints, solverId);
+                } catch (Exception e) {
+                        log.error("CRITICAL: Compensation failed for solver {}. Manual intervention required.",
+                                        solverId, e);
+                }
+        }
+
+        /**
+         * Exception thrown when user tier is insufficient.
+         */
+        public static class InsufficientTierException extends RuntimeException {
+                public InsufficientTierException(String message) {
+                        super(message);
+                }
+        }
+
+        /**
+         * Exception thrown when orchestration fails.
+         */
+        public static class OrchestrationException extends RuntimeException {
+                public OrchestrationException(String message, Throwable cause) {
+                        super(message, cause);
+                }
         }
 }
