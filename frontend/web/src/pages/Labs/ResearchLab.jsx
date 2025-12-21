@@ -239,7 +239,9 @@ const ResearchLab = () => {
     const [violationInfo, setViolationInfo] = useState(null);
 
     // Get variables as simple object for calculations
-    const variables = getVariablesForCalc();
+    // CRITICAL: Must be an object {}, not an array []
+    const rawVariables = getVariablesForCalc();
+    const variables = Array.isArray(rawVariables) ? {} : (rawVariables || {});
 
     // Check if expression needs Pro solver
     const needsProSolver = (expr) => {
