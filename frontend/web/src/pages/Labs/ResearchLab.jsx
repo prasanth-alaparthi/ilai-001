@@ -24,8 +24,8 @@ import { notesService } from '../../services/notesService';
 import { useVariableSync } from '../../hooks/useVariableSync';
 import { useUser } from '../../state/UserContext';
 import CoolingOffModal from '../../components/CoolingOffModal';
-import Visualizer from '../../components/Labs/Visualizer';
-import MoleculeViewer from '../../components/Labs/MoleculeViewer';
+import Visualizer from '../../components/labs/Visualizer';
+import MoleculeViewer from '../../components/labs/MoleculeViewer';
 
 // Math.js configuration
 const math = create(all);
