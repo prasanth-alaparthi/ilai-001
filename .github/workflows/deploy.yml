@@ -329,7 +329,7 @@ jobs:
   # ========================================
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-frontend, build-auth, build-notes, build-social, build-ai, build-labs, build-agentic-rag]
+    needs: [build-frontend, build-auth, build-notes, build-social, build-ai, build-labs]
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
