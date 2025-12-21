@@ -1,4 +1,4 @@
-import create from 'zustand';
+import { create } from 'zustand';
 
 /**
  * Sidebar Store - Single source of truth for sidebar state
