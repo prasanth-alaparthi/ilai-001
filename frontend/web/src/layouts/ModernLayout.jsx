@@ -26,7 +26,8 @@ import {
     Sun,
     Moon,
     User,
-    Sparkles
+    Sparkles,
+    Trophy
 } from 'lucide-react';
 import TextSelectionPopup from '../components/TextSelectionPopup';
 
@@ -40,6 +41,7 @@ const Navigation = ({ isMobileOpen, setIsMobileOpen }) => {
         { icon: Home, label: 'Home', path: '/home' },
         { icon: PenTool, label: 'Notes', path: '/notes' },
         { icon: Sparkles, label: 'NeuroFeed', path: '/social' },
+        { icon: Trophy, label: 'Bounties', path: '/bounties' },
         { icon: User, label: 'Profile', path: '/social/profile' },
         { icon: Users, label: 'Groups', path: '/groups' },
         { icon: BookOpen, label: 'Journal', path: '/journal' },

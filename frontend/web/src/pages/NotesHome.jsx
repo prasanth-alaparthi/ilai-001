@@ -26,6 +26,8 @@ import AIToolsPanel from "../components/AIToolsPanel";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import SectionTree from "../components/notes/SectionTree";
 import TagsInput from "../components/notes/TagsInput";
+import Sidebar from "../components/notes/Sidebar";
+import { useSidebarSync } from "../hooks/useSidebarSync"; // Still used for top-level if needed, but Sidebar has its own
 
 const getDisplayTitle = (note, isPlaceholder = false) => {
   if (note.title && note.title.trim() !== "" && note.title !== "Untitled Note") {
@@ -131,13 +133,13 @@ export default function NotesHome() {
     });
   };
 
-  useEffect(() => { loadNotebooks(); }, []);
+  useEffect(() => { fetchNotebooks(); }, []);
 
   useEffect(() => {
     const restoreState = async () => {
       // Ensure notebooks are loaded first if not already
       if (notebooks.length === 0) {
-        await loadNotebooks();
+        await fetchNotebooks();
       }
 
       const notebookId = searchParams.get("notebook");
@@ -181,7 +183,7 @@ export default function NotesHome() {
     restoreState();
   }, [searchParams]); // Re-run if searchParams change (though on mount is primary target)
 
-  const loadNotebooks = async () => {
+  const fetchNotebooks = async () => {
     try {
       setError(null);
       const data = await notesService.listNotebooks();
@@ -208,7 +210,7 @@ export default function NotesHome() {
           const work = await notesService.createNotebook("Work", "#ef4444");
           await notesService.createChapter(work.id, "Projects");
 
-          await loadNotebooks();
+          await fetchNotebooks();
           showAlert("Success", "Mock data created!");
         } catch (err) {
           showAlert("Error", "Failed to seed data: " + (err.response?.data?.message || err.message));
@@ -556,118 +558,30 @@ export default function NotesHome() {
         )}
       </AnimatePresence>
 
-      {/* --- Sidebar --- */}
-      <motion.div
-        initial={false}
-        animate={{
-          width: sidebarOpen ? (isMobile ? 280 : 300) : 0,
-          opacity: sidebarOpen ? 1 : 0,
-          x: sidebarOpen ? 0 : (isMobile ? -280 : -20)
-        }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className={`h-full border-r border-black/5 dark:border-white/10 bg-white/90 dark:bg-surface/95 backdrop-blur-xl flex-shrink-0 flex flex-col overflow-hidden ${isMobile ? 'fixed left-0 top-0 z-50 shadow-2xl' : 'relative'
-          }`}
-      >
-        <div className="p-5 space-y-5 border-b border-black/5 dark:border-white/10">
-          {/* Search */}
-          <form onSubmit={handleSearch} className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary w-4 h-4 group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent-glow/50 transition-all placeholder:text-secondary/50"
-            />
-          </form>
-
-          {/* Notebooks Header */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-secondary">Notebooks</h2>
-            <div className="flex items-center gap-1">
-              <button onClick={handleSeedData} className="p-1.5 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors" title="Seed Data"><Database size={14} /></button>
-              <button onClick={() => setShowCreateNotebook(true)} className="p-1.5 text-secondary hover:text-primary hover:bg-white/10 rounded-lg transition-colors" title="New Notebook"><Plus size={16} /></button>
-            </div>
-          </div>
-        </div>
-
-        {/* Notebook List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {error && <div className="text-red-400 text-xs px-2 py-1 bg-red-500/10 rounded-lg mb-2">{error}</div>}
-          {notebooks.map(notebook => (
-            <div key={notebook.id} className="space-y-1">
-              <button
-                onClick={() => toggleNotebook(notebook.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors group ${expandedNotebook === notebook.id ? 'bg-white/5 text-primary' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
-              >
-                <span className="text-opacity-80 transition-colors" style={{ color: notebook.color }}>
-                  <Folder size={16} fill={expandedNotebook === notebook.id ? "currentColor" : "none"} />
-                </span>
-                <span className="flex-1 text-left truncate font-medium">{notebook.title}</span>
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => handleRenameNotebook(e, notebook)} className="p-1 text-secondary hover:text-primary"><Edit2 size={12} /></button>
-                  <button onClick={(e) => handleDeleteNotebook(e, notebook)} className="p-1 text-secondary hover:text-red-400"><Trash size={12} /></button>
-                </div>
-                {expandedNotebook === notebook.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-
-              <AnimatePresence>
-                {expandedNotebook === notebook.id && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden ml-4 border-l border-white/10 pl-2"
-                  >
-                    <SectionTree
-                      sections={sections[notebook.id] || []}
-                      selectedId={selectedChapter?.id}
-                      onSelect={selectChapter}
-                      onCreateSection={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }}
-                      onCreateSubSection={async (parentId) => {
-                        const title = prompt("Enter sub-section name:");
-                        if (!title) return;
-                        try {
-                          const newSection = await notesService.createSubSection(parentId, title);
-                          // Refresh sections to get updated tree
-                          const chaptersData = await notesService.listChaptersHierarchical(notebook.id);
-                          setChapters(prev => ({ ...prev, [notebook.id]: chaptersData }));
-                        } catch (err) {
-                          console.error("Failed to create sub-section", err);
-                          showAlert("Error", "Failed to create sub-section.");
-                        }
-                      }}
-                      onRenameSection={(section) => {
-                        const e = { stopPropagation: () => { } };
-                        handleRenameChapter(e, section);
-                      }}
-                      onDeleteSection={(section) => {
-                        const e = { stopPropagation: () => { } };
-                        handleDeleteChapter(e, section);
-                      }}
-                      emptyMessage="No chapters yet"
-                    />
-                    <button onClick={() => { setNotebookForChapter(notebook); setShowCreateChapter(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-secondary/50 hover:text-primary transition-colors mt-1">
-                      <Plus size={12} /> Add Section
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
-        </div>
-
-        {/* Trash Link */}
-        <div className="mt-4 pt-4 border-t border-white/5">
-          <button
-            onClick={() => navigate('/notes/trash')}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-secondary/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            <Trash2 size={16} />
-            <span>Trash</span>
-          </button>
-        </div>
-      </motion.div>
+      <Sidebar
+        isOpen={sidebarOpen}
+        isMobile={isMobile}
+        setIsOpen={setSidebarOpen}
+        notebooks={notebooks}
+        expandedNotebook={expandedNotebook}
+        sections={sections}
+        selectedChapter={selectedChapter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        error={error}
+        toggleNotebook={toggleNotebook}
+        handleSearch={handleSearch}
+        handleSeedData={handleSeedData}
+        setShowCreateNotebook={setShowCreateNotebook}
+        handleRenameNotebook={handleRenameNotebook}
+        handleDeleteNotebook={handleDeleteNotebook}
+        selectChapter={selectChapter}
+        setNotebookForChapter={setNotebookForChapter}
+        setShowCreateChapter={setShowCreateChapter}
+        handleRenameChapter={handleRenameChapter}
+        handleDeleteChapter={handleDeleteChapter}
+        fetchNotebooks={fetchNotebooks}
+      />
 
 
       {/* --- Main Content Area --- */}

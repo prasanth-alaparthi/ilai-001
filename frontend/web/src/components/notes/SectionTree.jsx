@@ -21,10 +21,12 @@ const TreeNode = ({
     onRename,
     onDelete,
     onContextMenu,
+    highlightedId
 }) => {
     const [showActions, setShowActions] = useState(false);
     const isExpanded = expandedIds.has(section.id);
     const isSelected = selectedId === section.id;
+    const isHighlighted = highlightedId === section.id;
     const hasChildren = section.children && section.children.length > 0;
 
     const handleClick = (e) => {
@@ -51,7 +53,9 @@ const TreeNode = ({
           transition-all duration-150
           ${isSelected
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                        : isHighlighted
+                            ? 'animate-electric-pulse bg-blue-500/10 border border-blue-500/50 text-blue-600 dark:text-blue-400'
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                     }
         `}
                 style={{ paddingLeft: `${8 + level * 16}px` }}
@@ -130,6 +134,7 @@ const TreeNode = ({
                                 onRename={onRename}
                                 onDelete={onDelete}
                                 onContextMenu={onContextMenu}
+                                highlightedId={highlightedId}
                             />
                         ))}
                     </motion.div>
@@ -190,6 +195,7 @@ export default function SectionTree({
     onCreateSubSection,
     onRenameSection,
     onDeleteSection,
+    highlightedId,
     emptyMessage = "No chapters yet",
 }) {
     const [expandedIds, setExpandedIds] = useState(new Set());
@@ -255,6 +261,7 @@ export default function SectionTree({
                     onRename={onRenameSection}
                     onDelete={onDeleteSection}
                     onContextMenu={handleContextMenu}
+                    highlightedId={highlightedId}
                 />
             ))}
 

@@ -32,7 +32,7 @@ public class NoteSocketHandler extends TextWebSocketHandler {
             session.close(CloseStatus.POLICY_VIOLATION.withReason("User not authenticated."));
             return;
         }
-        
+
         String noteId = getNoteId(session);
         if (noteId == null) {
             session.close(CloseStatus.BAD_DATA.withReason("Note ID is required."));
@@ -46,8 +46,7 @@ public class NoteSocketHandler extends TextWebSocketHandler {
         Map<String, Object> joinMessage = Map.of(
                 "type", "user_joined",
                 "username", principal.getName(),
-                "sessionId", session.getId()
-        );
+                "sessionId", session.getId());
         broadcast(noteId, objectMapper.writeValueAsString(joinMessage), session);
     }
 
@@ -71,8 +70,7 @@ public class NoteSocketHandler extends TextWebSocketHandler {
                 Map<String, Object> leaveMessage = Map.of(
                         "type", "user_left",
                         "username", username,
-                        "sessionId", session.getId()
-                );
+                        "sessionId", session.getId());
                 broadcast(noteId, objectMapper.writeValueAsString(leaveMessage), null);
             }
         }
@@ -82,11 +80,28 @@ public class NoteSocketHandler extends TextWebSocketHandler {
         List<WebSocketSession> sessions = noteRooms.get(noteId);
         if (sessions != null) {
             for (WebSocketSession webSocketSession : sessions) {
-                if (webSocketSession.isOpen() && (originatorSession == null || !originatorSession.getId().equals(webSocketSession.getId()))) {
+                if (webSocketSession.isOpen()
+                        && (originatorSession == null || !originatorSession.getId().equals(webSocketSession.getId()))) {
                     webSocketSession.sendMessage(new TextMessage(message));
                 }
             }
         }
+    }
+
+    public void broadcastToUser(String username, String message) {
+        logger.info("Broadcasting global message to user '{}': {}", username, message);
+        noteRooms.values().forEach(sessions -> {
+            for (WebSocketSession session : sessions) {
+                Principal principal = (Principal) session.getAttributes().get("user");
+                if (session.isOpen() && principal != null && username.equals(principal.getName())) {
+                    try {
+                        session.sendMessage(new TextMessage(message));
+                    } catch (IOException e) {
+                        logger.error("Failed to send message to user {}: {}", username, e.getMessage());
+                    }
+                }
+            }
+        });
     }
 
     private String getNoteId(WebSocketSession session) {

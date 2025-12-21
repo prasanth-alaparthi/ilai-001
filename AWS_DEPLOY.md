@@ -148,7 +148,168 @@ REDIS_PORT=6379
 EOF
 
 # Deploy
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
+```
+
+---
+
+## Core Optimized Deployment (t3.large)
+
+For maximum stability and performance, we use a stripped-down configuration of **7 core services**. This maximizes available RAM for AI orchestration and RAG.
+
+### 🏛️ 1. Finalized `docker-compose.yml` (7 Services)
+
+This configuration excludes Academic and Quantum services, freeing up roughly **1.5GB of RAM**.
+
+```yaml
+version: '3.8'
+
+services:
+  # --- DATABASES ---
+  muse-postgres:
+    image: ankane/pgvector:v0.5.0
+    container_name: muse-postgres
+    environment:
+      POSTGRES_DB: ilai_db
+      POSTGRES_USER: ilai_admin
+      POSTGRES_PASSWORD: password_change_me
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ilai_admin -d ilai_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: muse-redis
+    ports: ["6379:6379"]
+
+  # --- JAVA CORE ---
+  auth-service:
+    image: ilai/auth-service:latest
+    container_name: ilai-auth-service
+    depends_on:
+      muse-postgres:
+        condition: service_healthy
+    ports: ["8081:8081"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      SPRING_REDIS_HOST: redis
+      DB_USERNAME: ilai_admin
+      DB_PASSWORD: password_change_me
+    deploy:
+      resources:
+        limits: { memory: 768M }
+
+  notes-service:
+    image: ilai/notes-service:latest
+    container_name: ilai-notes-service
+    depends_on:
+      muse-postgres:
+        condition: service_healthy
+    ports: ["8082:8082"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_USERNAME: ilai_admin
+      DB_PASSWORD: password_change_me
+    deploy:
+      resources:
+        limits: { memory: 1024M }
+
+  social-service:
+    image: ilai/social-service:latest
+    container_name: ilai-social-service
+    depends_on:
+      muse-postgres:
+        condition: service_healthy
+    ports: ["8083:8083"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_USERNAME: ilai_admin
+      DB_PASSWORD: password_change_me
+      NOTES_SERVICE_URL: http://notes-service:8082
+    deploy:
+      resources:
+        limits: { memory: 1024M }
+
+  ai-service:
+    image: ilai/ai-service:latest
+    container_name: ilai-ai-service
+    depends_on:
+      muse-postgres:
+        condition: service_healthy
+    ports: ["8088:8088"]
+    environment:
+      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_USERNAME: ilai_admin
+      DB_PASSWORD: password_change_me
+    deploy:
+      resources:
+        limits: { memory: 1024M }
+
+  # --- PYTHON KERNELS ---
+  compute-engine:
+    image: ilai/compute-engine:latest
+    container_name: ilai-compute-engine
+    depends_on:
+      muse-postgres:
+        condition: service_healthy
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql://ilai_admin:password_change_me@muse-postgres:5432/ilai_db
+    deploy:
+      resources:
+        limits: { memory: 512M }
+
+  agentic-rag:
+    image: ilai/agentic-rag:latest
+    container_name: ilai-agentic-rag
+    depends_on:
+      muse-postgres:
+        condition: service_healthy
+    ports: ["8001:8001"]
+    environment:
+      DATABASE_URL: postgresql://ilai_admin:password_change_me@muse-postgres:5432/ilai_db
+    deploy:
+      resources:
+        limits: { memory: 768M }
+
+  # --- UI ---
+  frontend:
+    image: ilai/frontend:latest
+    container_name: ilai-frontend
+    ports: ["80:80"]
+    environment:
+      VITE_API_URL: http://your-ec2-public-ip
+
+volumes:
+  pgdata:
+```
+
+### 🚀 2. EC2 Execution Commands (t3.large)
+
+1. **Prepare Environment:**
+```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose
+mkdir ~/ilai-deploy && cd ~/ilai-deploy
+```
+
+2. **Launch:**
+```bash
+# Save the above YAML to docker-compose.yml
+sudo docker-compose up -d
+```
+
+3. **Check Health:**
+```bash
+sudo docker-compose ps
 ```
 
 ---

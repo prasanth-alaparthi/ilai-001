@@ -55,6 +55,7 @@ const StudyGroups = lazy(() => import('./pages/StudyGroups'));
 const GroupDetail = lazy(() => import('./pages/GroupDetail'));
 const SavedPosts = lazy(() => import('./pages/SavedPosts'));
 const CreatePage = lazy(() => import('./pages/CreatePage'));
+const BountyBoard = lazy(() => import('./pages/BountyBoard'));
 
 // Labs
 const LabsLayout = lazy(() => import('./pages/Labs/LabsLayout'));
@@ -120,6 +121,7 @@ export default function App() {
                         <Route path="social" element={<NeuroFeed />} />
                         <Route path="social/profile" element={<SocialProfile />} />
                         <Route path="social/profile/:userId" element={<SocialProfile />} />
+                        <Route path="bounties" element={<BountyBoard />} />
                         <Route path="notes" element={<NotesHome />} />
                         <Route path="notes/trash" element={<TrashPage />} />
                         <Route path="notes/:id/edit" element={<NoteEditPage />} />

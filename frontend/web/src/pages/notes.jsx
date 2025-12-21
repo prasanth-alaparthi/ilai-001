@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import RichNoteEditor from "../components/RichNoteEditor";
 import apiClient from "../services/apiClient";
+import { useSidebarSync } from "../hooks/useSidebarSync";
+import { motion, AnimatePresence } from "framer-motion";
 
 const SpeechRecognition =
   typeof window !== "undefined"
@@ -36,6 +38,13 @@ export const NotesPage = () => {
   useEffect(() => {
     loadNotebooks();
   }, []);
+
+  // Real-time Sidebar Sync
+  const { hasNewSharedContent, setHasNewSharedContent } = useSidebarSync((payload) => {
+    console.log("Real-time Refresh Triggered via STOMP", payload);
+    loadNotebooks();
+    // Optional: show toast/notification logic here
+  });
 
   const loadNotebooks = async () => {
     setLoading(true);
@@ -415,21 +424,32 @@ export const NotesPage = () => {
           {notebooks.map((nb) => (
             <button
               key={nb.id}
-              onClick={() => handleSelectNotebook(nb.id)}
+              onClick={() => {
+                handleSelectNotebook(nb.id);
+                if (nb.title === "Shared Notes") setHasNewSharedContent(false);
+              }}
               className={[
-                "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition",
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition relative",
                 selectedNotebookId === nb.id
                   ? "bg-indigo-500/20 border border-indigo-400/80"
                   : "hover:bg-slate-200/70 dark:hover:bg-slate-800/70 border border-transparent",
+                nb.title === "Shared Notes" && hasNewSharedContent ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-950 animate-pulse" : ""
               ].join(" ")}
             >
               <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-emerald-400" />
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   {nb.title}
+                  {nb.title === "Shared Notes" && hasNewSharedContent && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"
+                    />
+                  )}
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-500">
-                  Notebook
+                  {nb.title === "Shared Notes" ? "Shared with you" : "Notebook"}
                 </span>
               </div>
             </button>

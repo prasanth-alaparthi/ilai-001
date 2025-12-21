@@ -335,7 +335,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/ilai-001
@@ -343,96 +343,19 @@ jobs:
             # Login to GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | sudo docker login ghcr.io -u prasanth-alaparthi --password-stdin
             
-            # Pull latest images from GHCR
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-frontend:latest
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-auth:latest
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-notes:latest
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-social:latest
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-ai:latest
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-labs:latest
-            sudo docker pull ghcr.io/prasanth-alaparthi/ilai-agentic-rag:latest
+            # Pull latest images using docker-compose
+            sudo docker-compose pull
             
-            # Create databases if not exist
-            sudo docker exec muse-postgres psql -U postgres -c "CREATE DATABASE muse_social;" 2>/dev/null || true
-            sudo docker exec muse-postgres psql -U postgres -c "CREATE DATABASE muse_ai;" 2>/dev/null || true
-            
-            # Stop and remove old containers
-            sudo docker stop muse-frontend muse-auth-service muse-notes-service muse-social-service muse-ai-service muse-compute-engine muse-agentic-rag 2>/dev/null || true
-            sudo docker rm muse-frontend muse-auth-service muse-notes-service muse-social-service muse-ai-service muse-compute-engine muse-agentic-rag 2>/dev/null || true
-            
-            # Start auth service
-            sudo docker run -d \
-              --name muse-auth-service \
-              --network ilai-001_muse-network \
-              --env-file .env \
-              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse-auth \
-              -e FRONTEND_BASE_URL=https://ilai.co.in \
-              -p 8081:8081 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-auth:latest
-            
-            # Start notes service
-            sudo docker run -d \
-              --name muse-notes-service \
-              --network ilai-001_muse-network \
-              --env-file .env \
-              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse_notes \
-              -p 8082:8082 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-notes:latest
-            
-            # Start social service
-            sudo docker run -d \
-              --name muse-social-service \
-              --network ilai-001_muse-network \
-              --env-file .env \
-              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse_social \
-              -p 8083:8083 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-social:latest
-            
-            # Start frontend
-            sudo docker run -d \
-              --name muse-frontend \
-              --network ilai-001_muse-network \
-              -p 80:80 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-frontend:latest
-            
-            # Start AI service
-            sudo docker run -d \
-              --name muse-ai-service \
-              --network ilai-001_muse-network \
-              --env-file .env \
-              -e DB_URL=jdbc:postgresql://muse-postgres:5432/muse_ai \
-              -p 8088:8088 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-ai:latest
-            
-            # Start Labs (Compute Engine) service
-            sudo docker run -d \
-              --name muse-compute-engine \
-              --network ilai-001_muse-network \
-              -e PYTHONUNBUFFERED=1 \
-              -p 8000:8000 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-labs:latest
-            
-            # Start Agentic RAG service
-            sudo docker run -d \
-              --name muse-agentic-rag \
-              --network ilai-001_muse-network \
-              --env-file .env \
-              -e PYTHONUNBUFFERED=1 \
-              -p 8001:8001 \
-              --restart always \
-              ghcr.io/prasanth-alaparthi/ilai-agentic-rag:latest
+            # Restart services with docker-compose
+            # -d: detached mode
+            # --remove-orphans: remove containers for services not defined in the compose file (Academic/Quantum)
+            sudo docker-compose up -d --remove-orphans
             
             # Verify and show sizes
             echo "=== DEPLOYED IMAGE SIZES ==="
             sudo docker images --format "{{.Repository}}:{{.Tag}} | {{.Size}}" | grep ilai
             
             sleep 10
-            sudo docker ps
+            sudo docker-compose ps
             
             echo "Deployment complete!"

@@ -115,4 +115,26 @@
     ::-webkit-scrollbar-thumb {
         @apply bg-secondary/20 rounded-full hover:bg-secondary/40 transition-colors;
     }
+
+    /* Electric Blue Pulse for Shared Folders */
+    @keyframes electric-pulse {
+        0% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        }
+
+        50% {
+            transform: scale(1.02);
+            box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.6);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+    }
+
+    .animate-electric-pulse {
+        animation: electric-pulse 2s infinite ease-in-out !important;
+    }
 }

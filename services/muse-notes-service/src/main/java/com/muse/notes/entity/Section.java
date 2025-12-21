@@ -51,6 +51,10 @@ public class Section {
     @JsonManagedReference("section-notes")
     private List<Note> notes = new ArrayList<>();
 
+    @ManyToMany
+    @JoinTable(name = "section_notes_mapping", joinColumns = @JoinColumn(name = "section_id"), inverseJoinColumns = @JoinColumn(name = "note_id"))
+    private List<Note> sharedNotes = new ArrayList<>();
+
     // Helper to get the nesting level (0 = root, 1 = first level, etc.)
     @Transient
     public int getLevel() {
