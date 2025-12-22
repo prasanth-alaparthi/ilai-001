@@ -36,7 +36,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public JwtAuthenticationFilter(@Value("${jwt.secret}") String jwtSecret) {
         this.jwtSecretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-        log.info("JwtAuthenticationFilter initialized with secret");
+        log.info("JwtAuthenticationFilter initialized with secret (length: {} chars, base64: {})",
+                jwtSecret.length(), jwtSecret.endsWith("=="));
+        log.debug("Secret first 10 chars: {}", jwtSecret.length() >= 10 ? jwtSecret.substring(0, 10) : jwtSecret);
     }
 
     @Override
