@@ -141,6 +141,7 @@ services:
     ports:
       - "8088:8088"
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/muse_ai
       DB_URL: ${DB_URL}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -172,6 +173,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/muse_social
       DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@muse-postgres:5432/muse_labs
     deploy:
       resources:
