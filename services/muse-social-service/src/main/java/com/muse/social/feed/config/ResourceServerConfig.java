@@ -53,20 +53,11 @@ public class ResourceServerConfig {
         return http.build();
     }
 
-    @Bean
-    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
-        org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of(
-                "http://localhost:5173",
-                "http://localhost:80",
-                "https://ilai.co.in",
-                "https://www.ilai.co.in"));
-        configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(java.util.List.of("*"));
-        configuration.setAllowCredentials(true);
-        org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+    // CORS configuration is provided by SecurityConfig - inject it here
+    private final org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource;
+
+    public ResourceServerConfig(org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource) {
+        this.corsConfigurationSource = corsConfigurationSource;
     }
 
     @Bean
