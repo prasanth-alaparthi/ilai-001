@@ -3,6 +3,7 @@ package com.muse.social.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,8 +31,13 @@ public class SecurityConfig {
     private final com.muse.social.security.JwtAuthenticationFilter jwtAuthFilter;
 
     @Bean
+    @Order(3) // Order 3: After static resources (1) and API security (2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Only match social/chat specific paths that aren't handled by
+                // ResourceServerConfig
+                .securityMatcher("/api/bounties/**", "/api/social/**", "/api/reputation/**",
+                        "/api/features/**", "/api/groups/**", "/api/chat/**")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
