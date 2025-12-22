@@ -45,11 +45,13 @@ public class JwtTokenService {
     }
 
     private byte[] tryBase64Decode(String secret) {
+        // Trim whitespace (including newlines from .env files)
+        String trimmedSecret = secret.trim();
         try {
-            return java.util.Base64.getDecoder().decode(secret);
+            return java.util.Base64.getDecoder().decode(trimmedSecret);
         } catch (IllegalArgumentException e) {
             // Not base64, use UTF-8 bytes directly
-            return secret.getBytes(StandardCharsets.UTF_8);
+            return trimmedSecret.getBytes(StandardCharsets.UTF_8);
         }
     }
 
