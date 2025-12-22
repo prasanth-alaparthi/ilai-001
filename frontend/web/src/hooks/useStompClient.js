@@ -16,7 +16,13 @@ export const useStompClient = (endpoint = '/ws-notes-stomp') => {
         if (!user) return;
 
         const token = localStorage.getItem('accessToken');
-        const socket = new SockJS(`http://localhost:8082${endpoint}`);
+
+        // Use dynamic base URL to support both dev (http) and prod (https)
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const host = window.location.host || 'localhost';
+        const baseUrl = `${protocol}//${host}`;
+
+        const socket = new SockJS(`${baseUrl}${endpoint}`);
 
         const client = new Client({
             webSocketFactory: () => socket,

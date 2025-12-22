@@ -22,7 +22,12 @@ export const useSidebarSync = (onRefresh) => {
         const userId = user.id; // Assuming user.id exists
         const destinationUser = `user_${userId}`;
 
-        const socket = new SockJS('http://localhost:8082/ws-notes-stomp');
+        // Use dynamic base URL to support both dev (http) and prod (https)
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const host = window.location.host || 'localhost';
+        const baseUrl = `${protocol}//${host}`;
+
+        const socket = new SockJS(`${baseUrl}/ws-notes-stomp`);
         const stompClient = new Client({
             webSocketFactory: () => socket,
             debug: (str) => console.log('STOMP (Notes):', str),
