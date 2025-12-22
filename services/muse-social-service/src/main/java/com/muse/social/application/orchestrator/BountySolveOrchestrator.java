@@ -2,7 +2,7 @@ package com.muse.social.application.orchestrator;
 
 import com.muse.social.billing.service.FeatureFlagService;
 import com.muse.social.domain.bounty.entity.Bounty;
-import com.muse.social.domain.reputation.service.ReputationService;
+import com.muse.social.reputation.service.ReputationService;
 import com.muse.social.infrastructure.client.AuthServiceClient;
 import com.muse.social.infrastructure.client.NotesServiceClient;
 import lombok.RequiredArgsConstructor;

@@ -5,7 +5,7 @@ import com.muse.social.domain.bounty.entity.Bounty;
 import com.muse.social.domain.bounty.entity.BountyAttempt;
 import com.muse.social.domain.bounty.repository.BountyRepository;
 import com.muse.social.domain.bounty.repository.BountyAttemptRepository;
-import com.muse.social.domain.reputation.service.ReputationService;
+import com.muse.social.reputation.service.ReputationService;
 import com.muse.social.application.orchestrator.NoteShareOrchestrator;
 import com.muse.social.application.orchestrator.BountySolveOrchestrator;
 import com.muse.social.infrastructure.client.NotesServiceClient;

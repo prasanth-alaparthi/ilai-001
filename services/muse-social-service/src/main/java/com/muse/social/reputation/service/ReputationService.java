@@ -217,6 +217,15 @@ public class ReputationService {
         invalidateCache(userId);
     }
 
+    @Transactional
+    public void decrementBountiesSolved(Long userId) {
+        UserReputation rep = getOrCreateReputation(userId);
+        int current = rep.getBountiesSolved();
+        rep.setBountiesSolved(Math.max(0, current - 1));
+        reputationRepo.save(rep);
+        invalidateCache(userId);
+    }
+
     /**
      * Increment notes shared count.
      */
