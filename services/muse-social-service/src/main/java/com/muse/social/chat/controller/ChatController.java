@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,22 +21,21 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping("/conversations")
-    public com.muse.social.chat.model.ConversationDTO createConversation(@AuthenticationPrincipal Jwt jwt,
+    public com.muse.social.chat.model.ConversationDTO createConversation(@AuthenticationPrincipal String userId,
             @RequestBody CreateConversationRequest req) {
-        String userId = jwt.getSubject();
         Conversation c = chatService.createConversation(userId, req.getType(), req.getName(), req.getParticipantIds(),
                 req.getContextType(), req.getContextId());
         return chatService.toDTO(c);
     }
 
     @GetMapping("/conversations")
-    public List<com.muse.social.chat.model.ConversationDTO> getConversations(@AuthenticationPrincipal Jwt jwt,
+    public List<com.muse.social.chat.model.ConversationDTO> getConversations(@AuthenticationPrincipal String userId,
             @RequestParam(required = false) Conversation.ContextType contextType,
             @RequestParam(required = false) String contextId) {
         if (contextType != null && contextId != null) {
             return chatService.getConversationsByContext(contextType, contextId);
         }
-        return chatService.getUserConversations(jwt.getSubject());
+        return chatService.getUserConversations(userId);
     }
 
     @GetMapping("/conversations/{id}/messages")
@@ -46,9 +44,8 @@ public class ChatController {
     }
 
     @PostMapping("/conversations/{id}/messages")
-    public Message sendMessage(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+    public Message sendMessage(@AuthenticationPrincipal String userId, @PathVariable UUID id,
             @RequestBody SendMessageRequest req) {
-        String userId = jwt.getSubject();
         return chatService.sendMessage(userId, id, req.getContent(), req.getType(), req.getMediaUrl(),
                 req.getReplyToId());
     }
