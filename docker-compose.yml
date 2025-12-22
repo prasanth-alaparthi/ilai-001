@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - ilai-network
     restart: always
@@ -41,11 +42,13 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
-      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/muse-auth
+      DB_URL: jdbc:postgresql://muse-postgres:5432/muse-auth
       SPRING_REDIS_HOST: redis
       DB_USERNAME: ilai_admin
       DB_PASSWORD: password_change_me
+      JWT_ACCESS_SECRET: qASV5/5N2p5bV8c+m8g/VwGvXzZtCg4bSj6mR/lIuN3xVwEaBfD+c2aFj7HkE9pWqYvXzZtCg4b
+      JWT_REFRESH_SECRET: zXvWbNmAqS5kLp9j7hGfD3sA1qQwErTyUiOpAsDfGhJkLzXcVBnMQwErTyUiOpAsDfGhJkL
     deploy:
       resources:
         limits:
@@ -62,10 +65,11 @@ services:
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
-      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/muse_notes
+      DB_URL: jdbc:postgresql://muse-postgres:5432/muse_notes
       DB_USERNAME: ilai_admin
       DB_PASSWORD: password_change_me
+      JWT_ACCESS_SECRET: qASV5/5N2p5bV8c+m8g/VwGvXzZtCg4bSj6mR/lIuN3xVwEaBfD+c2aFj7HkE9pWqYvXzZtCg4b
     deploy:
       resources:
         limits:
@@ -82,11 +86,12 @@ services:
     ports:
       - "8083:8083"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
-      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://muse-postgres:5432/muse_social
+      DB_URL: jdbc:postgresql://muse-postgres:5432/muse_social
       DB_USERNAME: ilai_admin
       DB_PASSWORD: password_change_me
       NOTES_SERVICE_URL: http://notes-service:8082
+      JWT_ACCESS_SECRET: qASV5/5N2p5bV8c+m8g/VwGvXzZtCg4bSj6mR/lIuN3xVwEaBfD+c2aFj7HkE9pWqYvXzZtCg4b
     deploy:
       resources:
         limits:
@@ -103,12 +108,13 @@ services:
     ports:
       - "8088:8088"
     environment:
-      DB_URL: jdbc:postgresql://muse-postgres:5432/ilai_db
+      DB_URL: jdbc:postgresql://muse-postgres:5432/muse_ai
       DB_USERNAME: ilai_admin
       DB_PASSWORD: password_change_me
       REDIS_HOST: redis
       AUTH_SERVICE_URL: http://auth-service:8081
       NOTES_SERVICE_URL: http://notes-service:8082
+      JWT_ACCESS_SECRET: qASV5/5N2p5bV8c+m8g/VwGvXzZtCg4bSj6mR/lIuN3xVwEaBfD+c2aFj7HkE9pWqYvXzZtCg4b
     deploy:
       resources:
         limits:
@@ -126,7 +132,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://ilai_admin:password_change_me@muse-postgres:5432/ilai_db
+      DATABASE_URL: postgresql://ilai_admin:password_change_me@muse-postgres:5432/muse_labs
     deploy:
       resources:
         limits:
