@@ -133,7 +133,10 @@ services:
         limits:
           memory: 1024M
     networks:
-      - ilai-network
+      ilai-network:
+        aliases:
+          - muse-social-service
+          - social-service
 
   ai-service:
     image: ghcr.io/prasanth-alaparthi/ilai-ai:latest
