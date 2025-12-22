@@ -36,6 +36,8 @@ public class ResourceServerConfig {
     @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Only match feed-related paths - don't match all requests
+                .securityMatcher("/api/feed/**", "/uploads/**")
                 .cors(org.springframework.security.config.Customizer.withDefaults()) // Enable CORS
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
