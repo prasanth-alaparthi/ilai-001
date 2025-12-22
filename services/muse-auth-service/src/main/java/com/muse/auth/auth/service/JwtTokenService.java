@@ -37,11 +37,20 @@ public class JwtTokenService {
     public JwtTokenService(
             @Value("${app.jwt.access-secret}") String accessSecretString,
             @Value("${app.jwt.refresh-secret}") String refreshSecretString) {
-        // Base64 decode the secrets (they're stored as base64 in env vars)
-        byte[] accessKeyBytes = java.util.Base64.getDecoder().decode(accessSecretString);
-        byte[] refreshKeyBytes = java.util.Base64.getDecoder().decode(refreshSecretString);
+        // Try to base64 decode, fall back to UTF-8 bytes if not base64
+        byte[] accessKeyBytes = tryBase64Decode(accessSecretString);
+        byte[] refreshKeyBytes = tryBase64Decode(refreshSecretString);
         this.accessSecret = Keys.hmacShaKeyFor(accessKeyBytes);
         this.refreshSecret = Keys.hmacShaKeyFor(refreshKeyBytes);
+    }
+
+    private byte[] tryBase64Decode(String secret) {
+        try {
+            return java.util.Base64.getDecoder().decode(secret);
+        } catch (IllegalArgumentException e) {
+            // Not base64, use UTF-8 bytes directly
+            return secret.getBytes(StandardCharsets.UTF_8);
+        }
     }
 
     public String generateAccessToken(String subject, Map<String, Object> claims) {
