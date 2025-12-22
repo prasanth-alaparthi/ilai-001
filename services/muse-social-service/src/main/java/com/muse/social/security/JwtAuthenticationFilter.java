@@ -35,10 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final SecretKey jwtSecretKey;
 
     public JwtAuthenticationFilter(@Value("${jwt.secret}") String jwtSecret) {
-        this.jwtSecretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-        log.info("JwtAuthenticationFilter initialized with secret (length: {} chars, base64: {})",
-                jwtSecret.length(), jwtSecret.endsWith("=="));
-        log.debug("Secret first 10 chars: {}", jwtSecret.length() >= 10 ? jwtSecret.substring(0, 10) : jwtSecret);
+        // Base64 decode the secret (it's stored as base64 in env vars)
+        byte[] decodedKey = java.util.Base64.getDecoder().decode(jwtSecret);
+        this.jwtSecretKey = Keys.hmacShaKeyFor(decodedKey);
+        log.info("JwtAuthenticationFilter initialized with base64-decoded secret ({} bytes)", decodedKey.length);
     }
 
     @Override
