@@ -86,10 +86,11 @@ deploy_python_service() {
     docker stop "$container_name" 2>/dev/null || true
     docker rm "$container_name" 2>/dev/null || true
     
-    # Run new container
+    # Run new container with environment variables
     docker run -d \
         --name "$container_name" \
         --network ilai-001_muse-network \
+        --env-file .env \
         -e "PYTHONUNBUFFERED=1" \
         -p "${port}:${port}" \
         --restart always \
@@ -130,7 +131,8 @@ deploy_service() {
 deploy_frontend() {
     log_info "Deploying frontend..."
     
-    docker pull nagagopisai/ilai-frontend:latest
+    # Pull from GitHub Container Registry
+    docker pull ghcr.io/prasanth-alaparthi/ilai-frontend:latest
     
     docker stop muse-frontend 2>/dev/null || true
     docker rm muse-frontend 2>/dev/null || true
@@ -140,7 +142,7 @@ deploy_frontend() {
         --network ilai-001_muse-network \
         -p 80:80 \
         --restart always \
-        nagagopisai/ilai-frontend:latest
+        ghcr.io/prasanth-alaparthi/ilai-frontend:latest
     
     log_info "Frontend deployed on port 80!"
 }
@@ -180,6 +182,12 @@ case "${1:-all}" in
         deploy_service "ai" 8088 "muse_ai"
         check_health "ai" 8088
         ;;
+    social)
+        pull_code
+        build_service "social"
+        deploy_service "social" 8083 "muse_social"
+        check_health "social" 8083
+        ;;
     labs)
         pull_code
         build_python_service "compute-engine"
@@ -199,15 +207,18 @@ case "${1:-all}" in
         pull_code
         build_service "auth"
         build_service "notes"
+        build_service "social"
         build_service "ai"
         build_python_service "compute-engine"
         deploy_service "auth" 8081 "muse-auth"
         deploy_service "notes" 8082 "muse_notes"
+        deploy_service "social" 8083 "muse_social"
         deploy_service "ai" 8088 "muse_ai"
         deploy_python_service "compute-engine" 8000
         deploy_frontend
         check_health "auth" 8081
         check_health "notes" 8082
+        check_health "social" 8083
         check_health "ai" 8088
         ;;
     status)
@@ -217,7 +228,7 @@ case "${1:-all}" in
         docker logs -f "muse-${2:-auth}-service"
         ;;
     *)
-        echo "Usage: $0 {auth|notes|ai|labs|frontend|all|status|logs [service]}"
+        echo "Usage: $0 {auth|notes|social|ai|labs|frontend|all|status|logs [service]}"
         exit 1
         ;;
 esac
