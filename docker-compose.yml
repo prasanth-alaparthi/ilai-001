@@ -18,10 +18,11 @@ services:
       - ilai-network
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${POSTGRES_DB:-ilai_db}" ]
-      interval: 5s
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -65,7 +66,10 @@ services:
         limits:
           memory: 768M
     networks:
-      - ilai-network
+      ilai-network:
+        aliases:
+          - muse-auth-service
+          - auth-service
 
   notes-service:
     image: ghcr.io/prasanth-alaparthi/ilai-notes:latest
