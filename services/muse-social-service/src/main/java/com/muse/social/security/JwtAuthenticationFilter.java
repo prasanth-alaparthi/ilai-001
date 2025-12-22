@@ -32,8 +32,12 @@ import java.util.List;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final SecretKey jwtSecretKey;
+
+    public JwtAuthenticationFilter(@Value("${jwt.secret}") String jwtSecret) {
+        this.jwtSecretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        log.info("JwtAuthenticationFilter initialized with secret");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -50,10 +54,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-
             Claims claims = Jwts.parser()
-                    .verifyWith(key)
+                    .verifyWith(jwtSecretKey)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
