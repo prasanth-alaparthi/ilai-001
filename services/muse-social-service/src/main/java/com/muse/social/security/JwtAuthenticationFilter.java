@@ -91,7 +91,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         return path.startsWith("/actuator/") ||
                 path.startsWith("/api/webhooks/stripe") ||
-                path.startsWith("/api/chat/") || // Let OAuth2 resource server handle chat
                 path.startsWith("/ws/");
     }
 }
