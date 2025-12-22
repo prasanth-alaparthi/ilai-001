@@ -15,7 +15,10 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
-      - ilai-network
+      ilai-network:
+        aliases:
+          - muse-postgres
+          - postgres
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
