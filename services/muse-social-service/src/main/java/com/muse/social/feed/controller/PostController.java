@@ -1,6 +1,6 @@
 package com.muse.social.feed.controller;
 
-import com.muse.social.feed.client.NotesServiceClient;
+import com.muse.social.infrastructure.client.NotesServiceClient;
 import com.muse.social.feed.dto.PostResponse;
 import com.muse.social.feed.entity.Post;
 import com.muse.social.feed.service.CommentService;

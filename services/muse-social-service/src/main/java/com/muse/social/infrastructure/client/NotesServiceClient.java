@@ -1,7 +1,7 @@
 package com.muse.social.infrastructure.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,9 +36,11 @@ public class NotesServiceClient {
     private final WebClient webClient;
     private final Duration timeout;
     private final String internalServiceToken;
+    private final ObjectMapper objectMapper;
 
     public NotesServiceClient(
             WebClient.Builder webClientBuilder,
+            ObjectMapper objectMapper,
             @Value("${services.notes.url:http://muse-notes-service:8082}") String notesServiceUrl,
             @Value("${services.notes.timeout:5000}") long timeoutMs,
             @Value("${internal.service.token:CHANGE_ME_IN_PRODUCTION}") String internalServiceToken) {
@@ -48,6 +50,7 @@ public class NotesServiceClient {
                 .build();
         this.timeout = Duration.ofMillis(timeoutMs);
         this.internalServiceToken = internalServiceToken;
+        this.objectMapper = objectMapper;
     }
 
     // ==================== D2F (Direct-to-Folder) Methods ====================
@@ -299,5 +302,104 @@ public class NotesServiceClient {
     @SuppressWarnings("unused")
     private Map<String, Object> getMetadataFallback(Long noteId, Long userId, Throwable t) {
         return null;
+    }
+
+    // ==================== Feed & AI Integration Methods ====================
+
+    /**
+     * Specialized method for creating a note from a post's content.
+     */
+    @CircuitBreaker(name = "notesService")
+    public Mono<Map<String, Object>> createNoteFromContent(String title, String content, String accessToken) {
+        try {
+            var jsonContent = objectMapper.createObjectNode()
+                    .put("type", "doc")
+                    .set("content", objectMapper.createArrayNode()
+                            .add(objectMapper.createObjectNode()
+                                    .put("type", "paragraph")
+                                    .set("content", objectMapper.createArrayNode()
+                                            .add(objectMapper.createObjectNode()
+                                                    .put("type", "text")
+                                                    .put("text", content)))));
+
+            Map<String, Object> noteBody = Map.of("title", title, "content", jsonContent);
+
+            return webClient.get()
+                    .uri("/api/notebooks")
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(
+                            new org.springframework.core.ParameterizedTypeReference<java.util.List<Map<String, Object>>>() {
+                            })
+                    .flatMap(notebooks -> {
+                        if (notebooks.isEmpty()) {
+                            return webClient.post()
+                                    .uri("/api/notebooks")
+                                    .header("Authorization", "Bearer " + accessToken)
+                                    .bodyValue(Map.of("title", "Quick Notes", "color", "#3b82f6"))
+                                    .retrieve()
+                                    .bodyToMono(
+                                            new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                                            });
+                        } else {
+                            return Mono.just(notebooks.get(0));
+                        }
+                    })
+                    .flatMap(notebook -> {
+                        Long notebookId = ((Number) notebook.get("id")).longValue();
+                        return webClient.get()
+                                .uri("/api/notebooks/" + notebookId + "/sections")
+                                .header("Authorization", "Bearer " + accessToken)
+                                .retrieve()
+                                .bodyToMono(
+                                        new org.springframework.core.ParameterizedTypeReference<java.util.List<Map<String, Object>>>() {
+                                        })
+                                .flatMap(sections -> {
+                                    if (sections.isEmpty()) {
+                                        return webClient.post()
+                                                .uri("/api/notebooks/" + notebookId + "/sections")
+                                                .header("Authorization", "Bearer " + accessToken)
+                                                .bodyValue(Map.of("title", "Saved Posts"))
+                                                .retrieve()
+                                                .bodyToMono(
+                                                        new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                                                        });
+                                    } else {
+                                        return Mono.just(sections.get(0));
+                                    }
+                                });
+                    })
+                    .flatMap(section -> {
+                        Long sectionId = ((Number) section.get("id")).longValue();
+                        return webClient.post()
+                                .uri("/api/sections/" + sectionId + "/notes")
+                                .header("Authorization", "Bearer " + accessToken)
+                                .bodyValue(noteBody)
+                                .retrieve()
+                                .bodyToMono(
+                                        new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                                        });
+                    })
+                    .timeout(timeout);
+        } catch (Exception e) {
+            return Mono.error(e);
+        }
+    }
+
+    /**
+     * Specialized method for AI elaboration of content.
+     */
+    @CircuitBreaker(name = "notesService")
+    public Mono<Map<String, Object>> elaborateContent(String content, String accessToken) {
+        Map<String, Object> body = Map.of("content", content, "level", "detailed");
+
+        return webClient.post()
+                .uri("/api/ai/explain")
+                .header("Authorization", "Bearer " + accessToken)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                })
+                .timeout(timeout);
     }
 }

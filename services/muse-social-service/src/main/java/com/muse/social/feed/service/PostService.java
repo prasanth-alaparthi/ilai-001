@@ -1,6 +1,6 @@
 package com.muse.social.feed.service;
 
-import com.muse.social.feed.client.AuthServiceClient;
+import com.muse.social.infrastructure.client.AuthServiceClient;
 import com.muse.social.feed.dto.PostResponse;
 import com.muse.social.feed.dto.UserDto;
 import com.muse.social.feed.entity.Post;

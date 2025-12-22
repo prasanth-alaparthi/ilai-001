@@ -1,5 +1,6 @@
 package com.muse.social.infrastructure.client;
 
+import com.muse.social.feed.dto.UserDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
@@ -103,6 +104,29 @@ public class AuthServiceClient {
     @SuppressWarnings("unused")
     private Map<String, Object> getUserProfileFallback(Long userId, Throwable t) {
         return null;
+    }
+
+    /**
+     * Get user by ID (Reactive Mono version).
+     * Used by PostService enrichment.
+     */
+    @CircuitBreaker(name = "authService", fallbackMethod = "getUserByIdFallback")
+    @Retry(name = "authService")
+    public reactor.core.publisher.Mono<UserDto> getUserById(Long userId) {
+        return webClient.get()
+                .uri("/api/users/{userId}", userId)
+                .retrieve()
+                .bodyToMono(UserDto.class)
+                .timeout(timeout)
+                .onErrorResume(e -> {
+                    log.debug("Reactive fetch failed for user {}: {}", userId, e.getMessage());
+                    return reactor.core.publisher.Mono.empty();
+                });
+    }
+
+    @SuppressWarnings("unused")
+    private reactor.core.publisher.Mono<UserDto> getUserByIdFallback(Long userId, Throwable t) {
+        return reactor.core.publisher.Mono.empty();
     }
 
     /**
