@@ -32,19 +32,13 @@ public class AuthServiceSecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
     private final CustomUserDetailsService userDetailsService;
-    private final com.muse.auth.security.oauth2.CustomOAuth2UserService customOAuth2UserService;
-    private final com.muse.auth.security.oauth2.OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
 
     public AuthServiceSecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthEntryPoint jwtAuthEntryPoint,
-            CustomUserDetailsService userDetailsService,
-            com.muse.auth.security.oauth2.CustomOAuth2UserService customOAuth2UserService,
-            com.muse.auth.security.oauth2.OAuth2LoginSuccessHandler oauth2LoginSuccessHandler) {
+            CustomUserDetailsService userDetailsService) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.jwtAuthEntryPoint = jwtAuthEntryPoint;
         this.userDetailsService = userDetailsService;
-        this.customOAuth2UserService = customOAuth2UserService;
-        this.oauth2LoginSuccessHandler = oauth2LoginSuccessHandler;
     }
 
     @Value("${app.frontend-base-url:http://localhost:5173}")
@@ -63,20 +57,22 @@ public class AuthServiceSecurityConfig {
                                 "/api/auth/refresh", "/api/auth/forgot-password", "/api/auth/reset-password",
                                 "/api/auth/verify-email")
                         .permitAll()
-                        // OAuth2 login endpoints must be public
+                        // OAuth2 login endpoints (disabled but kept for future use)
                         .requestMatchers("/oauth2/**", "/login/oauth2/**", "/api/auth/oauth2/**").permitAll()
                         // Actuator health check for Docker
                         .requestMatchers("/actuator/**").permitAll()
                         // All other API endpoints require authentication
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
-                .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService))
-                        .successHandler(oauth2LoginSuccessHandler)
-                        .failureHandler(
-                                new org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler(
-                                        frontendBaseUrl + "/login?error=true")))
+                // OAuth2 Login disabled - uncomment when GOOGLE_CLIENT_ID is provided
+                // .oauth2Login(oauth2 -> oauth2
+                // .userInfoEndpoint(userInfo -> userInfo
+                // .userService(customOAuth2UserService))
+                // .successHandler(oauth2LoginSuccessHandler)
+                // .failureHandler(
+                // new
+                // org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler(
+                // frontendBaseUrl + "/login?error=true")))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
