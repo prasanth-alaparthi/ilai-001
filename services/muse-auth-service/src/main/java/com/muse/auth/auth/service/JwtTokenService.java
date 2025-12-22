@@ -37,8 +37,11 @@ public class JwtTokenService {
     public JwtTokenService(
             @Value("${app.jwt.access-secret}") String accessSecretString,
             @Value("${app.jwt.refresh-secret}") String refreshSecretString) {
-        this.accessSecret = Keys.hmacShaKeyFor(accessSecretString.getBytes(StandardCharsets.UTF_8));
-        this.refreshSecret = Keys.hmacShaKeyFor(refreshSecretString.getBytes(StandardCharsets.UTF_8));
+        // Base64 decode the secrets (they're stored as base64 in env vars)
+        byte[] accessKeyBytes = java.util.Base64.getDecoder().decode(accessSecretString);
+        byte[] refreshKeyBytes = java.util.Base64.getDecoder().decode(refreshSecretString);
+        this.accessSecret = Keys.hmacShaKeyFor(accessKeyBytes);
+        this.refreshSecret = Keys.hmacShaKeyFor(refreshKeyBytes);
     }
 
     public String generateAccessToken(String subject, Map<String, Object> claims) {
@@ -57,7 +60,8 @@ public class JwtTokenService {
         return parseToken(token, refreshSecret);
     }
 
-    private String generateToken(String subject, Map<String, Object> claims, long ttlSeconds, SecretKey secret, boolean isRefreshToken) {
+    private String generateToken(String subject, Map<String, Object> claims, long ttlSeconds, SecretKey secret,
+            boolean isRefreshToken) {
         Instant now = Instant.now();
         var builder = Jwts.builder()
                 .setClaims(claims)
