@@ -57,7 +57,7 @@ spring:
 
 # Custom JWT Configuration (JJWT)
 jwt:
-  secret: ${JWT_ACCESS_SECRET:your-256-bit-secret-key-for-jwt-signing}
+  secret: ${JWT_SECRET:your-256-bit-secret-key-for-jwt-signing}
   expiration: 86400000  # 24 hours
 
 # Stripe Configuration

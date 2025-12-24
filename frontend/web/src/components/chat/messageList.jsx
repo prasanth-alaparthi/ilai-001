@@ -17,10 +17,9 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
   return (
     <div ref={elRef} className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 flex flex-col gap-6 custom-scrollbar scrollbar-hide">
       {[...messages].reverse().map((m, i) => {
-        console.log('[MessageList] Rendering message', i, ':', m);
-        const isMe = m.senderId === meUserId;
-        console.log('[MessageList] Message', i, 'senderId:', m.senderId, 'meUserId:', meUserId, 'isMe:', isMe);
-        const isAi = m.type === "AI_RESPONSE" || m.senderId === "AI_BOT";
+        // Fix: Use .toString() for type alignment (String vs Long)
+        const isMe = m.senderId?.toString() === meUserId?.toString();
+        const isAi = m.type === "AI_RESPONSE" || m.senderId?.toString() === "AI_BOT";
         const isSystem = m.type === "SYSTEM";
         const repliedMsg = m.replyToId ? messages.find(msg => msg.id === m.replyToId) : null;
 
@@ -94,7 +93,8 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
                   </div>
                 )}
 
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                {/* Content with specific color variable as per SRE audit */}
+                <div className="whitespace-pre-wrap text-[#2D2A2A] dark:text-white/90">{m.content}</div>
               </div>
 
               <div className={`text-[10px] mt-1.5 px-1 flex items-center gap-1.5 font-mono ${isMe ? "justify-end text-secondary/70" : "text-secondary/50"}`}>

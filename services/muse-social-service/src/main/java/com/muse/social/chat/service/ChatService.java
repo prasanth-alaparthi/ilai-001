@@ -45,6 +45,18 @@ public class ChatService {
     @Transactional
     public Conversation createConversation(String userId, Conversation.ConversationType type, String name,
             List<String> participantIds, Conversation.ContextType contextType, String contextId) {
+
+        // Deduplicate private 1:1 conversations
+        if (type == Conversation.ConversationType.PRIVATE && participantIds != null && participantIds.size() == 1) {
+            String otherUserId = participantIds.get(0);
+            List<String> bothIds = List.of(userId, otherUserId);
+            List<Conversation> existing = conversationRepository.findPrivateConversationByParticipants(bothIds);
+            if (!existing.isEmpty()) {
+                log.info("Found existing private conversation: {}", existing.get(0).getId());
+                return existing.get(0);
+            }
+        }
+
         Conversation conversation = Conversation.builder()
                 .type(type)
                 .name(name)
