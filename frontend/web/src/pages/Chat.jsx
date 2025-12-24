@@ -150,22 +150,38 @@ export default function ChatApp() {
 
   // Handle Subscription when conversation changes
   useEffect(() => {
+    console.log('[Chat] Subscription effect:', {
+      hasClient: !!stompClient,
+      connected: stompClient?.connected,
+      hasConversation: !!selectedConversation,
+      conversationId: selectedConversation?.id
+    });
+
     if (!stompClient || !stompClient.connected || !selectedConversation) return;
 
     if (subscriptionRef.current) {
+      console.log('[Chat] Unsubscribing from previous topic');
       subscriptionRef.current.unsubscribe();
     }
 
+    const topic = `/topic/conversation/${selectedConversation.id}`;
+    console.log('[Chat] Subscribing to:', topic);
+
     subscriptionRef.current = stompClient.subscribe(
-      `/topic/conversation/${selectedConversation.id}`,
+      topic,
       (message) => {
+        console.log('[Chat] Message received on topic:', topic, message.body);
         const newMsg = JSON.parse(message.body);
+        console.log('[Chat] Parsed message:', newMsg);
         setMessages((prev) => [newMsg, ...prev]);
       }
     );
 
+    console.log('[Chat] Subscription active for:', topic);
+
     return () => {
       if (subscriptionRef.current) {
+        console.log('[Chat] Cleaning up subscription');
         subscriptionRef.current.unsubscribe();
       }
     };
