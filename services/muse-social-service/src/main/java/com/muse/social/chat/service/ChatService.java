@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.muse.social.chat.model.Conversation;
 import com.muse.social.chat.model.ConversationParticipant;
 import com.muse.social.chat.model.Message;
+import com.muse.social.chat.model.MessageDTO;
 import com.muse.social.chat.repository.ConversationParticipantRepository;
 import com.muse.social.chat.repository.ConversationRepository;
 import com.muse.social.chat.repository.MessageRepository;
