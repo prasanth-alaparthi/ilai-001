@@ -35,9 +35,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
         }
 
         return (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+          <div
             key={m.id || i}
             className={`flex gap-4 group/msg ${isMe ? "flex-row-reverse" : "flex-row"}`}
           >
@@ -108,7 +106,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
                 )}
               </div>
             </div>
-          </motion.div>
+          </div>
         );
       })}
     </div>
