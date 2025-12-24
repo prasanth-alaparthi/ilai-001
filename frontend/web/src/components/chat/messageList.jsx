@@ -17,6 +17,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
   return (
     <div ref={elRef} className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col-reverse gap-6 custom-scrollbar scrollbar-hide">
       {messages.map((m, i) => {
+        console.log('[MessageList] Rendering message', i, ':', m);
         const isMe = m.senderId === meUserId;
         const isAi = m.type === "AI_RESPONSE" || m.senderId === "AI_BOT";
         const isSystem = m.type === "SYSTEM";
