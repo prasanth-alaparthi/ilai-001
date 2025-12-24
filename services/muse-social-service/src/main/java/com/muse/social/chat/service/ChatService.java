@@ -8,6 +8,7 @@ import com.muse.social.chat.repository.ConversationParticipantRepository;
 import com.muse.social.chat.repository.ConversationRepository;
 import com.muse.social.chat.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatService {
 
     private final ConversationRepository conversationRepository;
@@ -125,13 +127,16 @@ public class ChatService {
                 .status(Message.MessageStatus.SENT)
                 .build();
         message = messageRepository.save(message);
+        log.info("Message saved - ID: {}, Conversation: {}, Sender: {}", message.getId(), conversationId, userId);
 
         // Update conversation last message
         conversation.setLastMessageId(message.getId());
         conversationRepository.save(conversation);
 
         // Notify subscribers via WebSocket
-        messagingTemplate.convertAndSend("/topic/conversation/" + conversationId, message);
+        String topic = "/topic/conversation/" + conversationId;
+        messagingTemplate.convertAndSend(topic, message);
+        log.info("Message broadcasted to topic: {} - Message ID: {}", topic, message.getId());
 
         // If it's an AI chat, trigger AI response
         if (conversation.getType() == Conversation.ConversationType.AI) {
