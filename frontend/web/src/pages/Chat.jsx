@@ -183,6 +183,9 @@ export default function ChatApp() {
           console.log('[Chat] Messages state updated. Count:', updated.length, 'Latest:', updated[0]);
           return updated;
         });
+
+        // CRITICAL FIX: Reload conversations to update sidebar (WhatsApp behavior)
+        loadConversations();
       }
     );
 
