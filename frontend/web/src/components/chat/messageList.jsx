@@ -69,8 +69,8 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
               <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed relative shadow-xl backdrop-blur-sm border ${isMe
                 ? "bg-accent-glow text-white rounded-tr-sm border-white/10"
                 : isAi
-                  ? "bg-black/5 dark:bg-white/5 text-primary rounded-tl-sm border-purple-500/20 shadow-purple-900/10"
-                  : "bg-black/5 dark:bg-white/5 text-primary rounded-tl-sm border-black/10 dark:border-black/5 dark:border-white/10"
+                  ? "bg-purple-100 dark:bg-white/5 text-primary rounded-tl-sm border-purple-500/20 shadow-purple-900/10"
+                  : "bg-gray-200 dark:bg-white/5 text-primary rounded-tl-sm border-gray-300 dark:border-white/10"
                 }`}>
 
                 {/* Replied Context */}
