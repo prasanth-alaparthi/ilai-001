@@ -11,7 +11,8 @@ import SockJS from 'sockjs-client';
 
 export default function GlobalChatDrawer({ isOpen, onClose }) {
     const { user } = useUser();
-    const userId = user?.id;
+    // CRITICAL FIX: Backend uses username string for senderId, not numeric ID
+    const userId = user?.username || String(user?.id || '');
 
     const [view, setView] = useState('LIST'); // LIST | CHAT
     const [conversations, setConversations] = useState([]);
