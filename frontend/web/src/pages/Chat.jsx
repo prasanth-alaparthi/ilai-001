@@ -173,7 +173,11 @@ export default function ChatApp() {
         console.log('[Chat] Message received on topic:', topic, message.body);
         const newMsg = JSON.parse(message.body);
         console.log('[Chat] Parsed message:', newMsg);
-        setMessages((prev) => [newMsg, ...prev]);
+        setMessages((prev) => {
+          const updated = [newMsg, ...prev];
+          console.log('[Chat] Messages state updated. Count:', updated.length, 'Latest:', updated[0]);
+          return updated;
+        });
       }
     );
 

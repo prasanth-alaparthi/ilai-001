@@ -89,7 +89,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
               </div>
 
               <div className={`text-[10px] mt-1.5 px-1 flex items-center gap-1.5 font-mono ${isMe ? "justify-end text-secondary/70" : "text-secondary/50"}`}>
-                <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
                 {isMe && (
                   <span className="ml-1">
                     {m.status === 'READ' ? <CheckCircle size={12} className="text-accent-glow" /> : <Check size={12} />}
