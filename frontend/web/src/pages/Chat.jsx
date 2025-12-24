@@ -153,6 +153,19 @@ export default function ChatApp() {
     return () => client.deactivate();
   }, [userId]);
 
+  // Poll for new conversations every 5 seconds (WhatsApp behavior)
+  useEffect(() => {
+    if (!userId) return;
+
+    loadConversations(); // Initial load
+
+    const interval = setInterval(() => {
+      loadConversations();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [userId, loadConversations]);
+
   // Handle Subscription when conversation changes
   useEffect(() => {
     console.log('[Chat] Subscription effect:', {
