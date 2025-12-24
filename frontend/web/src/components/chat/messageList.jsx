@@ -7,6 +7,13 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
 
   console.log('[MessageList] Rendering with', messages.length, 'messages. Latest:', messages[0]);
 
+  // Auto-scroll to show newest message (at top in flex-col-reverse)
+  React.useEffect(() => {
+    if (elRef.current && messages.length > 0) {
+      elRef.current.scrollTop = 0;
+    }
+  }, [messages.length]);
+
   return (
     <div ref={elRef} className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col-reverse gap-6 custom-scrollbar scrollbar-hide">
       {messages.map((m, i) => {
