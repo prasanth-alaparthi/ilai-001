@@ -168,34 +168,33 @@ const Navigation = ({ isMobileOpen, setIsMobileOpen }) => {
                             </motion.span>
                         )}
                     </Link>
-                </button>
-                <motion.button
-                    whileHover={{ scale: 1.05, color: '#F87171' }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                        try {
-                            localStorage.removeItem("accessToken");
-                            localStorage.removeItem("refreshToken");
-                            window.location.href = "/login";
-                        } catch (error) {
-                            console.error("Logout failed", error);
-                        }
-                    }}
-                    className="flex items-center group w-full text-left"
-                >
-                    <LogOut size={20} className="text-secondary group-hover:text-red-400 transition-colors" />
-                    {(isExpanded || isMobileOpen) && (
-                        <motion.span
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="ml-4 text-sm text-secondary group-hover:text-red-400 transition-colors"
-                        >
-                            Logout
-                        </motion.span>
-                    )}
-                </motion.button>
-            </div>
-        </motion.nav >
+                    <motion.button
+                        whileHover={{ scale: 1.05, color: '#F87171' }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                            try {
+                                localStorage.removeItem("accessToken");
+                                localStorage.removeItem("refreshToken");
+                                window.location.href = "/login";
+                            } catch (error) {
+                                console.error("Logout failed", error);
+                            }
+                        }}
+                        className="flex items-center group w-full text-left"
+                    >
+                        <LogOut size={20} className="text-secondary group-hover:text-red-400 transition-colors" />
+                        {(isExpanded || isMobileOpen) && (
+                            <motion.span
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="ml-4 text-sm text-secondary group-hover:text-red-400 transition-colors"
+                            >
+                                Logout
+                            </motion.span>
+                        )}
+                    </motion.button>
+                </div>
+            </motion.nav >
         </>
     );
 };
@@ -268,7 +267,7 @@ const TopBar = ({ onMenuClick }) => {
                     </Link>
                 </div>
             </div>
-        </header >
+        </header>
     );
 }
 
