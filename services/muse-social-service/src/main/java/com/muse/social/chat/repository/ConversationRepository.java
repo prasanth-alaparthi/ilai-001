@@ -16,7 +16,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     List<Conversation> findByContextTypeAndContextId(Conversation.ContextType contextType, String contextId);
 
     @Query("SELECT cp.conversation FROM ConversationParticipant cp " +
-            "WHERE cp.conversation.type = 'PRIVATE' " +
+            "WHERE cp.conversation.type = 'DIRECT' " +
             "AND cp.userId IN :userIds " +
             "GROUP BY cp.conversation " +
             "HAVING COUNT(cp) = 2")

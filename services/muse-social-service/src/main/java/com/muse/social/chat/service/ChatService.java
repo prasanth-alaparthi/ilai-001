@@ -47,7 +47,7 @@ public class ChatService {
             List<String> participantIds, Conversation.ContextType contextType, String contextId) {
 
         // Deduplicate private 1:1 conversations
-        if (type == Conversation.ConversationType.PRIVATE && participantIds != null && participantIds.size() == 1) {
+        if (type == Conversation.ConversationType.DIRECT && participantIds != null && participantIds.size() == 1) {
             String otherUserId = participantIds.get(0);
             List<String> bothIds = List.of(userId, otherUserId);
             List<Conversation> existing = conversationRepository.findPrivateConversationByParticipants(bothIds);
