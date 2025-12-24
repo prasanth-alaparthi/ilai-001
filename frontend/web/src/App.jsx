@@ -75,6 +75,7 @@ const TrashPage = lazy(() => import('./pages/TrashPage'));
 // Alive Design System Components
 import { BreathingBackground } from './components/ui/BreathingBackground';
 import { AuraLoader } from './components/ui/AuraLoader';
+import { ToastContainer } from './components/ui/ToastContainer';
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen">
@@ -210,6 +211,7 @@ export default function App() {
           </ParentalProvider>
         </UserProvider>
       </ThemeProvider>
+      <ToastContainer />
     </>
   );
 }

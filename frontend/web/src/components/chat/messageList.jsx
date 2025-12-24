@@ -5,7 +5,6 @@ import { Cpu, Check, CheckCircle, CornerUpLeft, CheckSquare } from "lucide-react
 export default function MessageList({ messages = [], meUserId, onReply, onAction }) {
   const elRef = useRef();
 
-  console.log('[MessageList] Rendering with', messages.length, 'messages. Latest:', messages[0]);
 
   // Auto-scroll to bottom to show newest message
   React.useEffect(() => {

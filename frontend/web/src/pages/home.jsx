@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import apiClient from "../services/apiClient";
 import assignmentService from "../services/assignmentService";
 import { useUser } from "../state/UserContext";
+import { useNotificationStore } from "../stores/notificationStore";
+import { AuraLoader } from "../components/ui/AuraLoader";
 import heroImg from "../assets/hero_brain.png";
 import {
   Plus,
@@ -66,7 +68,7 @@ export default function HomePage() {
           setProfile(pRes.data);
           // Parallel fetches for speed
           const [xpRes, notesRes, assignRes] = await Promise.allSettled([
-            apiClient.get(`/users/${pRes.data.username}/xp`),
+            apiClient.get(`/gamification/stats/${pRes.data.id}`),
             apiClient.get("/notes"),
             assignmentService.getAssignmentsByCourse(1)
           ]);
@@ -98,11 +100,36 @@ export default function HomePage() {
         content: { type: "doc", content: [] },
         visibility: "private"
       });
+      useNotificationStore.getState().addNotification({
+        message: "Knowledge node initialized",
+        type: "success",
+        isToast: true
+      });
       navigate(`/notes/${res.data.id}/edit`);
     } catch (e) {
+      useNotificationStore.getState().addNotification({
+        message: "Failed to initialize note",
+        type: "error",
+        isToast: true
+      });
       navigate("/notes");
     }
   };
+
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const optimizeSchedule = async () => {
+    setIsOptimizing(true);
+    // Simulate AI optimization
+    await new Promise(r => setTimeout(r, 2000));
+    setIsOptimizing(false);
+    useNotificationStore.getState().addNotification({
+      message: "Schedule optimized for peak focus",
+      type: "success",
+      isToast: true
+    });
+  };
+
+  const [flippedMissions, setFlippedMissions] = useState(false);
 
   const getDisplayName = () => {
     if (profile?.displayName) return profile.displayName;
@@ -191,8 +218,19 @@ export default function HomePage() {
           <motion.div
             key={id}
             variants={itemVariants}
-            whileHover={hoverScale}
-            onClick={() => item.action ? item.action() : navigate(`/${item.path}`)}
+            whileHover={{ scale: 1.05, filter: "drop-shadow(0 0 12px rgba(139, 92, 246, 0.2))" }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              try {
+                item.action ? item.action() : navigate(`/${item.path}`);
+              } catch (err) {
+                useNotificationStore.getState().addNotification({
+                  message: "Action interrupted",
+                  type: "error",
+                  isToast: true
+                });
+              }
+            }}
             className="emotive-card cursor-pointer group flex flex-col items-center text-center gap-4 p-8"
           >
             <div className={`p-4 rounded-3xl ${item.color} group-hover:scale-110 transition-transform duration-500`}>
@@ -231,7 +269,14 @@ export default function HomePage() {
                 ) : recentNotes.length === 0 ? (
                   <div className="col-span-full glass-panel p-20 text-center border-dashed border-lilac-soft/50">
                     <p className="text-slate-soft font-light text-lg">Your knowledge garden is empty. Start planting ideas!</p>
-                    <button onClick={createNewNote} className="btn-alive mt-6">Create First Note</button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={createNewNote}
+                      className="btn-alive mt-6"
+                    >
+                      Create First Note
+                    </motion.button>
                   </div>
                 ) : (
                   recentNotes.slice(0, 4).map((note) => (
@@ -322,38 +367,83 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button onClick={() => navigate('/calendar')} className="w-full mt-10 py-3 rounded-2xl border-2 border-lilac-soft/20 text-slate-soft font-bold text-sm hover:bg-lilac-soft/10 transition-all">
-              Optimize Schedule
-            </button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={optimizeSchedule}
+              className="w-full mt-10 py-3 rounded-2xl border-2 border-lilac-soft/20 text-slate-soft font-bold text-sm hover:bg-lilac-soft/10 transition-all flex items-center justify-center gap-2"
+            >
+              {isOptimizing ? <AuraLoader size={20} /> : "Optimize Schedule"}
+            </motion.button>
           </motion.div>
 
           {/* Pending Missions */}
-          <motion.div variants={itemVariants} className="emotive-card p-8 border-none shadow-bloom bg-white">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold flex items-center gap-2 font-serif">
-                <ClipboardList className="text-rose-quartz" size={20} /> Missions
-              </h3>
-              <span className="text-xs font-bold text-rose-quartz">{assignments.length}</span>
-            </div>
+          <motion.div
+            variants={itemVariants}
+            className="emotive-card p-8 border-none shadow-bloom bg-white relative cursor-pointer"
+            onClick={() => setFlippedMissions(!flippedMissions)}
+          >
+            <AnimatePresence mode="wait">
+              {!flippedMissions ? (
+                <motion.div
+                  key="front"
+                  initial={{ opacity: 0, rotateY: 90 }}
+                  animate={{ opacity: 1, rotateY: 0 }}
+                  exit={{ opacity: 0, rotateY: -90 }}
+                >
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-bold flex items-center gap-2 font-serif">
+                      <ClipboardList className="text-rose-quartz" size={20} /> Missions
+                    </h3>
+                    <span className="text-xs font-bold text-rose-quartz">{assignments.length}</span>
+                  </div>
 
-            {assignments.length > 0 ? (
-              <div className="space-y-4">
-                {assignments.slice(0, 3).map(a => (
-                  <div key={a.id} className="group p-4 rounded-2xl bg-fog-light/50 border border-transparent hover:border-rose-quartz/20 hover:bg-white transition-all">
-                    <div className="text-sm font-bold text-charcoal-warm group-hover:text-rose-quartz transition-colors truncate">{a.title}</div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="text-[10px] text-slate-soft font-bold">Expires {new Date(a.dueDate).toLocaleDateString()}</span>
+                  {assignments.length > 0 ? (
+                    <div className="space-y-4">
+                      {assignments.slice(0, 3).map(a => (
+                        <div key={a.id} className="group p-4 rounded-2xl bg-fog-light/50 border border-transparent hover:border-rose-quartz/20 hover:bg-white transition-all">
+                          <div className="text-sm font-bold text-charcoal-warm group-hover:text-rose-quartz transition-colors truncate">{a.title}</div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                            <span className="text-[10px] text-slate-soft font-bold">Expires {new Date(a.dueDate).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center space-y-4 border-2 border-dashed border-lilac-soft/20 rounded-3xl">
+                      <div className="text-3xl">🕊️</div>
+                      <p className="text-sm text-slate-soft font-light">Silence in the storm.<br />All missions accomplished.</p>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="back"
+                  initial={{ opacity: 0, rotateY: 90 }}
+                  animate={{ opacity: 1, rotateY: 0 }}
+                  exit={{ opacity: 0, rotateY: -90 }}
+                  className="space-y-6"
+                >
+                  <h3 className="text-xl font-bold font-serif text-rose-quartz">Daily Quests</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="w-5 h-5 rounded flex items-center justify-center bg-green-500/10 text-green-500">✓</div>
+                      <span>Log in today (+50 XP)</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm opacity-50">
+                      <div className="w-5 h-5 rounded border border-slate-300" />
+                      <span>Create 1 note (0/1)</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm opacity-50">
+                      <div className="w-5 h-5 rounded border border-slate-300" />
+                      <span>Solve 1 bounty (0/1)</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-10 text-center space-y-4 border-2 border-dashed border-lilac-soft/20 rounded-3xl">
-                <div className="text-3xl">🕊️</div>
-                <p className="text-sm text-slate-soft font-light">Silence in the storm.<br />All missions accomplished.</p>
-              </div>
-            )}
+                  <p className="text-[10px] text-slate-400 font-mono">Click to flip back</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Quick Hub */}

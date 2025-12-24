@@ -33,7 +33,7 @@ public class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
-    @Value("${jwt.access.secret}")
+    @Value("${jwt.secret}")
     private String jwtSecret;
 
     @Bean

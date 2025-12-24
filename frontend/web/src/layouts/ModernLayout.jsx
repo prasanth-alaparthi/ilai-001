@@ -5,6 +5,10 @@ import { useFeatureAccess } from '../hooks/useFeatureAccess';
 import BottomNav from '../components/mobile/BottomNav';
 import { useTheme } from '../state/ThemeContext';
 import { useUser } from '../state/UserContext';
+import { useSearchStore } from '../stores/searchStore';
+import { useNotificationStore } from '../stores/notificationStore';
+import { ToastContainer } from '../components/ui/ToastContainer';
+import { NotificationDrawer } from '../components/ui/NotificationDrawer';
 import {
     Home,
     BookOpen,
@@ -110,26 +114,32 @@ const Navigation = ({ isMobileOpen, setIsMobileOpen }) => {
                                     className={`relative flex items-center h-12 px-6 py-2 mx-3 rounded-lg transition-all duration-300 group flex-shrink-0 ${isActive ? 'bg-white/5 text-primary' : 'text-secondary hover:text-primary hover:bg-white/5'
                                         }`}
                                 >
-                                    <item.icon size={20} strokeWidth={1.5} className="flex-shrink-0" />
+                                    <motion.div
+                                        whileHover={{ scale: 1.05, filter: "drop-shadow(0 0 8px rgba(139, 92, 246, 0.3))" }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="flex w-full items-center"
+                                    >
+                                        <item.icon size={20} strokeWidth={1.5} className="flex-shrink-0" />
 
-                                    {(isExpanded || isMobileOpen) && (
-                                        <motion.span
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.1 }}
-                                            className="ml-4 text-sm font-light tracking-wide whitespace-nowrap flex items-center gap-2"
-                                        >
-                                            {item.label}
-                                            {item.feature && !canAccess(item.feature) && (
-                                                <span className={`text-xs px-1.5 py-0.5 rounded ${getRequiredTier(item.feature) === 'INSTITUTIONAL'
-                                                    ? 'bg-purple-500/20 text-purple-400'
-                                                    : 'bg-amber-500/20 text-amber-400'
-                                                    }`}>
-                                                    {getRequiredTier(item.feature) === 'INSTITUTIONAL' ? 'INST' : 'PRO'}
-                                                </span>
-                                            )}
-                                        </motion.span>
-                                    )}
+                                        {(isExpanded || isMobileOpen) && (
+                                            <motion.span
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.1 }}
+                                                className="ml-4 text-sm font-light tracking-wide whitespace-nowrap flex items-center gap-2"
+                                            >
+                                                {item.label}
+                                                {item.feature && !canAccess(item.feature) && (
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${getRequiredTier(item.feature) === 'INSTITUTIONAL'
+                                                        ? 'bg-purple-500/20 text-purple-400'
+                                                        : 'bg-amber-500/20 text-amber-400'
+                                                        }`}>
+                                                        {getRequiredTier(item.feature) === 'INSTITUTIONAL' ? 'INST' : 'PRO'}
+                                                    </span>
+                                                )}
+                                            </motion.span>
+                                        )}
+                                    </motion.div>
 
                                     {/* Active Indicator */}
                                     {isActive && !isExpanded && !isMobileOpen && (
@@ -158,27 +168,34 @@ const Navigation = ({ isMobileOpen, setIsMobileOpen }) => {
                             </motion.span>
                         )}
                     </Link>
-                    <button
-                        onClick={() => {
+                </button>
+                <motion.button
+                    whileHover={{ scale: 1.05, color: '#F87171' }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                        try {
                             localStorage.removeItem("accessToken");
                             localStorage.removeItem("refreshToken");
                             window.location.href = "/login";
-                        }}
-                        className="flex items-center group w-full text-left"
-                    >
-                        <LogOut size={20} className="text-secondary group-hover:text-red-400 transition-colors" />
-                        {(isExpanded || isMobileOpen) && (
-                            <motion.span
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="ml-4 text-sm text-secondary group-hover:text-red-400 transition-colors"
-                            >
-                                Logout
-                            </motion.span>
-                        )}
-                    </button>
-                </div>
-            </motion.nav>
+                        } catch (error) {
+                            console.error("Logout failed", error);
+                        }
+                    }}
+                    className="flex items-center group w-full text-left"
+                >
+                    <LogOut size={20} className="text-secondary group-hover:text-red-400 transition-colors" />
+                    {(isExpanded || isMobileOpen) && (
+                        <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="ml-4 text-sm text-secondary group-hover:text-red-400 transition-colors"
+                        >
+                            Logout
+                        </motion.span>
+                    )}
+                </motion.button>
+            </div>
+        </motion.nav >
         </>
     );
 };
@@ -198,6 +215,13 @@ const TopBar = ({ onMenuClick }) => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary w-4 h-4" />
                         <input
                             type="text"
+                            value={useSearchStore.getState().query}
+                            onChange={(e) => useSearchStore.getState().setQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    window.location.href = `/search?q=${e.target.value}`;
+                                }
+                            }}
                             placeholder="Search..."
                             className="bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 rounded-full pl-9 pr-4 py-1.5 text-sm text-primary focus:outline-none focus:border-accent-glow/50 transition-all w-64 placeholder:text-secondary/50"
                         />
@@ -216,10 +240,15 @@ const TopBar = ({ onMenuClick }) => {
                     <Link to="/chat" className="relative text-secondary hover:text-primary transition-colors">
                         <MessageCircle size={20} />
                     </Link>
-                    <button className="relative text-secondary hover:text-primary transition-colors">
+                    <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => useNotificationStore.getState().toggleDrawer()}
+                        className="relative text-secondary hover:text-primary transition-colors"
+                    >
                         <Bell size={20} />
                         <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-background"></span>
-                    </button>
+                    </motion.button>
 
 
                     <div className="h-6 w-[1px] bg-white/10 mx-2 hidden md:block" />
@@ -279,6 +308,9 @@ const ModernLayout = () => {
 
             {/* Global Text Selection Popup */}
             <TextSelectionPopup />
+
+            {/* Notification Drawer */}
+            <NotificationDrawer />
         </div>
     );
 };

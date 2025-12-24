@@ -44,7 +44,7 @@ export default function GlobalChatDrawer({ isOpen, onClose }) {
         const socket = new SockJS("/ws-chat");
         const client = new Client({
             webSocketFactory: () => socket,
-            onConnect: () => console.log("Global Chat STOMP connected"),
+            onConnect: () => { },
             onStompError: (frame) => console.error("Broker error: " + frame.headers["message"]),
         });
         client.activate();
@@ -167,7 +167,7 @@ export default function GlobalChatDrawer({ isOpen, onClose }) {
                                 <div className="h-full flex flex-col">
                                     <ChatWindow
                                         conversation={selectedConversation}
-                                        messages={[...messages].reverse()}
+                                        messages={messages}
                                         currentUserId={userId}
                                         onSend={handleSend}
                                     />

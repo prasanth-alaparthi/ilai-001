@@ -627,7 +627,15 @@ export default function NotesHome() {
                 <button onClick={() => setShowBrokenLinksModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-amber-500 hover:bg-amber-500/10 rounded-full transition-colors" title="Broken Links"><AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowVersionsModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="History"><Clock size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowTranscribeModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Transcribe"><Mic size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowShareModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="Share"><Share2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <motion.button
+                  whileHover={{ scale: 1.1, color: '#F8C3CD' }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowShareModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors"
+                  title="Share"
+                >
+                  <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
                 <button onClick={handleDuplicateNote} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Duplicate"><Copy size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={() => setShowExportModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Export"><Download size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
                 <button onClick={handleDeleteNote} className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 rounded-full transition-colors" title="Move to Trash"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
@@ -724,13 +732,15 @@ export default function NotesHome() {
                           </div>
                         </div>
                         {/* Quick action on hover - Pin toggle */}
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.2 }}
+                          whileTap={{ scale: 0.8 }}
                           onClick={(e) => handleTogglePin(e, note)}
-                          className={`p-1.5 rounded-lg transition-all ${note.isPinned ? 'text-amber-400' : 'text-secondary opacity-0 group-hover:opacity-100'} hover:bg-white/10`}
+                          className={`p-1.5 rounded-lg transition-all ${note.isPinned ? 'text-[#D8BFD8]' : 'text-secondary opacity-0 group-hover:opacity-100'} hover:bg-white/10`}
                           title={note.isPinned ? 'Unpin' : 'Pin'}
                         >
                           <Star size={14} fill={note.isPinned ? 'currentColor' : 'none'} />
-                        </button>
+                        </motion.button>
                       </motion.div>
                     ))}
                     {notes.length === 0 && (
