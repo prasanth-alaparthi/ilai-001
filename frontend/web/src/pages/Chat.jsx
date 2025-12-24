@@ -316,7 +316,7 @@ export default function ChatApp() {
             </div>
 
             {/* Messages Container - Flex wrapper for proper height */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
               <MessageList
                 key={`messages-${messages.length}-${messages[0]?.id || 'empty'}`}
                 messages={messages}
