@@ -5,6 +5,8 @@ import { Cpu, Check, CheckCircle, CornerUpLeft, CheckSquare } from "lucide-react
 export default function MessageList({ messages = [], meUserId, onReply, onAction }) {
   const elRef = useRef();
 
+  console.log('[MessageList] Rendering with', messages.length, 'messages. Latest:', messages[0]);
+
   return (
     <div ref={elRef} className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col-reverse gap-6 custom-scrollbar scrollbar-hide">
       {messages.map((m, i) => {
