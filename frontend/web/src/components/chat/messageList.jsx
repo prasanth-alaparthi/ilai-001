@@ -19,6 +19,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
       {[...messages].reverse().map((m, i) => {
         console.log('[MessageList] Rendering message', i, ':', m);
         const isMe = m.senderId === meUserId;
+        console.log('[MessageList] Message', i, 'senderId:', m.senderId, 'meUserId:', meUserId, 'isMe:', isMe);
         const isAi = m.type === "AI_RESPONSE" || m.senderId === "AI_BOT";
         const isSystem = m.type === "SYSTEM";
         const repliedMsg = m.replyToId ? messages.find(msg => msg.id === m.replyToId) : null;
