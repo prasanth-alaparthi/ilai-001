@@ -43,7 +43,7 @@ export default function MessageList({ messages = [], meUserId, onReply, onAction
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shadow-lg flex-shrink-0 border border-black/5 dark:border-white/10 ${isMe ? "bg-accent-glow text-white shadow-glow" :
               isAi ? "bg-purple-500/20 text-purple-400" : "bg-black/5 dark:bg-white/5 text-secondary"
               }`}>
-              {isMe ? "ME" : isAi ? <Cpu size={16} /> : (m.senderId || "?").substring(0, 2).toUpperCase()}
+              {isMe ? "ME" : isAi ? <Cpu size={16} /> : String(m.senderId || "?").substring(0, 2).toUpperCase()}
             </div>
 
             <div className={`max-w-[75%] md:max-w-[65%] flex flex-col relative ${isMe ? "items-end" : "items-start"}`}>
