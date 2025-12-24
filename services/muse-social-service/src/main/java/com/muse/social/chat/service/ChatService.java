@@ -133,9 +133,10 @@ public class ChatService {
         conversation.setLastMessageId(message.getId());
         conversationRepository.save(conversation);
 
-        // Notify subscribers via WebSocket
+        // Notify subscribers via WebSocket (use DTO to avoid lazy loading issues)
         String topic = "/topic/conversation/" + conversationId;
-        messagingTemplate.convertAndSend(topic, message);
+        MessageDTO dto = MessageDTO.fromEntity(message);
+        messagingTemplate.convertAndSend(topic, dto);
         log.info("Message broadcasted to topic: {} - Message ID: {}", topic, message.getId());
 
         // If it's an AI chat, trigger AI response
@@ -155,7 +156,8 @@ public class ChatService {
                     .type(Message.MessageType.AI_RESPONSE)
                     .build();
             aiMessage = messageRepository.save(aiMessage);
-            messagingTemplate.convertAndSend("/topic/conversation/" + conversation.getId(), aiMessage);
+            MessageDTO dto = MessageDTO.fromEntity(aiMessage);
+            messagingTemplate.convertAndSend("/topic/conversation/" + conversation.getId(), dto);
         });
     }
 
