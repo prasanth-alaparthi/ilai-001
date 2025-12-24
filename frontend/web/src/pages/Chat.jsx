@@ -103,6 +103,10 @@ const RightPanel = ({ isOpen, onClose, activeTab, setActiveTab, tasks, onAddTask
 export default function ChatApp() {
   const { user } = useUser();
   const userId = user?.id;
+
+  // DATA INTEGRITY AUDIT: Check userId type
+  console.log('[AUDIT] userId:', userId, 'type:', typeof userId);
+
   const [searchParams] = useSearchParams();
 
   // Chat State
