@@ -102,10 +102,11 @@ const RightPanel = ({ isOpen, onClose, activeTab, setActiveTab, tasks, onAddTask
 
 export default function ChatApp() {
   const { user } = useUser();
-  const userId = user?.id;
+  // CRITICAL FIX: Backend uses username string for senderId, not numeric ID
+  const userId = user?.username || String(user?.id || '');
 
   // DATA INTEGRITY AUDIT: Check userId type
-  console.log('[AUDIT] userId:', userId, 'type:', typeof userId);
+  console.log('[AUDIT] userId:', userId, 'type:', typeof userId, 'username:', user?.username);
 
   const [searchParams] = useSearchParams();
 
