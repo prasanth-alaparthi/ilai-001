@@ -41,7 +41,7 @@ const RightPanel = ({ isOpen, onClose, activeTab, setActiveTab, tasks, onAddTask
           animate={{ width: 340, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="h-full bg-surface/30 backdrop-blur-xl border-l border-black/5 dark:border-white/10 flex flex-col overflow-hidden"
+          className="h-full bg-surface/30 backdrop-blur-xl border-l border-black/5 dark:border-white/10 hidden md:flex flex-col overflow-hidden"
         >
           {/* Tabs */}
           <div className="flex items-center border-b border-black/5 dark:border-white/10 bg-surface/50">
@@ -114,8 +114,8 @@ export default function ChatApp() {
   const subscriptionRef = useRef(null);
   const [replyingTo, setReplyingTo] = useState(null);
 
-  // Right Panel State
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  // Right Panel State - Closed by default (especially on mobile)
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('TASKS');
   const [tasks, setTasks] = useState([
     { id: 1, title: 'Review project proposal', completed: false, dueDate: 'Today, 2pm' },
