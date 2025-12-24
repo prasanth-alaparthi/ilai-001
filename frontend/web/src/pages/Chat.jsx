@@ -317,6 +317,7 @@ export default function ChatApp() {
 
             {/* Messages */}
             <MessageList
+              key={`messages-${messages.length}-${messages[0]?.id || 'empty'}`}
               messages={messages}
               meUserId={userId}
               onReply={setReplyingTo}
