@@ -260,8 +260,8 @@ export default function ChatApp() {
 
   return (
     <div className="flex h-full bg-background overflow-hidden font-sans">
-      {/* Left Sidebar */}
-      <div className="w-80 h-full flex-shrink-0 border-r border-black/5 dark:border-white/10 bg-surface/30 backdrop-blur-md">
+      {/* Left Sidebar - Hidden on mobile when conversation selected */}
+      <div className={`w-80 h-full flex-shrink-0 border-r border-black/5 dark:border-white/10 bg-surface/30 backdrop-blur-md ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <ChatSidebar
           conversations={conversations}
           selectedId={selectedConversation?.id}
@@ -270,8 +270,8 @@ export default function ChatApp() {
         />
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 overflow-hidden bg-background">
+      {/* Main Chat Area - Full width on mobile when conversation selected */}
+      <div className={`flex-1 flex flex-col h-full relative min-w-0 overflow-hidden bg-background ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         {selectedConversation ? (
           <>
             {/* Header */}
@@ -315,14 +315,16 @@ export default function ChatApp() {
               </div>
             </div>
 
-            {/* Messages */}
-            <MessageList
-              key={`messages-${messages.length}-${messages[0]?.id || 'empty'}`}
-              messages={messages}
-              meUserId={userId}
-              onReply={setReplyingTo}
-              onAction={handleMessageAction}
-            />
+            {/* Messages Container - Flex wrapper for proper height */}
+            <div className="flex-1 overflow-hidden">
+              <MessageList
+                key={`messages-${messages.length}-${messages[0]?.id || 'empty'}`}
+                messages={messages}
+                meUserId={userId}
+                onReply={setReplyingTo}
+                onAction={handleMessageAction}
+              />
+            </div>
 
             {/* Input */}
             <div className="p-6">
