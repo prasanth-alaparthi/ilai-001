@@ -124,28 +124,32 @@ export default function ShareNoteModal({
                                 Permission Level
                             </label>
                             <div className="grid grid-cols-2 gap-2">
-                                <button
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
                                     type="button"
                                     onClick={() => setPermissionLevel('VIEWER')}
                                     className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${permissionLevel === 'VIEWER'
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
                                         }`}
                                 >
                                     👁️ Viewer
                                     <p className="text-xs font-normal mt-0.5 opacity-70">Can view only</p>
-                                </button>
-                                <button
+                                </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
                                     type="button"
                                     onClick={() => setPermissionLevel('EDITOR')}
                                     className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${permissionLevel === 'EDITOR'
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
                                         }`}
                                 >
                                     ✏️ Editor
                                     <p className="text-xs font-normal mt-0.5 opacity-70">Can edit</p>
-                                </button>
+                                </motion.button>
                             </div>
                         </div>
 
@@ -169,13 +173,15 @@ export default function ShareNoteModal({
                         {success && <p className="text-sm text-green-500 bg-green-50 dark:bg-green-900/20 p-2 rounded-lg">{success}</p>}
 
                         {/* Submit Button */}
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.02, boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)" }}
+                            whileTap={{ scale: 0.98 }}
                             type="submit"
                             disabled={!username.trim() || loading}
                             className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                             {loading ? 'Sharing...' : <><Share2 className="w-4 h-4" /> Share {resourceLabel}</>}
-                        </button>
+                        </motion.button>
                     </form>
 
                     {/* Link Sharing Section */}

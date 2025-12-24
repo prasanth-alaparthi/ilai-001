@@ -460,9 +460,9 @@ export default function NotesHome() {
     if (!selectedNote) return;
     try {
       await notesService.shareNote(selectedNote.id, username, permissionLevel);
-      showAlert("Success", "Note shared successfully!");
+      useNotificationStore.getState().addNotification(`Note shared with ${username}`, "success");
     } catch (err) {
-      showAlert("Error", "Failed to share note.");
+      useNotificationStore.getState().addNotification("Failed to share note", "error");
     }
   };
 
@@ -484,7 +484,10 @@ export default function NotesHome() {
           const newParams = new URLSearchParams(searchParams);
           newParams.delete("note");
           setSearchParams(newParams);
-        } catch (err) { console.error(err); }
+          useNotificationStore.getState().addNotification("Note moved to trash", "success");
+        } catch (err) {
+          useNotificationStore.getState().addNotification("Failed to delete note", "error");
+        }
       }
     });
   };
@@ -495,9 +498,9 @@ export default function NotesHome() {
       const duplicate = await notesService.duplicateNote(selectedNote.id);
       setNotes(prev => [...prev, duplicate]);
       setSelectedNote(duplicate);
-      showAlert("Success", "Note duplicated successfully!");
+      useNotificationStore.getState().addNotification("Note duplicated", "success");
     } catch (err) {
-      showAlert("Error", "Failed to duplicate note.");
+      useNotificationStore.getState().addNotification("Failed to duplicate note", "error");
     }
   };
 
@@ -509,8 +512,12 @@ export default function NotesHome() {
       if (selectedNote && selectedNote.id === note.id) {
         setSelectedNote(prev => ({ ...prev, isPinned: updatedNote.isPinned }));
       }
+      useNotificationStore.getState().addNotification(
+        updatedNote.isPinned ? "Note Pinned" : "Note Unpinned",
+        "success"
+      );
     } catch (err) {
-      console.error("Failed to toggle pin", err);
+      useNotificationStore.getState().addNotification("Failed to update pin", "error");
     }
   };
 
@@ -620,13 +627,69 @@ export default function NotesHome() {
                   {selectedNote.updatedAt ? formatDistanceToNow(new Date(selectedNote.updatedAt), { addSuffix: true }) : 'Just now'}
                 </span>
                 <div className="h-4 w-px bg-border mx-1 sm:mx-2 hidden sm:block" />
-                <button onClick={handleSuggestOrganization} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="AI Organize"><Cpu size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowAITools(!showAITools)} className={`p-1.5 sm:p-2 rounded-full transition-colors ${showAITools ? 'text-accent-glow bg-accent-glow/10' : 'text-secondary hover:text-primary hover:bg-white/5'}`} title="AI Study Tools"><Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowBacklinksModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="View Links"><LinkIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowGraphModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="Knowledge Graph"><LayoutGrid size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowBrokenLinksModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-amber-500 hover:bg-amber-500/10 rounded-full transition-colors" title="Broken Links"><AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowVersionsModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="History"><Clock size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowTranscribeModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Transcribe"><Mic size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <motion.button
+                  whileHover={{ scale: 1.1, color: "var(--accent-glow)" }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleSuggestOrganization}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors"
+                  title="AI Organize"
+                >
+                  <Cpu size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1, color: "var(--accent-glow)" }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowAITools(!showAITools)}
+                  className={`p-1.5 sm:p-2 rounded-full transition-colors ${showAITools ? 'text-accent-glow bg-accent-glow/10' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
+                  title="AI Study Tools"
+                >
+                  <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowBacklinksModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors"
+                  title="View Links"
+                >
+                  <LinkIcon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowGraphModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors"
+                  title="Knowledge Graph"
+                >
+                  <LayoutGrid size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1, color: "#f59e0b" }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowBrokenLinksModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-amber-500 hover:bg-amber-500/10 rounded-full transition-colors"
+                  title="Broken Links"
+                >
+                  <AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowVersionsModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex"
+                  title="History"
+                >
+                  <Clock size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowTranscribeModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex"
+                  title="Transcribe"
+                >
+                  <Mic size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.1, color: '#F8C3CD' }}
                   whileTap={{ scale: 0.9 }}
@@ -636,20 +699,46 @@ export default function NotesHome() {
                 >
                   <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </motion.button>
-                <button onClick={handleDuplicateNote} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Duplicate"><Copy size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={() => setShowExportModal(true)} className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex" title="Export"><Download size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
-                <button onClick={handleDeleteNote} className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 rounded-full transition-colors" title="Move to Trash"><Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleDuplicateNote}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex"
+                  title="Duplicate"
+                >
+                  <Copy size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowExportModal(true)}
+                  className="p-1.5 sm:p-2 text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors hidden sm:flex"
+                  title="Export"
+                >
+                  <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1, color: '#f87171' }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleDeleteNote}
+                  className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 rounded-full transition-colors"
+                  title="Move to Trash"
+                >
+                  <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                </motion.button>
                 {/* Mobile overflow menu for hidden actions */}
                 <button className="p-1.5 sm:hidden text-secondary hover:text-primary hover:bg-white/5 rounded-full transition-colors" title="More"><MoreHorizontal size={16} /></button>
               </>
             ) : (
               selectedChapter && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleCreateNote}
                   className="btn-primary flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-3 sm:px-4 py-2"
                 >
                   <Plus size={16} className="sm:w-[18px] sm:h-[18px]" /><span className="hidden xs:inline">New Note</span><span className="xs:hidden">New</span>
-                </button>
+                </motion.button>
               )
             )}
           </div>
@@ -665,12 +754,14 @@ export default function NotesHome() {
                   <h2 className="text-lg sm:text-xl font-serif text-primary/60">Select a Notebook</h2>
                   <p className="text-sm mt-2">Choose a section from the sidebar to view notes.</p>
                   {isMobile && (
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setSidebarOpen(true)}
                       className="mt-4 btn-primary flex items-center gap-2 text-sm"
                     >
                       <SidebarIcon size={16} /> Open Sidebar
-                    </button>
+                    </motion.button>
                   )}
                 </div>
               ) : (

@@ -64,6 +64,7 @@ const BottomNav = () => {
                             className="flex flex-col items-center justify-center py-2 px-4 min-w-[64px]"
                         >
                             <motion.div
+                                whileHover={{ scale: 1.1, color: "var(--accent-glow)" }}
                                 whileTap={{ scale: 0.9 }}
                                 className="relative"
                             >
